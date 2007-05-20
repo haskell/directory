@@ -59,23 +59,13 @@ INLINE HsInt __hscore_long_path_size() {
 #endif
 }
 
-#ifdef R_OK
+#ifdef __GLASGOW_HASKELL__
 INLINE int __hscore_R_OK() { return R_OK; }
-#endif
-#ifdef W_OK
 INLINE int __hscore_W_OK() { return W_OK; }
-#endif
-#ifdef X_OK
 INLINE int __hscore_X_OK() { return X_OK; }
-#endif
 
-#ifdef S_IRUSR
 INLINE mode_t __hscore_S_IRUSR() { return S_IRUSR; }
-#endif
-#ifdef S_IWUSR
 INLINE mode_t __hscore_S_IWUSR() { return S_IWUSR; }
-#endif
-#ifdef S_IXUSR
 INLINE mode_t __hscore_S_IXUSR() { return S_IXUSR; }
 #endif
 
