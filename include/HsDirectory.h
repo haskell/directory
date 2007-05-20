@@ -47,15 +47,17 @@ extern int __hscore_getFolderPath(HWND hwndOwner,
 # endif
 #endif
 
-#ifdef PATH_MAX
 /* A size that will contain many path names, but not necessarily all
  * (PATH_MAX is not defined on systems with unlimited path length,
  * e.g. the Hurd).
  */
-INLINE HsInt __hscore_long_path_size() { return PATH_MAX; }
+INLINE HsInt __hscore_long_path_size() {
+#ifdef PATH_MAX
+    return PATH_MAX;
 #else
-INLINE HsInt __hscore_long_path_size() { return 4096; }
+    return 4096;
 #endif
+}
 
 #ifdef R_OK
 INLINE int __hscore_R_OK() { return R_OK; }
