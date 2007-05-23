@@ -23,6 +23,10 @@
 
 #include "HsFFI.h"
 
+#if defined(__MINGW32__)
+#include <shlobj.h>
+#endif
+
 #if defined(_MSC_VER) || defined(__MINGW32__) || defined(_WIN32)
 extern int __hscore_getFolderPath(HWND hwndOwner,
                   int nFolder,
