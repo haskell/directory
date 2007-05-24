@@ -1,3 +1,4 @@
+#ifdef __GLASGOW_HASKELL__
 /* 
  * (c) The University of Glasgow 2002
  *
@@ -49,5 +50,6 @@ __hscore_getFolderPath(HWND hwndOwner,
     return (int)funcPtr(hwndOwner,nFolder,hToken,dwFlags,pszPath);
     /* ToDo: unload the DLL on shutdown? */
 }
+#endif
 #endif
 
