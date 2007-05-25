@@ -1,4 +1,4 @@
-#ifndef __NHC__
+#if defined(__GLASGOW_HASKELL__) || defined(__HUGS__)
 /* 
  * (c) The University of Glasgow 2002
  *
