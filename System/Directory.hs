@@ -81,7 +81,7 @@ import Hugs.Directory
 import Foreign
 import Foreign.C
 
-{-# CFILES cbits/PrelIOUtils.c #-}
+{-# CFILES cbits/directory.c #-}
 
 #ifdef __GLASGOW_HASKELL__
 import Prelude
