@@ -10,6 +10,12 @@
 #define __HSDIRECTORY_H__
 
 #include "HsDirectoryConfig.h"
+// Otherwise these clash with similar definitions from other packages:
+#undef PACKAGE_BUGREPORT
+#undef PACKAGE_NAME
+#undef PACKAGE_STRING
+#undef PACKAGE_TARNAME
+#undef PACKAGE_VERSION
 
 #if HAVE_SYS_TYPES_H
 #include <sys/types.h>
