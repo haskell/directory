@@ -13,7 +13,7 @@ c-sources:
 	cbits/directory.c
 include-dirs: include
 includes:	HsDirectory.h
-install-includes:	HsDirectory.h
+install-includes:	HsDirectory.h HsDirectoryConfig.h
 extensions:	CPP, ForeignFunctionInterface
 build-depends: base, old-time
 
