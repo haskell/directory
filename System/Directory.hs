@@ -875,7 +875,7 @@ foreign import ccall unsafe "__hscore_long_path_size"
 
 #else
 long_path_size :: Int
-long_path_size = 2048	/* guess? */
+long_path_size = 2048	--  // guess?
 
 #endif /* __GLASGOW_HASKELL__ */
 
