@@ -39,6 +39,7 @@ module System.Directory
     , copyFile                  -- :: FilePath -> FilePath -> IO ()
     
     , canonicalizePath
+    , makeRelativeToCurrentDirectory
     , findExecutable
 
     -- * Existence tests
@@ -67,6 +68,7 @@ module System.Directory
 
 import System.Directory.Internals
 import System.Environment      ( getEnv )
+import System.FilePath
 import System.IO.Error
 import Control.Monad           ( when, unless )
 
@@ -595,6 +597,12 @@ foreign import ccall unsafe "realpath"
                               -> CString
                               -> IO CString
 #endif
+
+-- | 'makeRelative' the current directory.
+makeRelativeToCurrentDirectory :: FilePath -> IO FilePath
+makeRelativeToCurrentDirectory x = do
+    cur <- getCurrentDirectory
+    return $ makeRelative cur x
 
 -- | Given an executable file name, searches for such file
 -- in the directories listed in system PATH. The returned value 
