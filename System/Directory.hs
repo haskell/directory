@@ -66,7 +66,6 @@ module System.Directory
     , getModificationTime       -- :: FilePath -> IO ClockTime
    ) where
 
-import System.Directory.Internals
 import System.Environment      ( getEnv )
 import System.FilePath
 import System.IO.Error
@@ -271,11 +270,12 @@ createDirectoryIfMissing :: Bool     -- ^ Create its parents too?
 		         -> IO ()
 createDirectoryIfMissing parents file = do
   b <- doesDirectoryExist file
-  case (b,parents, file) of 
+  case (b,parents, file) of
     (_,     _, "") -> return ()
     (True,  _,  _) -> return ()
-    (_,  True,  _) -> mapM_ (createDirectoryIfMissing False) (tail (pathParents file))
+    (_,  True,  _) -> mapM_ (createDirectoryIfMissing False) $ mkParents file
     (_, False,  _) -> createDirectory file
+ where mkParents = scanl1 (</>) . splitDirectories . dropDrive . normalise
 
 #if __GLASGOW_HASKELL__
 {- | @'removeDirectory' dir@ removes an existing directory /dir/.  The
@@ -332,7 +332,7 @@ removeDirectory path = do
 removeDirectoryRecursive :: FilePath -> IO ()
 removeDirectoryRecursive startLoc = do
   cont <- getDirectoryContents startLoc
-  sequence_ [rm (startLoc `joinFileName` x) | x <- cont, x /= "." && x /= ".."]
+  sequence_ [rm (startLoc </> x) | x <- cont, x /= "." && x /= ".."]
   removeDirectory startLoc
   where
     rm :: FilePath -> IO ()
@@ -633,16 +633,16 @@ foreign import stdcall unsafe "SearchPathA"
 #else
  do
   path <- getEnv "PATH"
-  search (parseSearchPath path)
+  search (splitSearchPath path)
   where
-    fileName = binary `joinFileExt` exeExtension
+    fileName = binary <.> exeExtension
 
     search :: [FilePath] -> IO (Maybe FilePath)
     search [] = return Nothing
     search (d:ds) = do
-	let path = d `joinFileName` fileName
-	b <- doesFileExist path
-	if b then return (Just path)
+        let path = d </> fileName
+        b <- doesFileExist path
+        if b then return (Just path)
              else search ds
 #endif
 
@@ -1050,3 +1050,14 @@ raiseUnsupported loc =
    ioException (IOError Nothing UnsupportedOperation loc "unsupported operation" Nothing)
 
 #endif
+
+-- ToDo: This should be determined via autoconf (AC_EXEEXT)
+-- | Extension for executable files
+-- (typically @\"\"@ on Unix and @\"exe\"@ on Windows or OS\/2)
+exeExtension :: String
+#ifdef mingw32_HOST_OS
+exeExtension = "exe"
+#else
+exeExtension = ""
+#endif
+

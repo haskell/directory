@@ -8,7 +8,6 @@ description:
 	This package provides a library for handling directories.
 exposed-modules:
 	System.Directory
-	System.Directory.Internals
 c-sources:
 	cbits/directory.c
 include-dirs: include
