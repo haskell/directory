@@ -275,7 +275,7 @@ createDirectoryIfMissing parents file = do
     (True,  _,  _) -> return ()
     (_,  True,  _) -> mapM_ (createDirectoryIfMissing False) $ mkParents file
     (_, False,  _) -> createDirectory file
- where mkParents = scanl1 (</>) . splitDirectories . dropDrive . normalise
+ where mkParents = scanl1 (</>) . splitDirectories . normalise
 
 #if __GLASGOW_HASKELL__
 {- | @'removeDirectory' dir@ removes an existing directory /dir/.  The
