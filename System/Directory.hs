@@ -861,14 +861,8 @@ isDirectory stat = do
   return (s_isdir mode)
 
 fileNameEndClean :: String -> String
-fileNameEndClean name = 
-  if i > 0 && (ec == '\\' || ec == '/') then 
-     fileNameEndClean (take i name)
-   else
-     name
-  where
-      i  = (length name) - 1
-      ec = name !! i
+fileNameEndClean name = if isDrive name then addTrailingPathSeparator name
+                                        else dropTrailingPathSeparator name
 
 foreign import ccall unsafe "__hscore_R_OK" r_OK :: CInt
 foreign import ccall unsafe "__hscore_W_OK" w_OK :: CInt
