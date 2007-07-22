@@ -543,26 +543,27 @@ However, it certainly isn't always what you want.
 copyFile :: FilePath -> FilePath -> IO ()
 copyFile fromFPath toFPath =
 #if (!(defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ > 600))
-	do readFile fromFPath >>= writeFile toFPath
-	   try (copyPermissions fromFPath toFPath)
-	   return ()
+        do readFile fromFPath >>= writeFile toFPath
+           try (copyPermissions fromFPath toFPath)
+           return ()
 #else
-	(bracket (openBinaryFile fromFPath ReadMode) hClose $ \hFrom ->
-	 bracket (openBinaryFile toFPath WriteMode) hClose $ \hTo ->
-	 allocaBytes bufferSize $ \buffer -> do
-		copyContents hFrom hTo buffer
-		try (copyPermissions fromFPath toFPath)
-		return ()) `catch` (ioError . changeFunName)
-	where
-		bufferSize = 1024
-		
-		changeFunName (IOError h iot fun str mb_fp) = IOError h iot "copyFile" str mb_fp
-		
-		copyContents hFrom hTo buffer = do
-			count <- hGetBuf hFrom buffer bufferSize
-			when (count > 0) $ do
-				hPutBuf hTo buffer count
-				copyContents hFrom hTo buffer
+        (bracket (openBinaryFile fromFPath ReadMode) hClose $ \hFrom ->
+         bracket (openBinaryFile toFPath WriteMode) hClose $ \hTo ->
+         allocaBytes bufferSize $ \buffer -> do
+                copyContents hFrom hTo buffer
+                try (copyPermissions fromFPath toFPath)
+                return ()) `catch` (ioError . changeFunName)
+        where
+                bufferSize = 1024
+
+                changeFunName (IOError h iot fun str mb_fp)
+                 = IOError h iot "copyFile" str mb_fp
+
+                copyContents hFrom hTo buffer = do
+                        count <- hGetBuf hFrom buffer bufferSize
+                        when (count > 0) $ do
+                                hPutBuf hTo buffer count
+                                copyContents hFrom hTo buffer
 #endif
 
 -- | Given path referring to a file or directory, returns a
