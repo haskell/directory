@@ -66,10 +66,13 @@ module System.Directory
     , getModificationTime       -- :: FilePath -> IO ClockTime
    ) where
 
+import Prelude hiding ( catch )
+
 import System.Environment      ( getEnv )
 import System.FilePath
-import System.IO.Error
+import System.IO.Error hiding ( catch, try )
 import Control.Monad           ( when, unless )
+import Control.Exception
 
 #ifdef __NHC__
 import Directory
@@ -85,9 +88,6 @@ import Foreign.C
 {-# CFILES cbits/directory.c #-}
 
 #ifdef __GLASGOW_HASKELL__
-import Prelude
-
-import Control.Exception       ( bracket )
 import System.Posix.Types
 import System.Posix.Internals
 import System.Time             ( ClockTime(..) )
@@ -340,7 +340,7 @@ removeDirectoryRecursive startLoc = do
               case temp of
                 Left e  -> do isDir <- doesDirectoryExist f
                               -- If f is not a directory, re-throw the error
-                              unless isDir $ ioError e
+                              unless isDir $ throw e
                               removeDirectoryRecursive f
                 Right _ -> return ()
 
@@ -512,59 +512,28 @@ Neither path may refer to an existing directory.  The permissions of /old/ are
 copied to /new/, if possible.
 -}
 
-{- NOTES:
-
-It's tempting to try to remove the target file before opening it for
-writing.  This could be useful: for example if the target file is an
-executable that is in use, writing will fail, but unlinking first
-would succeed.
-
-However, it certainly isn't always what you want.
-
- * if the target file is hardlinked, removing it would break
-   the hard link, but just opening would preserve it.
-
- * opening and truncating will preserve permissions and
-   ACLs on the target.
-
- * If the destination file is read-only in a writable directory,
-   we might want copyFile to fail.  Removing the target first
-   would succeed, however.
-
- * If the destination file is special (eg. /dev/null), removing
-   it is probably not the right thing.  Copying to /dev/null
-   should leave /dev/null intact, not replace it with a plain
-   file.
-
- * There's a small race condition between removing the target and
-   opening it for writing during which time someone might
-   create it again.
--}
 copyFile :: FilePath -> FilePath -> IO ()
 copyFile fromFPath toFPath =
-#if (!(defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ > 600))
-        do readFile fromFPath >>= writeFile toFPath
-           try (copyPermissions fromFPath toFPath)
-           return ()
-#else
-        (bracket (openBinaryFile fromFPath ReadMode) hClose $ \hFrom ->
-         bracket (openBinaryFile toFPath WriteMode) hClose $ \hTo ->
-         allocaBytes bufferSize $ \buffer -> do
-                copyContents hFrom hTo buffer
-                try (copyPermissions fromFPath toFPath)
-                return ()) `catch` (ioError . changeFunName)
-        where
-                bufferSize = 1024
+    copy `catch` (\e -> case e of
+                        IOException e ->
+                            throw $ IOException $ ioeSetLocation e "copyFile"
+                        _ -> throw e)
+    where copy = bracket (openBinaryFile fromFPath ReadMode) hClose $ \hFrom ->
+                 bracketOnError openTmp cleanTmp $ \(tmpFPath, hTmp) ->
+                 do allocaBytes bufferSize $ copyContents hFrom hTmp
+                    hClose hTmp
+                    try (copyPermissions fromFPath toFPath)
+                    renameFile tmpFPath toFPath
+          openTmp = openBinaryTempFile (takeDirectory toFPath) ".copyFile.tmp"
+          cleanTmp (tmpFPath, hTmp) = do try $ hClose hTmp
+                                         try $ removeFile tmpFPath
+          bufferSize = 1024
 
-                changeFunName (IOError h iot fun str mb_fp)
-                 = IOError h iot "copyFile" str mb_fp
-
-                copyContents hFrom hTo buffer = do
-                        count <- hGetBuf hFrom buffer bufferSize
-                        when (count > 0) $ do
-                                hPutBuf hTo buffer count
-                                copyContents hFrom hTo buffer
-#endif
+          copyContents hFrom hTo buffer = do
+                  count <- hGetBuf hFrom buffer bufferSize
+                  when (count > 0) $ do
+                          hPutBuf hTo buffer count
+                          copyContents hFrom hTo buffer
 
 -- | Given path referring to a file or directory, returns a
 -- canonicalized path, with the intent that two paths referring
