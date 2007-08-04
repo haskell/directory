@@ -76,6 +76,7 @@ import Control.Exception
 
 #ifdef __NHC__
 import Directory
+import System (system)
 #endif /* __NHC__ */
 
 #ifdef __HUGS__
@@ -513,6 +514,12 @@ copied to /new/, if possible.
 -}
 
 copyFile :: FilePath -> FilePath -> IO ()
+#ifdef __NHC__
+copyFile fromFPath toFPath =
+    do readFile fromFPath >>= writeFile toFPath
+       try (copyPermissions fromFPath toFPath)
+       return ()
+#else
 copyFile fromFPath toFPath =
     copy `catch` (\e -> case e of
                         IOException e ->
@@ -534,6 +541,7 @@ copyFile fromFPath toFPath =
                   when (count > 0) $ do
                           hPutBuf hTo buffer count
                           copyContents hFrom hTo buffer
+#endif
 
 -- | Given path referring to a file or directory, returns a
 -- canonicalized path, with the intent that two paths referring
