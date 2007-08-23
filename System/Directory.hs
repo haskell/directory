@@ -155,6 +155,29 @@ The operation may fail with:
 getPermissions :: FilePath -> IO Permissions
 getPermissions name = do
   withCString name $ \s -> do
+#ifdef mingw32_HOST_OS
+  -- stat() does a better job of guessing the permissions on Windows
+  -- than access() does.  e.g. for execute permission, it looks at the
+  -- filename extension :-)
+  --
+  -- I tried for a while to do this properly, using the Windows security API,
+  -- and eventually gave up.  getPermissions is a flawed API anyway. -- SimonM
+  allocaBytes sizeof_stat $ \ p_stat -> do
+  throwErrnoIfMinus1_ "getPermissions" $ c_stat s p_stat
+  mode <- st_mode p_stat
+  let read   = mode .&. s_IRUSR
+  let write  = mode .&. s_IWUSR
+  let exec   = mode .&. s_IXUSR
+  let is_dir = mode .&. s_IFDIR
+  return (
+    Permissions {
+      readable   = read  /= 0,
+      writable   = write /= 0,
+      executable = is_dir == 0 && exec /= 0,
+      searchable = is_dir /= 0 && exec /= 0
+    }
+   )
+#else
   read  <- c_access s r_OK
   write <- c_access s w_OK
   exec  <- c_access s x_OK
@@ -168,6 +191,7 @@ getPermissions name = do
       searchable = is_dir && exec == 0
     }
    )
+#endif
 
 {- |The 'setPermissions' operation sets the
 permissions for the file or directory.
@@ -849,6 +873,7 @@ foreign import ccall unsafe "__hscore_X_OK" x_OK :: CInt
 foreign import ccall unsafe "__hscore_S_IRUSR" s_IRUSR :: CMode
 foreign import ccall unsafe "__hscore_S_IWUSR" s_IWUSR :: CMode
 foreign import ccall unsafe "__hscore_S_IXUSR" s_IXUSR :: CMode
+foreign import ccall unsafe "__hscore_S_IFDIR" s_IFDIR :: CMode
 
 foreign import ccall unsafe "__hscore_long_path_size"
   long_path_size :: Int

@@ -77,6 +77,7 @@ INLINE int __hscore_X_OK() { return X_OK; }
 INLINE mode_t __hscore_S_IRUSR() { return S_IRUSR; }
 INLINE mode_t __hscore_S_IWUSR() { return S_IWUSR; }
 INLINE mode_t __hscore_S_IXUSR() { return S_IXUSR; }
+INLINE mode_t __hscore_S_IFDIR() { return S_IFDIR; }
 #endif
 
 #if defined(__MINGW32__)
