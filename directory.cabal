@@ -15,4 +15,6 @@ includes:	HsDirectory.h
 install-includes:	HsDirectory.h HsDirectoryConfig.h
 extensions:	CPP, ForeignFunctionInterface
 build-depends: base, old-time, filepath
-
+extra-tmp-files:
+        config.log config.status autom4te.cache
+        include/HsDirectoryConfig.h
