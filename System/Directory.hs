@@ -553,7 +553,7 @@ copyFile fromFPath toFPath =
                  bracketOnError openTmp cleanTmp $ \(tmpFPath, hTmp) ->
                  do allocaBytes bufferSize $ copyContents hFrom hTmp
                     hClose hTmp
-                    try (copyPermissions fromFPath toFPath)
+                    try (copyPermissions fromFPath tmpFPath)
                     renameFile tmpFPath toFPath
           openTmp = openBinaryTempFile (takeDirectory toFPath) ".copyFile.tmp"
           cleanTmp (tmpFPath, hTmp) = do try $ hClose hTmp
