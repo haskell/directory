@@ -9,3 +9,4 @@ test('getDirContents001', omit_ways(['ghci']), compile_and_run, ['-fno-gen-manif
 test('getPermissions001', omit_ways(['ghci']), compile_and_run, ['-cpp'])
 
 test('copyFile001',  normal, compile_and_run, [''])
+test('copyFile002',  normal, compile_and_run, [''])
