@@ -1,5 +1,5 @@
-import Directory (getDirectoryContents)
-import List (sort, isPrefixOf, isSuffixOf)
+import System.Directory (getDirectoryContents)
+import Data.List (sort, isPrefixOf, isSuffixOf)
 
 main = do
     names <- getDirectoryContents "."

@@ -1,4 +1,4 @@
-import Directory (getCurrentDirectory, setCurrentDirectory, 
+import System.Directory (getCurrentDirectory, setCurrentDirectory, 
                      createDirectory, removeDirectory, getDirectoryContents)
 
 main = do

@@ -1,6 +1,5 @@
-import IO
-
-import Directory
+import System.IO
+import System.Directory
 
 main = do
     createDirectory "foo"

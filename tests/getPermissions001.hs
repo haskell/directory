@@ -1,4 +1,4 @@
-import Directory
+import System.Directory
 
 main = do
   p <- getPermissions "."
