@@ -70,6 +70,7 @@ import Prelude hiding ( catch )
 
 import System.Environment      ( getEnv )
 import System.FilePath
+import System.IO
 import System.IO.Error hiding ( catch, try )
 import Control.Monad           ( when, unless )
 import Control.Exception
@@ -92,7 +93,6 @@ import Foreign.C
 import System.Posix.Types
 import System.Posix.Internals
 import System.Time             ( ClockTime(..) )
-import System.IO
 
 import GHC.IOBase	( IOException(..), IOErrorType(..), ioException )
 
