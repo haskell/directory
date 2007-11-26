@@ -101,7 +101,7 @@ A directory contains a series of entries, each of which is a named
 reference to a file system object (file, directory etc.).  Some
 entries may be hidden, inaccessible, or have some administrative
 function (e.g. `.' or `..' under POSIX
-<http://www.opengroup.org/onlinepubs/007904975/toc.htm>), but in 
+<http://www.opengroup.org/onlinepubs/009695399/>), but in 
 this standard all such entries are considered to form part of the
 directory contents. Entries in sub-directories are not, however,
 considered to form part of the directory contents.
