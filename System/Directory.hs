@@ -584,7 +584,9 @@ canonicalizePath fpath =
 #else
     do c_realpath pInPath pOutPath
 #endif
-       peekCString pOutPath
+       path <- peekCString pOutPath
+       return (normalise path)
+        -- normalise does more stuff, like upper-casing the drive letter
 
 #if defined(mingw32_HOST_OS)
 foreign import stdcall unsafe "GetFullPathNameA"
