@@ -1027,7 +1027,10 @@ getTemporaryDirectory = do
      r <- c_GetTempPath (fromIntegral long_path_size) pPath
      peekCString pPath
 #else
-  catch (getEnv "TMPDIR") (\ex -> return "/tmp")
+  getEnv "TMPDIR"
+    `catch` \ex -> case ex of
+                     IOException e | isDoesNotExistError e -> return "/tmp"
+                     _ -> throw ex
 #endif
 
 #if defined(mingw32_HOST_OS)
