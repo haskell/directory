@@ -1028,9 +1028,13 @@ getTemporaryDirectory = do
      peekCString pPath
 #else
   getEnv "TMPDIR"
+#if !__NHC__
     `catch` \ex -> case ex of
                      IOException e | isDoesNotExistError e -> return "/tmp"
                      _ -> throw ex
+#else
+    `catch` (\ex -> return "/tmp")
+#endif
 #endif
 
 #if defined(mingw32_HOST_OS)
