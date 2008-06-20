@@ -165,30 +165,30 @@ getPermissions name = do
   allocaBytes sizeof_stat $ \ p_stat -> do
   throwErrnoIfMinus1_ "getPermissions" $ c_stat s p_stat
   mode <- st_mode p_stat
-  let read   = mode .&. s_IRUSR
-  let write  = mode .&. s_IWUSR
-  let exec   = mode .&. s_IXUSR
+  let usr_read   = mode .&. s_IRUSR
+  let usr_write  = mode .&. s_IWUSR
+  let usr_exec   = mode .&. s_IXUSR
   let is_dir = mode .&. s_IFDIR
   return (
     Permissions {
-      readable   = read  /= 0,
-      writable   = write /= 0,
-      executable = is_dir == 0 && exec /= 0,
-      searchable = is_dir /= 0 && exec /= 0
+      readable   = usr_read  /= 0,
+      writable   = usr_write /= 0,
+      executable = is_dir == 0 && usr_exec /= 0,
+      searchable = is_dir /= 0 && usr_exec /= 0
     }
    )
 #else
-  read  <- c_access s r_OK
-  write <- c_access s w_OK
-  exec  <- c_access s x_OK
+  read_ok  <- c_access s r_OK
+  write_ok <- c_access s w_OK
+  exec_ok  <- c_access s x_OK
   withFileStatus "getPermissions" name $ \st -> do
   is_dir <- isDirectory st
   return (
     Permissions {
-      readable   = read  == 0,
-      writable   = write == 0,
-      executable = not is_dir && exec == 0,
-      searchable = is_dir && exec == 0
+      readable   = read_ok  == 0,
+      writable   = write_ok == 0,
+      executable = not is_dir && exec_ok == 0,
+      searchable = is_dir && exec_ok == 0
     }
    )
 #endif
@@ -546,8 +546,8 @@ copyFile fromFPath toFPath =
 #else
 copyFile fromFPath toFPath =
     copy `catch` (\e -> case e of
-                        IOException e ->
-                            throw $ IOException $ ioeSetLocation e "copyFile"
+                        IOException exc ->
+                            throw $ IOException $ ioeSetLocation exc "copyFile"
                         _ -> throw e)
     where copy = bracket (openBinaryFile fromFPath ReadMode) hClose $ \hFrom ->
                  bracketOnError openTmp cleanTmp $ \(tmpFPath, hTmp) ->
@@ -757,8 +757,8 @@ getCurrentDirectory = do
 	     else do errno <- getErrno
 		     if errno == eRANGE
 		        then do let bytes' = bytes * 2
-			        p' <- reallocBytes p bytes'
-			        go p' bytes'
+			        p'' <- reallocBytes p bytes'
+			        go p'' bytes'
 		        else throwErrno "getCurrentDirectory"
 
 {- |If the operating system has a notion of current directories,
@@ -875,7 +875,9 @@ foreign import ccall unsafe "__hscore_X_OK" x_OK :: CInt
 foreign import ccall unsafe "__hscore_S_IRUSR" s_IRUSR :: CMode
 foreign import ccall unsafe "__hscore_S_IWUSR" s_IWUSR :: CMode
 foreign import ccall unsafe "__hscore_S_IXUSR" s_IXUSR :: CMode
+#ifdef mingw32_HOST_OS
 foreign import ccall unsafe "__hscore_S_IFDIR" s_IFDIR :: CMode
+#endif
 
 foreign import ccall unsafe "__hscore_long_path_size"
   long_path_size :: Int
