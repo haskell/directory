@@ -70,6 +70,7 @@ module System.Directory
    ) where
 
 import Prelude hiding ( catch )
+import qualified Prelude
 
 import System.Environment      ( getEnv )
 import System.FilePath
@@ -368,7 +369,7 @@ removeDirectoryRecursive startLoc = do
               case temp of
                 Left e  -> do isDir <- doesDirectoryExist f
                               -- If f is not a directory, re-throw the error
-                              unless isDir $ throw e
+                              unless isDir $ throw (e :: SomeException)
                               removeDirectoryRecursive f
                 Right _ -> return ()
 
@@ -548,19 +549,16 @@ copyFile fromFPath toFPath =
        return ()
 #else
 copyFile fromFPath toFPath =
-    copy `catch` (\e -> case e of
-                        IOException exc ->
-                            throw $ IOException $ ioeSetLocation exc "copyFile"
-                        _ -> throw e)
+    copy `Prelude.catch` (\exc -> throw $ ioeSetLocation exc "copyFile")
     where copy = bracket (openBinaryFile fromFPath ReadMode) hClose $ \hFrom ->
                  bracketOnError openTmp cleanTmp $ \(tmpFPath, hTmp) ->
                  do allocaBytes bufferSize $ copyContents hFrom hTmp
                     hClose hTmp
-                    try (copyPermissions fromFPath tmpFPath)
+                    ignoreExceptions $ copyPermissions fromFPath tmpFPath
                     renameFile tmpFPath toFPath
           openTmp = openBinaryTempFile (takeDirectory toFPath) ".copyFile.tmp"
-          cleanTmp (tmpFPath, hTmp) = do try $ hClose hTmp
-                                         try $ removeFile tmpFPath
+          cleanTmp (tmpFPath, hTmp) = do ignoreExceptions $ hClose hTmp
+                                         ignoreExceptions $ removeFile tmpFPath
           bufferSize = 1024
 
           copyContents hFrom hTo buffer = do
@@ -809,7 +807,7 @@ exists and is a directory, and 'False' otherwise.
 
 doesDirectoryExist :: FilePath -> IO Bool
 doesDirectoryExist name = 
- catch
+ catchAny
    (withFileStatus "doesDirectoryExist" name $ \st -> isDirectory st)
    (\ _ -> return False)
 
@@ -819,7 +817,7 @@ if the argument file exists and is not a directory, and 'False' otherwise.
 
 doesFileExist :: FilePath -> IO Bool
 doesFileExist name = do 
- catch
+ catchAny
    (withFileStatus "doesFileExist" name $ \st -> do b <- isDirectory st; return (not b))
    (\ _ -> return False)
 
@@ -1034,9 +1032,8 @@ getTemporaryDirectory = do
 #else
   getEnv "TMPDIR"
 #if !__NHC__
-    `catch` \ex -> case ex of
-                     IOException e | isDoesNotExistError e -> return "/tmp"
-                     _ -> throw ex
+    `Prelude.catch` \e -> if isDoesNotExistError e then return "/tmp"
+                          else throw e
 #else
     `catch` (\ex -> return "/tmp")
 #endif

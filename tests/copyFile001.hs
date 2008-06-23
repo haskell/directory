@@ -7,7 +7,7 @@ import System.Directory
 import System.IO
 
 main :: IO ()
-main = do try $ removeFile to
+main = do ignoreExceptions $ removeFile to
           cs_before <- getDirectoryContents "copyFile"
           putStrLn "Before:"
           print $ sort cs_before

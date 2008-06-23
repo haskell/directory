@@ -12,7 +12,7 @@ main :: IO ()
 main = do d <- getCurrentDirectory
           flip finally (setCurrentDirectory d) $ do
           setCurrentDirectory "copyFile"
-          try $ removeFile to
+          ignoreExceptions $ removeFile to
           cs_before <- getDirectoryContents "."
           putStrLn "Before:"
           print $ sort cs_before
