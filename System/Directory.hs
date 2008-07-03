@@ -1,3 +1,6 @@
+{-# OPTIONS_GHC -w #-}
+-- XXX We get some warnings on Windows
+
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  System.Directory
@@ -913,11 +916,11 @@ getHomeDirectory :: IO FilePath
 getHomeDirectory =
 #if defined(mingw32_HOST_OS)
   allocaBytes long_path_size $ \pPath -> do
-     r <- c_SHGetFolderPath nullPtr csidl_PROFILE nullPtr 0 pPath
-     if (r < 0)
+     r0 <- c_SHGetFolderPath nullPtr csidl_PROFILE nullPtr 0 pPath
+     if (r0 < 0)
        then do
-          r <- c_SHGetFolderPath nullPtr csidl_WINDOWS nullPtr 0 pPath
-	  when (r < 0) (raiseUnsupported "System.Directory.getHomeDirectory")
+          r1 <- c_SHGetFolderPath nullPtr csidl_WINDOWS nullPtr 0 pPath
+	  when (r1 < 0) (raiseUnsupported "System.Directory.getHomeDirectory")
        else return ()
      peekCString pPath
 #else
@@ -1026,7 +1029,7 @@ getTemporaryDirectory :: IO FilePath
 getTemporaryDirectory = do
 #if defined(mingw32_HOST_OS)
   allocaBytes long_path_size $ \pPath -> do
-     r <- c_GetTempPath (fromIntegral long_path_size) pPath
+     _r <- c_GetTempPath (fromIntegral long_path_size) pPath
      peekCString pPath
 #else
   getEnv "TMPDIR"
@@ -1054,6 +1057,7 @@ foreign import ccall unsafe "__hscore_CSIDL_PERSONAL" csidl_PERSONAL :: CInt
 
 foreign import stdcall unsafe "GetTempPathA" c_GetTempPath :: CInt -> CString -> IO CInt
 
+raiseUnsupported :: String -> IO ()
 raiseUnsupported loc = 
    ioException (IOError Nothing UnsupportedOperation loc "unsupported operation" Nothing)
 
