@@ -554,11 +554,12 @@ copyFile fromFPath toFPath =
                  bracketOnError openTmp cleanTmp $ \(tmpFPath, hTmp) ->
                  do allocaBytes bufferSize $ copyContents hFrom hTmp
                     hClose hTmp
-                    ignoreExceptions $ copyPermissions fromFPath tmpFPath
+                    ignoreIOExceptions $ copyPermissions fromFPath tmpFPath
                     renameFile tmpFPath toFPath
           openTmp = openBinaryTempFile (takeDirectory toFPath) ".copyFile.tmp"
-          cleanTmp (tmpFPath, hTmp) = do ignoreExceptions $ hClose hTmp
-                                         ignoreExceptions $ removeFile tmpFPath
+          cleanTmp (tmpFPath, hTmp)
+              = do ignoreIOExceptions $ hClose hTmp
+                   ignoreIOExceptions $ removeFile tmpFPath
           bufferSize = 1024
 
           copyContents hFrom hTo buffer = do
@@ -566,6 +567,10 @@ copyFile fromFPath toFPath =
                   when (count > 0) $ do
                           hPutBuf hTo buffer count
                           copyContents hFrom hTo buffer
+
+          ignoreIOExceptions io = io `catch` ioExceptionIgnorer
+          ioExceptionIgnorer :: IOException -> IO ()
+          ioExceptionIgnorer _ = return ()
 #endif
 
 -- | Given path referring to a file or directory, returns a
@@ -806,20 +811,18 @@ exists and is a directory, and 'False' otherwise.
 -}
 
 doesDirectoryExist :: FilePath -> IO Bool
-doesDirectoryExist name = 
- catchAny
+doesDirectoryExist name =
    (withFileStatus "doesDirectoryExist" name $ \st -> isDirectory st)
-   (\ _ -> return False)
+   `catch` ((\ _ -> return False) :: IOException -> IO Bool)
 
 {- |The operation 'doesFileExist' returns 'True'
 if the argument file exists and is not a directory, and 'False' otherwise.
 -}
 
 doesFileExist :: FilePath -> IO Bool
-doesFileExist name = do 
- catchAny
+doesFileExist name =
    (withFileStatus "doesFileExist" name $ \st -> do b <- isDirectory st; return (not b))
-   (\ _ -> return False)
+   `catch` ((\ _ -> return False) :: IOException -> IO Bool)
 
 {- |The 'getModificationTime' operation returns the
 clock time at which the file or directory was last modified.
