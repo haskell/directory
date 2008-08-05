@@ -545,8 +545,8 @@ copyFile :: FilePath -> FilePath -> IO ()
 #ifdef __NHC__
 copyFile fromFPath toFPath =
     do readFile fromFPath >>= writeFile toFPath
-       try (copyPermissions fromFPath toFPath)
-       return ()
+       Prelude.catch (copyPermissions fromFPath toFPath)
+                     (\_ -> return ())
 #else
 copyFile fromFPath toFPath =
     copy `Prelude.catch` (\exc -> throw $ ioeSetLocation exc "copyFile")
@@ -1038,7 +1038,7 @@ getTemporaryDirectory = do
     `Prelude.catch` \e -> if isDoesNotExistError e then return "/tmp"
                           else throw e
 #else
-    `catch` (\ex -> return "/tmp")
+    `Prelude.catch` (\ex -> return "/tmp")
 #endif
 #endif
 
