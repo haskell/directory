@@ -77,7 +77,7 @@ import System.FilePath
 import System.IO
 import System.IO.Error hiding ( catch, try )
 import Control.Monad           ( when, unless )
-import Control.Exception
+import Control.Exception.Base
 
 #ifdef __NHC__
 import Directory
