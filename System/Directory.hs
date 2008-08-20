@@ -100,6 +100,12 @@ import System.Time             ( ClockTime(..) )
 
 import GHC.IOBase	( IOException(..), IOErrorType(..), ioException )
 
+#ifdef mingw32_HOST_OS
+import qualified System.Win32
+#else
+import qualified System.Posix
+#endif
+
 {- $intro
 A directory contains a series of entries, each of which is a named
 reference to a file system object (file, directory etc.).  Some
@@ -465,16 +471,18 @@ Either path refers to an existing non-directory object.
 
 renameDirectory :: FilePath -> FilePath -> IO ()
 renameDirectory opath npath =
+   -- XXX this test isn't performed atomically with the following rename
    withFileStatus "renameDirectory" opath $ \st -> do
    is_dir <- isDirectory st
    if (not is_dir)
 	then ioException (IOError Nothing InappropriateType "renameDirectory"
 			    ("not a directory") (Just opath))
 	else do
-
-   withCString opath $ \s1 ->
-     withCString npath $ \s2 ->
-        throwErrnoIfMinus1Retry_ "renameDirectory" (c_rename s1 s2)
+#ifdef mingw32_HOST_OS
+   System.Win32.moveFileEx opath npath System.Win32.mOVEFILE_REPLACE_EXISTING
+#else
+   System.Posix.rename s1 s2
+#endif
 
 {- |@'renameFile' old new@ changes the name of an existing file system
 object from /old/ to /new/.  If the /new/ object already
@@ -522,16 +530,18 @@ Either path refers to an existing directory.
 
 renameFile :: FilePath -> FilePath -> IO ()
 renameFile opath npath =
+   -- XXX this test isn't performed atomically with the following rename
    withFileOrSymlinkStatus "renameFile" opath $ \st -> do
    is_dir <- isDirectory st
    if is_dir
 	then ioException (IOError Nothing InappropriateType "renameFile"
 			   "is a directory" (Just opath))
 	else do
-
-    withCString opath $ \s1 ->
-      withCString npath $ \s2 ->
-         throwErrnoIfMinus1Retry_ "renameFile" (c_rename s1 s2)
+#ifdef mingw32_HOST_OS
+   System.Win32.moveFileEx opath npath System.Win32.mOVEFILE_REPLACE_EXISTING
+#else
+   System.Posix.rename s1 s2
+#endif
 
 #endif /* __GLASGOW_HASKELL__ */
 
