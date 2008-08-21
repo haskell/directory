@@ -284,10 +284,11 @@ The path refers to an existing non-directory object.
 
 createDirectory :: FilePath -> IO ()
 createDirectory path = do
-  modifyIOError (`ioeSetFileName` path) $
-    withCString path $ \s -> do
-      throwErrnoIfMinus1Retry_ "createDirectory" $
-	mkdir s 0o777
+#ifdef mingw32_HOST_OS
+  System.Win32.createDirectory path Nothing
+#else
+  System.Posix.createDirectory path 0o777
+#endif
 
 #else /* !__GLASGOW_HASKELL__ */
 
@@ -355,10 +356,13 @@ The operand refers to an existing non-directory object.
 -}
 
 removeDirectory :: FilePath -> IO ()
-removeDirectory path = do
-  modifyIOError (`ioeSetFileName` path) $
-    withCString path $ \s ->
-       throwErrnoIfMinus1Retry_ "removeDirectory" (c_rmdir s)
+removeDirectory path =
+#ifdef mingw32_HOST_OS
+  System.Win32.removeDirectory path
+#else
+  System.Posix.removeDirectory path
+#endif
+
 #endif
 
 -- | @'removeDirectoryRecursive' dir@  removes an existing directory /dir/
@@ -415,10 +419,12 @@ The operand refers to an existing directory.
 -}
 
 removeFile :: FilePath -> IO ()
-removeFile path = do
-  modifyIOError (`ioeSetFileName` path) $
-    withCString path $ \s ->
-      throwErrnoIfMinus1Retry_ "removeFile" (c_unlink s)
+removeFile path =
+#if mingw32_HOST_OS
+  System.Win32.deleteFile path
+#else
+  System.Posix.removeLink path
+#endif
 
 {- |@'renameDirectory' old new@ changes the name of an existing
 directory from /old/ to /new/.  If the /new/ directory
@@ -481,7 +487,7 @@ renameDirectory opath npath =
 #ifdef mingw32_HOST_OS
    System.Win32.moveFileEx opath npath System.Win32.mOVEFILE_REPLACE_EXISTING
 #else
-   System.Posix.rename s1 s2
+   System.Posix.rename opath npath
 #endif
 
 {- |@'renameFile' old new@ changes the name of an existing file system
@@ -540,7 +546,7 @@ renameFile opath npath =
 #ifdef mingw32_HOST_OS
    System.Win32.moveFileEx opath npath System.Win32.mOVEFILE_REPLACE_EXISTING
 #else
-   System.Posix.rename s1 s2
+   System.Posix.rename opath npath
 #endif
 
 #endif /* __GLASGOW_HASKELL__ */
@@ -762,6 +768,8 @@ The operating system has no notion of current directory.
 
 getCurrentDirectory :: IO FilePath
 getCurrentDirectory = do
+#ifdef mingw32_HOST_OS
+  -- XXX: should use something from Win32
   p <- mallocBytes long_path_size
   go p long_path_size
   where go p bytes = do
@@ -776,6 +784,14 @@ getCurrentDirectory = do
 			        p'' <- reallocBytes p bytes'
 			        go p'' bytes'
 		        else throwErrno "getCurrentDirectory"
+#else
+  System.Posix.getWorkingDirectory
+#endif
+
+#ifdef mingw32_HOST_OS
+foreign import ccall unsafe "getcwd"
+   c_getcwd   :: Ptr CChar -> CSize -> IO (Ptr CChar)
+#endif
 
 {- |If the operating system has a notion of current directories,
 @'setCurrentDirectory' dir@ changes the current
@@ -810,11 +826,12 @@ The path refers to an existing non-directory object.
 -}
 
 setCurrentDirectory :: FilePath -> IO ()
-setCurrentDirectory path = do
-  modifyIOError (`ioeSetFileName` path) $
-    withCString path $ \s -> 
-       throwErrnoIfMinus1Retry_ "setCurrentDirectory" (c_chdir s)
-	-- ToDo: add path to error
+setCurrentDirectory path =
+#ifdef mingw32_HOST_OS
+  System.Win32.setCurrentDirectory path
+#else
+  System.Posix.changeWorkingDirectory path
+#endif
 
 {- |The operation 'doesDirectoryExist' returns 'True' if the argument file
 exists and is a directory, and 'False' otherwise.
