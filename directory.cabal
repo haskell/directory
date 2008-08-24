@@ -11,6 +11,9 @@ build-type: Configure
 extra-tmp-files:
         config.log config.status autom4te.cache
         include/HsDirectoryConfig.h
+extra-source-files:
+        config.guess config.sub install-sh
+        configure.ac configure include/DirectoryConfig.h.in
 cabal-version: >= 1.2
 
 Library {
