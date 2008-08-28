@@ -26,9 +26,11 @@ Library {
     install-includes: HsDirectory.h HsDirectoryConfig.h
     extensions: CPP, ForeignFunctionInterface
     build-depends: base, old-time, filepath
-    if os(windows) {
-        build-depends: Win32
-    } else {
-        build-depends: unix
+    if !impl(nhc98) {
+      if os(windows) {
+          build-depends: Win32
+      } else {
+          build-depends: unix
+      }
     }
 }
