@@ -13,7 +13,7 @@ extra-tmp-files:
         include/HsDirectoryConfig.h
 extra-source-files:
         config.guess config.sub install-sh
-        configure.ac configure include/DirectoryConfig.h.in
+        configure.ac configure include/HsDirectoryConfig.h.in
 cabal-version: >= 1.2
 
 Library {
