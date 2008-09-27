@@ -12,7 +12,7 @@ main :: IO ()
 main = do d <- getCurrentDirectory
           flip finally (setCurrentDirectory d) $ do
           setCurrentDirectory "copyFile"
-          ignoreExceptions $ removeFile to
+          tryIO $ removeFile to
           cs_before <- getDirectoryContents "."
           putStrLn "Before:"
           print $ sort cs_before
@@ -21,6 +21,9 @@ main = do d <- getCurrentDirectory
           putStrLn "After:"
           print $ sort cs_before
           readFile to >>= print
+
+tryIO :: IO a -> IO (Either IOException a)
+tryIO = try 
 
 from, to :: FilePath
 from = "source"

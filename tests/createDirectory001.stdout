@@ -1,1 +1,1 @@
-Left CreateDirectory: already exists (Cannot create a file when that file already exists.)
+Left createDirectory001.dir: createDirectory: already exists (File exists)
