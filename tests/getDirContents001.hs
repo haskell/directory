@@ -1,13 +1,18 @@
-import System.Directory (getDirectoryContents)
-import Data.List (sort, isPrefixOf, isSuffixOf)
+import System.Directory
+import Control.Exception
+import System.FilePath
+import Data.List
+
+dir = "getDirContents001.dir"
 
 main = do
-    names <- getDirectoryContents "."
-    putStrLn (unlines (sort (filter ok names)))
+    try cleanup :: IO (Either IOException ())
+    bracket (createDirectory dir) (const cleanup) $ \_ -> do
+      getDirectoryContents dir >>= print . sort
+      mapM_ (\s -> writeFile (dir </> ('f':show s)) (show s)) [1..100]
+      getDirectoryContents dir >>= print . sort
 
-ok name = "getDirContents" `isPrefixOf` name 
-	  && not ("bak" `isSuffixOf` name)
-	  && not ("prof" `isSuffixOf` name)
-	  && not ("hp" `isSuffixOf` name)
-          && not ("ps" `isSuffixOf` name)
-          && not ("aux" `isSuffixOf` name)
+cleanup = do
+   files <- getDirectoryContents dir
+   mapM_ (removeFile . (dir </>)) (filter (not . ("." `isPrefixOf`)) files)
+   removeDirectory dir
