@@ -72,6 +72,7 @@ module System.Directory
 import Prelude hiding ( catch )
 import qualified Prelude
 
+import Control.Monad (guard)
 import System.Environment      ( getEnv )
 import System.FilePath
 import System.IO
@@ -304,14 +305,23 @@ copyPermissions fromFPath toFPath
 createDirectoryIfMissing :: Bool     -- ^ Create its parents too?
 		         -> FilePath -- ^ The path to the directory you want to make
 		         -> IO ()
-createDirectoryIfMissing parents file = do
-  b <- doesDirectoryExist file
-  case (b,parents, file) of
-    (_,     _, "") -> return ()
-    (True,  _,  _) -> return ()
-    (_,  True,  _) -> mapM_ (createDirectoryIfMissing False) $ mkParents file
-    (_, False,  _) -> createDirectory file
- where mkParents = scanl1 (</>) . splitDirectories . normalise
+createDirectoryIfMissing create_parents "" = return ()
+createDirectoryIfMissing create_parents path0
+ = do  r <- try $ createDirectory path
+       case (r :: Either IOException ()) of
+          Right _ -> return ()
+          Left e
+             | isAlreadyExistsError e -> return ()
+             | isDoesNotExistError  e && create_parents -> do
+                 createDirectoryIfMissing True (dropFileName path)
+                 createDirectoryIfMissing True path
+             | otherwise -> throw e
+  where
+    -- we want createDirectoryIfMissing "a/" to behave like   
+    -- createDirectoryIfMissing "a".  Also, unless we apply
+    -- dropTrailingPathSeparator first, dropFileName won't drop
+    -- anything from "a/".
+    path = dropTrailingPathSeparator path0
 
 #if __GLASGOW_HASKELL__
 {- | @'removeDirectory' dir@ removes an existing directory /dir/.  The
