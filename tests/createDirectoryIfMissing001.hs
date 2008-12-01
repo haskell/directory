@@ -6,7 +6,7 @@ import Control.Exception
 import System.Directory
 import System.FilePath
 
-testdir = "createDirectory001"
+testdir = "createDirectoryIfMissing001.d"
 testdir_a = testdir </> "a"
 
 main = do
