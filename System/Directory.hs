@@ -305,23 +305,36 @@ copyPermissions fromFPath toFPath
 createDirectoryIfMissing :: Bool     -- ^ Create its parents too?
 		         -> FilePath -- ^ The path to the directory you want to make
 		         -> IO ()
-createDirectoryIfMissing create_parents "" = return ()
 createDirectoryIfMissing create_parents path0
- = do  r <- try $ createDirectory path
-       case (r :: Either IOException ()) of
-          Right _ -> return ()
-          Left e
-             | isAlreadyExistsError e -> return ()
-             | isDoesNotExistError  e && create_parents -> do
-                 createDirectoryIfMissing True (dropFileName path)
-                 createDirectoryIfMissing True path
-             | otherwise -> throw e
+  | create_parents = createDirs (parents path0)
+  | otherwise      = createDirs (take 1 (parents path0))
   where
-    -- we want createDirectoryIfMissing "a/" to behave like   
-    -- createDirectoryIfMissing "a".  Also, unless we apply
-    -- dropTrailingPathSeparator first, dropFileName won't drop
-    -- anything from "a/".
-    path = dropTrailingPathSeparator path0
+    parents = reverse . scanl1 (</>) . splitDirectories . normalise
+
+    createDirs []         = return ()
+    createDirs (dir:[])   = createDir dir throw
+    createDirs (dir:dirs) =
+      createDir dir $ \_ -> do
+        createDirs dirs
+        createDir dir throw
+
+    createDir :: FilePath -> (IOException -> IO ()) -> IO ()
+    createDir dir notExistHandler = do
+      r <- try $ createDirectory dir
+      case (r :: Either IOException ()) of
+        Right ()                   -> return ()
+        Left  e
+          | isDoesNotExistError  e -> notExistHandler e
+          -- createDirectory (and indeed POSIX mkdir) does not distinguish
+          -- between a dir already existing and a file already existing. So we
+          -- check for it here. Unfortunately there is a slight race condition
+          -- here, but we think it is benign. It could report an exeption in
+          -- the case that the dir did exist but another process deletes it
+          -- before we can check that it did indeed exist.
+          | isAlreadyExistsError e -> do exists <- doesDirectoryExist dir
+                                         if exists then return ()
+                                                   else throw e
+          | otherwise              -> throw e
 
 #if __GLASGOW_HASKELL__
 {- | @'removeDirectory' dir@ removes an existing directory /dir/.  The
