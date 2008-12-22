@@ -329,11 +329,15 @@ createDirectoryIfMissing create_parents path0
           -- between a dir already existing and a file already existing. So we
           -- check for it here. Unfortunately there is a slight race condition
           -- here, but we think it is benign. It could report an exeption in
-          -- the case that the dir did exist but another process deletes it
-          -- before we can check that it did indeed exist.
-          | isAlreadyExistsError e -> do exists <- doesDirectoryExist dir
-                                         if exists then return ()
-                                                   else throw e
+          -- the case that the dir did exist but another process deletes the
+          -- directory and creates a file in its place before we can check
+          -- that the directory did indeed exist.
+          | isAlreadyExistsError e ->
+              (withFileStatus "createDirectoryIfMissing" dir $ \st -> do
+                 isDir <- isDirectory st
+                 if isDir then return ()
+                          else throw e
+              ) `catch` ((\_ -> return ()) :: IOException -> IO ())
           | otherwise              -> throw e
 
 #if __GLASGOW_HASKELL__
