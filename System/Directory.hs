@@ -491,8 +491,9 @@ renameDirectory opath npath =
    withFileStatus "renameDirectory" opath $ \st -> do
    is_dir <- isDirectory st
    if (not is_dir)
-	then ioException (IOError Nothing InappropriateType "renameDirectory"
-			    ("not a directory") (Just opath))
+	then ioException (ioeSetErrorString
+                          (mkIOError InappropriateType "renameDirectory" Nothing (Just opath))
+                          "not a directory")
 	else do
 #ifdef mingw32_HOST_OS
    System.Win32.moveFileEx opath npath System.Win32.mOVEFILE_REPLACE_EXISTING
@@ -550,8 +551,9 @@ renameFile opath npath =
    withFileOrSymlinkStatus "renameFile" opath $ \st -> do
    is_dir <- isDirectory st
    if is_dir
-	then ioException (IOError Nothing InappropriateType "renameFile"
-			   "is a directory" (Just opath))
+	then ioException (ioeSetErrorString
+			  (mkIOError InappropriateType "renameFile" Nothing (Just opath))
+			  "is a directory")
 	else do
 #ifdef mingw32_HOST_OS
    System.Win32.moveFileEx opath npath System.Win32.mOVEFILE_REPLACE_EXISTING
@@ -1096,7 +1098,7 @@ foreign import stdcall unsafe "GetTempPathA" c_GetTempPath :: CInt -> CString ->
 
 raiseUnsupported :: String -> IO ()
 raiseUnsupported loc = 
-   ioException (IOError Nothing UnsupportedOperation loc "unsupported operation" Nothing)
+   ioException (ioeSetErrorString (mkIOError UnsupportedOperation loc Nothing Nothing) "unsupported operation")
 
 #endif
 
