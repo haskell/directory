@@ -3,6 +3,7 @@ version:	1.0.0.2
 license:	BSD3
 license-file:	LICENSE
 maintainer:	libraries@haskell.org
+bug-reports: http://hackage.haskell.org/trac/ghc/newticket?component=libraries/directory
 synopsis:	library for directory handling
 description:
 	This package provides a library for handling directories.
@@ -15,6 +16,10 @@ extra-source-files:
         config.guess config.sub install-sh
         configure.ac configure include/HsDirectoryConfig.h.in
 cabal-version: >= 1.2
+
+source-repository head
+    type:     darcs
+    location: http://darcs.haskell.org/packages/directory/
 
 Library {
     exposed-modules:
