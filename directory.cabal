@@ -15,7 +15,7 @@ extra-tmp-files:
 extra-source-files:
         config.guess config.sub install-sh
         configure.ac configure include/HsDirectoryConfig.h.in
-cabal-version: >= 1.2
+cabal-version: >= 1.6
 
 source-repository head
     type:     darcs
