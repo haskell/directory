@@ -5,6 +5,7 @@ import Control.Monad
 import Control.Exception
 import System.Directory
 import System.FilePath
+import System.IO.Error hiding (try)
 
 testdir = "createDirectoryIfMissing001.d"
 testdir_a = testdir </> "a"
@@ -34,9 +35,18 @@ main = do
   forkIO $ do replicateM_ 10000 create; putMVar m ()
   forkIO $ do replicateM_ 10000 cleanup; putMVar m ()
   replicateM_ 2 $ takeMVar m
+
+-- This test fails on Windows; see #2924
+--  replicateM_ 2 $ 
+--     forkIO $ do replicateM_ 5000 (do create; cleanup); putMVar m ()
+--  replicateM_ 2 $ takeMVar m
+
   cleanup
 
-create = createDirectoryIfMissing True testdir_a
+-- createDirectoryIfMissing is allowed to fail with isDoesNotExistError if
+-- another process/thread removes one of the directories during the proces
+-- of creating the hierarchy.
+create = tryJust (guard . isDoesNotExistError) $ createDirectoryIfMissing True testdir_a
 
 cleanup = ignore $ removeDirectoryRecursive testdir
 
