@@ -81,7 +81,9 @@ import Control.Monad           ( when, unless )
 import Control.Exception.Base
 
 #ifdef __NHC__
-import Directory
+import Directory hiding ( getDirectoryContents
+                        , doesDirectoryExist, doesFileExist
+                        , getModificationTime )
 import System (system)
 #endif /* __NHC__ */
 
@@ -94,11 +96,11 @@ import Foreign.C
 
 {-# CFILES cbits/directory.c #-}
 
-#ifdef __GLASGOW_HASKELL__
 import System.Posix.Types
 import System.Posix.Internals
 import System.Time             ( ClockTime(..) )
 
+#ifdef __GLASGOW_HASKELL__
 import GHC.IOBase	( IOException(..), IOErrorType(..), ioException )
 
 #ifdef mingw32_HOST_OS
@@ -702,7 +704,7 @@ foreign import stdcall unsafe "SearchPathA"
 #endif
 
 
-#ifdef __GLASGOW_HASKELL__
+#ifndef __HUGS__
 {- |@'getDirectoryContents' dir@ returns a list of /all/ entries
 in /dir/. 
 
@@ -762,11 +764,11 @@ getDirectoryContents path = do
 		    return (entry:entries)
 	 else do errno <- getErrno
 		 if (errno == eINTR) then loop ptr_dEnt dir else do
-		 let (Errno eo) = errno
-		 if (eo == end_of_dir)
-		    then return []
-		    else throwErrno desc
-
+		   let (Errno eo) = errno
+		   if (eo == end_of_dir)
+		      then return []
+		      else throwErrno desc
+#endif /* !__HUGS__ */
 
 
 {- |If the operating system has a notion of current directories,
@@ -794,7 +796,7 @@ Insufficient resources are available to perform the operation.
 The operating system has no notion of current directory.
 
 -}
-
+#ifdef __GLASGOW_HASKELL__
 getCurrentDirectory :: IO FilePath
 getCurrentDirectory = do
 #ifdef mingw32_HOST_OS
@@ -862,6 +864,9 @@ setCurrentDirectory path =
   System.Posix.changeWorkingDirectory path
 #endif
 
+#endif /* __GLASGOW_HASKELL__ */
+
+#ifndef __HUGS__
 {- |The operation 'doesDirectoryExist' returns 'True' if the argument file
 exists and is a directory, and 'False' otherwise.
 -}
@@ -939,13 +944,14 @@ foreign import ccall unsafe "__hscore_S_IXUSR" s_IXUSR :: CMode
 foreign import ccall unsafe "__hscore_S_IFDIR" s_IFDIR :: CMode
 #endif
 
+#endif /* !__HUGS__ */
+
+#ifdef __GLASGOW_HASKELL__
 foreign import ccall unsafe "__hscore_long_path_size"
   long_path_size :: Int
-
 #else
 long_path_size :: Int
 long_path_size = 2048	--  // guess?
-
 #endif /* __GLASGOW_HASKELL__ */
 
 {- | Returns the current user's home directory.
@@ -1128,4 +1134,3 @@ exeExtension = "exe"
 #else
 exeExtension = ""
 #endif
-
