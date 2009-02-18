@@ -902,6 +902,8 @@ getModificationTime name =
  withFileStatus "getModificationTime" name $ \ st ->
  modificationTime st
 
+#endif /* !__HUGS__ */
+
 withFileStatus :: String -> FilePath -> (Ptr CStat -> IO a) -> IO a
 withFileStatus loc name f = do
   modifyIOError (`ioeSetFileName` name) $
@@ -944,7 +946,6 @@ foreign import ccall unsafe "__hscore_S_IXUSR" s_IXUSR :: CMode
 foreign import ccall unsafe "__hscore_S_IFDIR" s_IFDIR :: CMode
 #endif
 
-#endif /* !__HUGS__ */
 
 #ifdef __GLASGOW_HASKELL__
 foreign import ccall unsafe "__hscore_long_path_size"
