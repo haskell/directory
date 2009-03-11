@@ -800,28 +800,9 @@ The operating system has no notion of current directory.
 getCurrentDirectory :: IO FilePath
 getCurrentDirectory = do
 #ifdef mingw32_HOST_OS
-  -- XXX: should use something from Win32
-  p <- mallocBytes long_path_size
-  go p long_path_size
-  where go p bytes = do
-    	  p' <- c_getcwd p (fromIntegral bytes)
-	  if p' /= nullPtr 
-	     then do s <- peekCString p'
-		     free p'
-		     return s
-	     else do errno <- getErrno
-		     if errno == eRANGE
-		        then do let bytes' = bytes * 2
-			        p'' <- reallocBytes p bytes'
-			        go p'' bytes'
-		        else throwErrno "getCurrentDirectory"
+  System.Win32.getCurrentDirectory
 #else
   System.Posix.getWorkingDirectory
-#endif
-
-#ifdef mingw32_HOST_OS
-foreign import ccall unsafe "getcwd"
-   c_getcwd   :: Ptr CChar -> CSize -> IO (Ptr CChar)
 #endif
 
 {- |If the operating system has a notion of current directories,
