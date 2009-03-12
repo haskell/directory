@@ -1073,9 +1073,7 @@ The function doesn\'t verify whether the path exists.
 getTemporaryDirectory :: IO FilePath
 getTemporaryDirectory = do
 #if defined(mingw32_HOST_OS)
-  allocaBytes long_path_size $ \pPath -> do
-     _r <- c_GetTempPath (fromIntegral long_path_size) pPath
-     peekCString pPath
+  System.Win32.getTemporaryDirectory
 #else
   getEnv "TMPDIR"
 #if !__NHC__
@@ -1098,8 +1096,6 @@ foreign import ccall unsafe "__hscore_CSIDL_PROFILE"  csidl_PROFILE  :: CInt
 foreign import ccall unsafe "__hscore_CSIDL_APPDATA"  csidl_APPDATA  :: CInt
 foreign import ccall unsafe "__hscore_CSIDL_WINDOWS"  csidl_WINDOWS  :: CInt
 foreign import ccall unsafe "__hscore_CSIDL_PERSONAL" csidl_PERSONAL :: CInt
-
-foreign import stdcall unsafe "GetTempPathA" c_GetTempPath :: CInt -> CString -> IO CInt
 
 raiseUnsupported :: String -> IO ()
 raiseUnsupported loc = 
