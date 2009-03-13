@@ -8,19 +8,19 @@ import System.IO
 
 main :: IO ()
 main = do tryIO $ removeFile to
-          cs_before <- getDirectoryContents "copyFile"
+          cs_before <- getDirectoryContents "copyFile001dir"
           putStrLn "Before:"
           print $ sort cs_before
           copyFile from to
-          cs_before <- getDirectoryContents "copyFile"
+          cs_before <- getDirectoryContents "copyFile001dir"
           putStrLn "After:"
           print $ sort cs_before
           readFile to >>= print
 
 tryIO :: IO a -> IO (Either IOException a)
-tryIO = try 
+tryIO = try
 
 from, to :: FilePath
-from = "copyFile/source"
-to   = "copyFile/target"
+from = "copyFile001dir/source"
+to   = "copyFile001dir/target"
 

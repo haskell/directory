@@ -11,7 +11,7 @@ import System.IO
 main :: IO ()
 main = do d <- getCurrentDirectory
           flip finally (setCurrentDirectory d) $ do
-          setCurrentDirectory "copyFile"
+          setCurrentDirectory "copyFile002dir"
           tryIO $ removeFile to
           cs_before <- getDirectoryContents "."
           putStrLn "Before:"
@@ -23,7 +23,7 @@ main = do d <- getCurrentDirectory
           readFile to >>= print
 
 tryIO :: IO a -> IO (Either IOException a)
-tryIO = try 
+tryIO = try
 
 from, to :: FilePath
 from = "source"
