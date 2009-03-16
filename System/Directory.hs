@@ -916,13 +916,13 @@ fileNameEndClean :: String -> String
 fileNameEndClean name = if isDrive name then addTrailingPathSeparator name
                                         else dropTrailingPathSeparator name
 
-foreign import ccall unsafe "__hscore_R_OK" r_OK :: CInt
-foreign import ccall unsafe "__hscore_W_OK" w_OK :: CInt
-foreign import ccall unsafe "__hscore_X_OK" x_OK :: CInt
+foreign import ccall unsafe "HsDirectory.h __hscore_R_OK" r_OK :: CInt
+foreign import ccall unsafe "HsDirectory.h __hscore_W_OK" w_OK :: CInt
+foreign import ccall unsafe "HsDirectory.h __hscore_X_OK" x_OK :: CInt
 
-foreign import ccall unsafe "__hscore_S_IRUSR" s_IRUSR :: CMode
-foreign import ccall unsafe "__hscore_S_IWUSR" s_IWUSR :: CMode
-foreign import ccall unsafe "__hscore_S_IXUSR" s_IXUSR :: CMode
+foreign import ccall unsafe "HsDirectory.h __hscore_S_IRUSR" s_IRUSR :: CMode
+foreign import ccall unsafe "HsDirectory.h __hscore_S_IWUSR" s_IWUSR :: CMode
+foreign import ccall unsafe "HsDirectory.h __hscore_S_IXUSR" s_IXUSR :: CMode
 #ifdef mingw32_HOST_OS
 foreign import ccall unsafe "__hscore_S_IFDIR" s_IFDIR :: CMode
 #endif
