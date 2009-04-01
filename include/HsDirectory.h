@@ -9,7 +9,11 @@
 #ifndef __HSDIRECTORY_H__
 #define __HSDIRECTORY_H__
 
+#ifdef __NHC__
+#include "Nhc98BaseConfig.h"
+#else
 #include "HsDirectoryConfig.h"
+#endif
 // Otherwise these clash with similar definitions from other packages:
 #undef PACKAGE_BUGREPORT
 #undef PACKAGE_NAME
