@@ -629,15 +629,14 @@ copyFile fromFPath toFPath =
 -- attempt.
 canonicalizePath :: FilePath -> IO FilePath
 canonicalizePath fpath =
+#if defined(mingw32_HOST_OS)
+    do path <- System.Win32.getFullPathName fpath
+#else
   withCString fpath $ \pInPath ->
   allocaBytes long_path_size $ \pOutPath ->
-#if defined(mingw32_HOST_OS)
-  alloca $ \ppFilePart ->
-    do c_GetFullPathName pInPath (fromIntegral long_path_size) pOutPath ppFilePart
-#else
     do c_realpath pInPath pOutPath
-#endif
        path <- peekCString pOutPath
+#endif
        return (normalise path)
         -- normalise does more stuff, like upper-casing the drive letter
 
