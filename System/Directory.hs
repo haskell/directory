@@ -660,11 +660,24 @@ makeRelativeToCurrentDirectory x = do
     cur <- getCurrentDirectory
     return $ makeRelative cur x
 
--- | Given an executable file name, searches for such file
--- in the directories listed in system PATH. The returned value 
--- is the path to the found executable or Nothing if there isn't
--- such executable. For example (findExecutable \"ghc\")
--- gives you the path to GHC.
+-- | Given an executable file name, searches for such file in the
+-- directories listed in system PATH. The returned value is the path
+-- to the found executable or Nothing if an executable with the given
+-- name was not found. For example (findExecutable \"ghc\") gives you
+-- the path to GHC.
+--
+-- The path returned by 'findExecutable' corresponds to the
+-- program that would be executed by 'System.Process.createProcess'
+-- when passed the same string (as a RawCommand, not a ShellCommand).
+--
+-- On Windows, 'findExecutable' calls the Win32 function 'SearchPath',
+-- which may search other places before checking the directories in
+-- @PATH@.  Where it actually searches depends on registry settings,
+-- but notably includes the directory containing the current
+-- executable. See
+-- <http://msdn.microsoft.com/en-us/library/aa365527.aspx> for more
+-- details.  
+--
 findExecutable :: String -> IO (Maybe FilePath)
 findExecutable binary =
 #if defined(mingw32_HOST_OS)
