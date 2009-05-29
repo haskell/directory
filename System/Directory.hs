@@ -101,7 +101,12 @@ import System.Posix.Internals
 import System.Time             ( ClockTime(..) )
 
 #ifdef __GLASGOW_HASKELL__
+
+#if __GLASGOW_HASKELL__ >= 611
+import GHC.IO.Exception	( IOException(..), IOErrorType(..), ioException )
+#else
 import GHC.IOBase	( IOException(..), IOErrorType(..), ioException )
+#endif
 
 #ifdef mingw32_HOST_OS
 import qualified System.Win32
