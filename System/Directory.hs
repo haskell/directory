@@ -96,8 +96,6 @@ import Foreign.C
 
 {-# CFILES cbits/directory.c #-}
 
-import System.Posix.Types
-import System.Posix.Internals
 import System.Time             ( ClockTime(..) )
 
 #ifdef __GLASGOW_HASKELL__
@@ -109,9 +107,11 @@ import GHC.IOBase	( IOException(..), IOErrorType(..), ioException )
 #endif
 
 #ifdef mingw32_HOST_OS
+import System.Posix.Types
+import System.Posix.Internals
 import qualified System.Win32
 #else
-import qualified System.Posix
+import qualified System.Posix as Posix
 #endif
 
 {- $intro
@@ -196,17 +196,17 @@ getPermissions name = do
     }
    )
 #else
-  read_ok  <- c_access s r_OK
-  write_ok <- c_access s w_OK
-  exec_ok  <- c_access s x_OK
-  withFileStatus "getPermissions" name $ \st -> do
-  is_dir <- isDirectory st
+  read_ok  <- Posix.fileAccess name True  False False
+  write_ok <- Posix.fileAccess name False True  False
+  exec_ok  <- Posix.fileAccess name False False True
+  stat <- Posix.getFileStatus name
+  let is_dir = Posix.fileMode stat .&. Posix.directoryMode /= 0
   return (
     Permissions {
-      readable   = read_ok  == 0,
-      writable   = write_ok == 0,
-      executable = not is_dir && exec_ok == 0,
-      searchable = is_dir && exec_ok == 0
+      readable   = read_ok,
+      writable   = write_ok,
+      executable = not is_dir && exec_ok,
+      searchable = is_dir && exec_ok
     }
    )
 #endif
@@ -225,6 +225,7 @@ The operation may fail with:
 
 setPermissions :: FilePath -> Permissions -> IO ()
 setPermissions name (Permissions r w e s) = do
+#ifdef mingw32_HOST_OS
   allocaBytes sizeof_stat $ \ p_stat -> do
   withCString name $ \p_name -> do
     throwErrnoIfMinus1_ "setPermissions" $ do
@@ -233,22 +234,43 @@ setPermissions name (Permissions r w e s) = do
       let mode1 = modifyBit r mode s_IRUSR
       let mode2 = modifyBit w mode1 s_IWUSR
       let mode3 = modifyBit (e || s) mode2 s_IXUSR
-      c_chmod p_name mode3
-
+      c_chmod_ p_name mode3
  where
    modifyBit :: Bool -> CMode -> CMode -> CMode
    modifyBit False m b = m .&. (complement b)
    modifyBit True  m b = m .|. b
+#else
+      stat <- Posix.getFileStatus name
+      let mode = Posix.fileMode stat
+      let mode1 = modifyBit r mode  Posix.ownerReadMode
+      let mode2 = modifyBit w mode1 Posix.ownerWriteMode
+      let mode3 = modifyBit (e || s) mode2 Posix.ownerExecuteMode
+      Posix.setFileMode name mode3
+ where
+   modifyBit :: Bool -> Posix.FileMode -> Posix.FileMode -> Posix.FileMode
+   modifyBit False m b = m .&. (complement b)
+   modifyBit True  m b = m .|. b
+#endif
 
+#ifdef mingw32_HOST_OS
+foreign import ccall unsafe "chmod"
+   c_chmod_ :: CString -> CMode -> IO CInt
+#endif
 
 copyPermissions :: FilePath -> FilePath -> IO ()
 copyPermissions source dest = do
+#ifdef mingw32_HOST_OS
   allocaBytes sizeof_stat $ \ p_stat -> do
   withCString source $ \p_source -> do
   withCString dest $ \p_dest -> do
     throwErrnoIfMinus1_ "copyPermissions" $ c_stat p_source p_stat
     mode <- st_mode p_stat
     throwErrnoIfMinus1_ "copyPermissions" $ c_chmod p_dest mode
+#else
+  stat <- Posix.getFileStatus source
+  let mode = Posix.fileMode stat
+  Posix.setFileMode dest mode
+#endif
 
 -----------------------------------------------------------------------------
 -- Implementation
@@ -295,7 +317,7 @@ createDirectory path = do
 #ifdef mingw32_HOST_OS
   System.Win32.createDirectory path Nothing
 #else
-  System.Posix.createDirectory path 0o777
+  Posix.createDirectory path 0o777
 #endif
 
 #else /* !__GLASGOW_HASKELL__ */
@@ -339,11 +361,18 @@ createDirectoryIfMissing create_parents path0
           -- the case that the dir did exist but another process deletes the
           -- directory and creates a file in its place before we can check
           -- that the directory did indeed exist.
-          | isAlreadyExistsError e ->
-              (withFileStatus "createDirectoryIfMissing" dir $ \st -> do
+          | isAlreadyExistsError e -> (do
+#ifdef mingw32_HOST_OS
+              withFileStatus "createDirectoryIfMissing" dir $ \st -> do
                  isDir <- isDirectory st
                  if isDir then return ()
                           else throw e
+#else
+              stat <- Posix.getFileStatus dir
+              if Posix.fileMode stat .&. Posix.directoryMode /= 0 
+                 then return ()
+                 else throw e
+#endif
               ) `catch` ((\_ -> return ()) :: IOException -> IO ())
           | otherwise              -> throw e
 
@@ -394,7 +423,7 @@ removeDirectory path =
 #ifdef mingw32_HOST_OS
   System.Win32.removeDirectory path
 #else
-  System.Posix.removeDirectory path
+  Posix.removeDirectory path
 #endif
 
 #endif
@@ -457,7 +486,7 @@ removeFile path =
 #if mingw32_HOST_OS
   System.Win32.deleteFile path
 #else
-  System.Posix.removeLink path
+  Posix.removeLink path
 #endif
 
 {- |@'renameDirectory' old new@ changes the name of an existing
@@ -510,10 +539,16 @@ Either path refers to an existing non-directory object.
 -}
 
 renameDirectory :: FilePath -> FilePath -> IO ()
-renameDirectory opath npath =
+renameDirectory opath npath = do
    -- XXX this test isn't performed atomically with the following rename
+#ifdef mingw32_HOST_OS
+   -- ToDo: use Win32 API
    withFileStatus "renameDirectory" opath $ \st -> do
    is_dir <- isDirectory st
+#else
+   stat <- Posix.getFileStatus opath
+   let is_dir = Posix.fileMode stat .&. Posix.directoryMode /= 0
+#endif
    if (not is_dir)
 	then ioException (ioeSetErrorString
                           (mkIOError InappropriateType "renameDirectory" Nothing (Just opath))
@@ -522,7 +557,7 @@ renameDirectory opath npath =
 #ifdef mingw32_HOST_OS
    System.Win32.moveFileEx opath npath System.Win32.mOVEFILE_REPLACE_EXISTING
 #else
-   System.Posix.rename opath npath
+   Posix.rename opath npath
 #endif
 
 {- |@'renameFile' old new@ changes the name of an existing file system
@@ -570,10 +605,16 @@ Either path refers to an existing directory.
 -}
 
 renameFile :: FilePath -> FilePath -> IO ()
-renameFile opath npath =
+renameFile opath npath = do
    -- XXX this test isn't performed atomically with the following rename
+#ifdef mingw32_HOST_OS
+   -- ToDo: use Win32 API
    withFileOrSymlinkStatus "renameFile" opath $ \st -> do
    is_dir <- isDirectory st
+#else
+   stat <- Posix.getSymbolicLinkStatus opath
+   let is_dir = Posix.fileMode stat .&. Posix.directoryMode /= 0
+#endif
    if is_dir
 	then ioException (ioeSetErrorString
 			  (mkIOError InappropriateType "renameFile" Nothing (Just opath))
@@ -582,7 +623,7 @@ renameFile opath npath =
 #ifdef mingw32_HOST_OS
    System.Win32.moveFileEx opath npath System.Win32.mOVEFILE_REPLACE_EXISTING
 #else
-   System.Posix.rename opath npath
+   Posix.rename opath npath
 #endif
 
 #endif /* __GLASGOW_HASKELL__ */
@@ -755,6 +796,19 @@ The path refers to an existing non-directory object.
 
 getDirectoryContents :: FilePath -> IO [FilePath]
 getDirectoryContents path = do
+#ifndef mingw32_HOST_OS
+  bracket
+    (Posix.openDirStream path)
+    Posix.closeDirStream
+    loop
+ where
+  loop dirp = do
+     e <- Posix.readDirStream dirp
+     if null e then return [] else do
+     es <- loop dirp
+     return (e:es)
+#else
+  -- ToDo: rewrite using System.Win32
   modifyIOError (`ioeSetFileName` path) $
    alloca $ \ ptr_dEnt ->
      bracket
@@ -785,6 +839,8 @@ getDirectoryContents path = do
 		   if (eo == end_of_dir)
 		      then return []
 		      else throwErrno desc
+#endif /* mingw32 */
+
 #endif /* !__HUGS__ */
 
 
@@ -819,7 +875,7 @@ getCurrentDirectory = do
 #ifdef mingw32_HOST_OS
   System.Win32.getCurrentDirectory
 #else
-  System.Posix.getWorkingDirectory
+  Posix.getWorkingDirectory
 #endif
 
 {- |If the operating system has a notion of current directories,
@@ -859,7 +915,7 @@ setCurrentDirectory path =
 #ifdef mingw32_HOST_OS
   System.Win32.setCurrentDirectory path
 #else
-  System.Posix.changeWorkingDirectory path
+  Posix.changeWorkingDirectory path
 #endif
 
 #endif /* __GLASGOW_HASKELL__ */
@@ -871,7 +927,12 @@ exists and is a directory, and 'False' otherwise.
 
 doesDirectoryExist :: FilePath -> IO Bool
 doesDirectoryExist name =
+#ifdef mingw32_HOST_OS
    (withFileStatus "doesDirectoryExist" name $ \st -> isDirectory st)
+#else
+   (do stat <- Posix.getFileStatus name
+       return (Posix.fileMode stat .&. Posix.directoryMode /= 0))
+#endif
    `catch` ((\ _ -> return False) :: IOException -> IO Bool)
 
 {- |The operation 'doesFileExist' returns 'True'
@@ -880,7 +941,12 @@ if the argument file exists and is not a directory, and 'False' otherwise.
 
 doesFileExist :: FilePath -> IO Bool
 doesFileExist name =
+#ifdef mingw32_HOST_OS
    (withFileStatus "doesFileExist" name $ \st -> do b <- isDirectory st; return (not b))
+#else
+   (do stat <- Posix.getFileStatus name
+       return (Posix.fileMode stat .&. Posix.directoryMode == 0))
+#endif
    `catch` ((\ _ -> return False) :: IOException -> IO Bool)
 
 {- |The 'getModificationTime' operation returns the
@@ -896,12 +962,21 @@ The operation may fail with:
 -}
 
 getModificationTime :: FilePath -> IO ClockTime
-getModificationTime name =
- withFileStatus "getModificationTime" name $ \ st ->
+getModificationTime name = do
+#ifdef mingw32_HOST_OS
+ -- ToDo: use Win32 API
+ withFileStatus "getModificationTime" name $ \ st -> do
  modificationTime st
+#else
+  stat <- Posix.getFileStatus name
+  let realToInteger = round . realToFrac :: Real a => a -> Integer
+  return (TOD (realToInteger (Posix.modificationTime stat)) 0)
+#endif
+
 
 #endif /* !__HUGS__ */
 
+#ifdef mingw32_HOST_OS
 withFileStatus :: String -> FilePath -> (Ptr CStat -> IO a) -> IO a
 withFileStatus loc name f = do
   modifyIOError (`ioeSetFileName` name) $
@@ -940,7 +1015,6 @@ foreign import ccall unsafe "HsDirectory.h __hscore_X_OK" x_OK :: CInt
 foreign import ccall unsafe "HsDirectory.h __hscore_S_IRUSR" s_IRUSR :: CMode
 foreign import ccall unsafe "HsDirectory.h __hscore_S_IWUSR" s_IWUSR :: CMode
 foreign import ccall unsafe "HsDirectory.h __hscore_S_IXUSR" s_IXUSR :: CMode
-#ifdef mingw32_HOST_OS
 foreign import ccall unsafe "__hscore_S_IFDIR" s_IFDIR :: CMode
 #endif
 
