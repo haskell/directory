@@ -109,7 +109,7 @@ import GHC.IOBase	( IOException(..), IOErrorType(..), ioException )
 #ifdef mingw32_HOST_OS
 import System.Posix.Types
 import System.Posix.Internals
-import qualified System.Win32
+import qualified System.Win32 as Win32
 #else
 import qualified System.Posix as Posix
 #endif
@@ -172,8 +172,8 @@ The operation may fail with:
 
 getPermissions :: FilePath -> IO Permissions
 getPermissions name = do
-  withCString name $ \s -> do
 #ifdef mingw32_HOST_OS
+  withFilePath name $ \s -> do
   -- stat() does a better job of guessing the permissions on Windows
   -- than access() does.  e.g. for execute permission, it looks at the
   -- filename extension :-)
@@ -227,14 +227,14 @@ setPermissions :: FilePath -> Permissions -> IO ()
 setPermissions name (Permissions r w e s) = do
 #ifdef mingw32_HOST_OS
   allocaBytes sizeof_stat $ \ p_stat -> do
-  withCString name $ \p_name -> do
+  withFilePath name $ \p_name -> do
     throwErrnoIfMinus1_ "setPermissions" $ do
       c_stat p_name p_stat
       mode <- st_mode p_stat
       let mode1 = modifyBit r mode s_IRUSR
       let mode2 = modifyBit w mode1 s_IWUSR
       let mode3 = modifyBit (e || s) mode2 s_IXUSR
-      c_chmod_ p_name mode3
+      c_wchmod p_name mode3
  where
    modifyBit :: Bool -> CMode -> CMode -> CMode
    modifyBit False m b = m .&. (complement b)
@@ -253,19 +253,19 @@ setPermissions name (Permissions r w e s) = do
 #endif
 
 #ifdef mingw32_HOST_OS
-foreign import ccall unsafe "chmod"
-   c_chmod_ :: CString -> CMode -> IO CInt
+foreign import ccall unsafe "_wchmod"
+   c_wchmod :: CWString -> CMode -> IO CInt
 #endif
 
 copyPermissions :: FilePath -> FilePath -> IO ()
 copyPermissions source dest = do
 #ifdef mingw32_HOST_OS
   allocaBytes sizeof_stat $ \ p_stat -> do
-  withCString source $ \p_source -> do
-  withCString dest $ \p_dest -> do
+  withFilePath source $ \p_source -> do
+  withFilePath dest $ \p_dest -> do
     throwErrnoIfMinus1_ "copyPermissions" $ c_stat p_source p_stat
     mode <- st_mode p_stat
-    throwErrnoIfMinus1_ "copyPermissions" $ c_chmod p_dest mode
+    throwErrnoIfMinus1_ "copyPermissions" $ c_wchmod p_dest mode
 #else
   stat <- Posix.getFileStatus source
   let mode = Posix.fileMode stat
@@ -315,7 +315,7 @@ The path refers to an existing non-directory object.
 createDirectory :: FilePath -> IO ()
 createDirectory path = do
 #ifdef mingw32_HOST_OS
-  System.Win32.createDirectory path Nothing
+  Win32.createDirectory path Nothing
 #else
   Posix.createDirectory path 0o777
 #endif
@@ -421,7 +421,7 @@ The operand refers to an existing non-directory object.
 removeDirectory :: FilePath -> IO ()
 removeDirectory path =
 #ifdef mingw32_HOST_OS
-  System.Win32.removeDirectory path
+  Win32.removeDirectory path
 #else
   Posix.removeDirectory path
 #endif
@@ -484,7 +484,7 @@ The operand refers to an existing directory.
 removeFile :: FilePath -> IO ()
 removeFile path =
 #if mingw32_HOST_OS
-  System.Win32.deleteFile path
+  Win32.deleteFile path
 #else
   Posix.removeLink path
 #endif
@@ -555,7 +555,7 @@ renameDirectory opath npath = do
                           "not a directory")
 	else do
 #ifdef mingw32_HOST_OS
-   System.Win32.moveFileEx opath npath System.Win32.mOVEFILE_REPLACE_EXISTING
+   Win32.moveFileEx opath npath Win32.mOVEFILE_REPLACE_EXISTING
 #else
    Posix.rename opath npath
 #endif
@@ -621,7 +621,7 @@ renameFile opath npath = do
 			  "is a directory")
 	else do
 #ifdef mingw32_HOST_OS
-   System.Win32.moveFileEx opath npath System.Win32.mOVEFILE_REPLACE_EXISTING
+   Win32.moveFileEx opath npath Win32.mOVEFILE_REPLACE_EXISTING
 #else
    Posix.rename opath npath
 #endif
@@ -676,7 +676,7 @@ copyFile fromFPath toFPath =
 canonicalizePath :: FilePath -> IO FilePath
 canonicalizePath fpath =
 #if defined(mingw32_HOST_OS)
-    do path <- System.Win32.getFullPathName fpath
+    do path <- Win32.getFullPathName fpath
 #else
   withCString fpath $ \pInPath ->
   allocaBytes long_path_size $ \pOutPath ->
@@ -795,7 +795,9 @@ The path refers to an existing non-directory object.
 -}
 
 getDirectoryContents :: FilePath -> IO [FilePath]
-getDirectoryContents path = do
+getDirectoryContents path =
+  modifyIOError ((`ioeSetFileName` path) . 
+                 (`ioeSetLocation` "getDirectoryContents")) $ do
 #ifndef mingw32_HOST_OS
   bracket
     (Posix.openDirStream path)
@@ -808,37 +810,21 @@ getDirectoryContents path = do
      es <- loop dirp
      return (e:es)
 #else
-  -- ToDo: rewrite using System.Win32
-  modifyIOError (`ioeSetFileName` path) $
-   alloca $ \ ptr_dEnt ->
-     bracket
-	(withCString path $ \s -> 
-	   throwErrnoIfNullRetry desc (c_opendir s))
-	(\p -> throwErrnoIfMinus1_ desc (c_closedir p))
-	(\p -> loop ptr_dEnt p)
+  bracket
+     (Win32.findFirstFile (path </> "*"))
+     (\(h,_) -> Win32.findClose h)
+     (\(h,fdat) -> loop h fdat [])
   where
-    desc = "getDirectoryContents"
-
-    loop :: Ptr (Ptr CDirent) -> Ptr CDir -> IO [String]
-    loop ptr_dEnt dir = do
-      resetErrno
-      r <- readdir dir ptr_dEnt
-      if (r == 0)
-	 then do
-	         dEnt    <- peek ptr_dEnt
-		 if (dEnt == nullPtr)
-		   then return []
-		   else do
-	 	    entry   <- (d_name dEnt >>= peekCString)
-		    freeDirEnt dEnt
-		    entries <- loop ptr_dEnt dir
-		    return (entry:entries)
-	 else do errno <- getErrno
-		 if (errno == eINTR) then loop ptr_dEnt dir else do
-		   let (Errno eo) = errno
-		   if (eo == end_of_dir)
-		      then return []
-		      else throwErrno desc
+        -- we needn't worry about empty directories: adirectory always
+        -- has at least "." and ".." entries
+    loop :: Win32.HANDLE -> Win32.FindData -> [FilePath] -> IO [FilePath]
+    loop h fdat acc = do
+       filename <- Win32.getFindDataFileName fdat
+       more <- Win32.findNextFile h fdat
+       if more
+          then loop h fdat (filename:acc)
+          else return (filename:acc)
+                 -- no need to reverse, ordering is undefined
 #endif /* mingw32 */
 
 #endif /* !__HUGS__ */
@@ -873,7 +859,7 @@ The operating system has no notion of current directory.
 getCurrentDirectory :: IO FilePath
 getCurrentDirectory = do
 #ifdef mingw32_HOST_OS
-  System.Win32.getCurrentDirectory
+  Win32.getCurrentDirectory
 #else
   Posix.getWorkingDirectory
 #endif
@@ -913,7 +899,7 @@ The path refers to an existing non-directory object.
 setCurrentDirectory :: FilePath -> IO ()
 setCurrentDirectory path =
 #ifdef mingw32_HOST_OS
-  System.Win32.setCurrentDirectory path
+  Win32.setCurrentDirectory path
 #else
   Posix.changeWorkingDirectory path
 #endif
@@ -981,7 +967,7 @@ withFileStatus :: String -> FilePath -> (Ptr CStat -> IO a) -> IO a
 withFileStatus loc name f = do
   modifyIOError (`ioeSetFileName` name) $
     allocaBytes sizeof_stat $ \p ->
-      withCString (fileNameEndClean name) $ \s -> do
+      withFilePath (fileNameEndClean name) $ \s -> do
         throwErrnoIfMinus1Retry_ loc (c_stat s p)
 	f p
 
@@ -989,7 +975,7 @@ withFileOrSymlinkStatus :: String -> FilePath -> (Ptr CStat -> IO a) -> IO a
 withFileOrSymlinkStatus loc name f = do
   modifyIOError (`ioeSetFileName` name) $
     allocaBytes sizeof_stat $ \p ->
-      withCString name $ \s -> do
+      withFilePath name $ \s -> do
         throwErrnoIfMinus1Retry_ loc (lstat s p)
 	f p
 
@@ -1164,7 +1150,7 @@ The function doesn\'t verify whether the path exists.
 getTemporaryDirectory :: IO FilePath
 getTemporaryDirectory = do
 #if defined(mingw32_HOST_OS)
-  System.Win32.getTemporaryDirectory
+  Win32.getTemporaryDirectory
 #else
   getEnv "TMPDIR"
 #if !__NHC__
