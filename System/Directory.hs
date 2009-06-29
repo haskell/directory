@@ -686,14 +686,7 @@ canonicalizePath fpath =
        return (normalise path)
         -- normalise does more stuff, like upper-casing the drive letter
 
-#if defined(mingw32_HOST_OS)
-foreign import stdcall unsafe "GetFullPathNameA"
-            c_GetFullPathName :: CString
-                              -> CInt
-                              -> CString
-                              -> Ptr CString
-                              -> IO CInt
-#else
+#if !defined(mingw32_HOST_OS)
 foreign import ccall unsafe "realpath"
                    c_realpath :: CString
                               -> CString
@@ -727,24 +720,7 @@ makeRelativeToCurrentDirectory x = do
 findExecutable :: String -> IO (Maybe FilePath)
 findExecutable binary =
 #if defined(mingw32_HOST_OS)
-  withCString binary $ \c_binary ->
-  withCString ('.':exeExtension) $ \c_ext ->
-  allocaBytes long_path_size $ \pOutPath ->
-  alloca $ \ppFilePart -> do
-    res <- c_SearchPath nullPtr c_binary c_ext (fromIntegral long_path_size) pOutPath ppFilePart
-    if res > 0 && res < fromIntegral long_path_size
-      then do fpath <- peekCString pOutPath
-              return (Just fpath)
-      else return Nothing
-
-foreign import stdcall unsafe "SearchPathA"
-            c_SearchPath :: CString
-                         -> CString
-                         -> CString
-                         -> CInt
-                         -> CString
-                         -> Ptr CString
-                         -> IO CInt
+  Win32.searchPath Nothing binary ('.':exeExtension)
 #else
  do
   path <- getEnv "PATH"
@@ -994,10 +970,6 @@ fileNameEndClean :: String -> String
 fileNameEndClean name = if isDrive name then addTrailingPathSeparator name
                                         else dropTrailingPathSeparator name
 
-foreign import ccall unsafe "HsDirectory.h __hscore_R_OK" r_OK :: CInt
-foreign import ccall unsafe "HsDirectory.h __hscore_W_OK" w_OK :: CInt
-foreign import ccall unsafe "HsDirectory.h __hscore_X_OK" x_OK :: CInt
-
 foreign import ccall unsafe "HsDirectory.h __hscore_S_IRUSR" s_IRUSR :: CMode
 foreign import ccall unsafe "HsDirectory.h __hscore_S_IWUSR" s_IWUSR :: CMode
 foreign import ccall unsafe "HsDirectory.h __hscore_S_IXUSR" s_IXUSR :: CMode
@@ -1036,15 +1008,16 @@ cannot be found.
 -}
 getHomeDirectory :: IO FilePath
 getHomeDirectory =
+  modifyIOError ((`ioeSetLocation` "getHomeDirectory")) $ do
 #if defined(mingw32_HOST_OS)
-  allocaBytes long_path_size $ \pPath -> do
-     r0 <- c_SHGetFolderPath nullPtr csidl_PROFILE nullPtr 0 pPath
-     if (r0 < 0)
-       then do
-          r1 <- c_SHGetFolderPath nullPtr csidl_WINDOWS nullPtr 0 pPath
-	  when (r1 < 0) (raiseUnsupported "System.Directory.getHomeDirectory")
-       else return ()
-     peekCString pPath
+  r <- try $ Win32.sHGetFolderPath nullPtr Win32.cSIDL_PROFILE nullPtr 0
+  case (r :: Either IOException String) of
+    Right s -> return s
+    Left  _ -> do
+      r1 <- try $ Win32.sHGetFolderPath nullPtr Win32.cSIDL_WINDOWS nullPtr 0
+      case r1 of
+        Right s -> return s
+        Left  e -> ioError (e :: IOException)
 #else
   getEnv "HOME"
 #endif
@@ -1078,12 +1051,10 @@ cannot be found.
 -}
 getAppUserDataDirectory :: String -> IO FilePath
 getAppUserDataDirectory appName = do
+  modifyIOError ((`ioeSetLocation` "getAppUserDataDirectory")) $ do
 #if defined(mingw32_HOST_OS)
-  allocaBytes long_path_size $ \pPath -> do
-     r <- c_SHGetFolderPath nullPtr csidl_APPDATA nullPtr 0 pPath
-     when (r<0) (raiseUnsupported "System.Directory.getAppUserDataDirectory")
-     s <- peekCString pPath
-     return (s++'\\':appName)
+  s <- Win32.sHGetFolderPath nullPtr Win32.cSIDL_APPDATA nullPtr 0
+  return (s++'\\':appName)
 #else
   path <- getEnv "HOME"
   return (path++'/':'.':appName)
@@ -1112,11 +1083,9 @@ cannot be found.
 -}
 getUserDocumentsDirectory :: IO FilePath
 getUserDocumentsDirectory = do
+  modifyIOError ((`ioeSetLocation` "getUserDocumentsDirectory")) $ do
 #if defined(mingw32_HOST_OS)
-  allocaBytes long_path_size $ \pPath -> do
-     r <- c_SHGetFolderPath nullPtr csidl_PERSONAL nullPtr 0 pPath
-     when (r<0) (raiseUnsupported "System.Directory.getUserDocumentsDirectory")
-     peekCString pPath
+  Win32.sHGetFolderPath nullPtr Win32.cSIDL_PERSONAL nullPtr 0
 #else
   getEnv "HOME"
 #endif
@@ -1159,25 +1128,6 @@ getTemporaryDirectory = do
 #else
     `Prelude.catch` (\ex -> return "/tmp")
 #endif
-#endif
-
-#if defined(mingw32_HOST_OS)
-foreign import ccall unsafe "__hscore_getFolderPath"
-            c_SHGetFolderPath :: Ptr () 
-                              -> CInt 
-                              -> Ptr () 
-                              -> CInt 
-                              -> CString 
-                              -> IO CInt
-foreign import ccall unsafe "__hscore_CSIDL_PROFILE"  csidl_PROFILE  :: CInt
-foreign import ccall unsafe "__hscore_CSIDL_APPDATA"  csidl_APPDATA  :: CInt
-foreign import ccall unsafe "__hscore_CSIDL_WINDOWS"  csidl_WINDOWS  :: CInt
-foreign import ccall unsafe "__hscore_CSIDL_PERSONAL" csidl_PERSONAL :: CInt
-
-raiseUnsupported :: String -> IO ()
-raiseUnsupported loc = 
-   ioException (ioeSetErrorString (mkIOError UnsupportedOperation loc Nothing Nothing) "unsupported operation")
-
 #endif
 
 -- ToDo: This should be determined via autoconf (AC_EXEEXT)
