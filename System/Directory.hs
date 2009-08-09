@@ -63,6 +63,7 @@ module System.Directory
 
     , getPermissions            -- :: FilePath -> IO Permissions
     , setPermissions	        -- :: FilePath -> Permissions -> IO ()
+    , copyPermissions
 
     -- * Timestamps
 
