@@ -25,6 +25,10 @@
 #include <sys/stat.h>
 #endif
 
+#if HAVE_SYS_TYPES_H
+#include <sys/types.h>
+#endif
+
 #include "HsFFI.h"
 
 /* -----------------------------------------------------------------------------
