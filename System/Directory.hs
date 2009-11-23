@@ -776,10 +776,10 @@ getDirectoryContents path =
   modifyIOError ((`ioeSetFileName` path) . 
                  (`ioeSetLocation` "getDirectoryContents")) $ do
 #ifndef mingw32_HOST_OS
-  bracket
-    (Posix.openDirStream path)
-    Posix.closeDirStream
-    loop
+    bracket
+      (Posix.openDirStream path)
+      Posix.closeDirStream
+      loop
  where
   loop dirp = do
      e <- Posix.readDirStream dirp
@@ -1011,16 +1011,16 @@ getHomeDirectory :: IO FilePath
 getHomeDirectory =
   modifyIOError ((`ioeSetLocation` "getHomeDirectory")) $ do
 #if defined(mingw32_HOST_OS)
-  r <- try $ Win32.sHGetFolderPath nullPtr Win32.cSIDL_PROFILE nullPtr 0
-  case (r :: Either IOException String) of
-    Right s -> return s
-    Left  _ -> do
-      r1 <- try $ Win32.sHGetFolderPath nullPtr Win32.cSIDL_WINDOWS nullPtr 0
-      case r1 of
-        Right s -> return s
-        Left  e -> ioError (e :: IOException)
+    r <- try $ Win32.sHGetFolderPath nullPtr Win32.cSIDL_PROFILE nullPtr 0
+    case (r :: Either IOException String) of
+      Right s -> return s
+      Left  _ -> do
+        r1 <- try $ Win32.sHGetFolderPath nullPtr Win32.cSIDL_WINDOWS nullPtr 0
+        case r1 of
+          Right s -> return s
+          Left  e -> ioError (e :: IOException)
 #else
-  getEnv "HOME"
+    getEnv "HOME"
 #endif
 
 {- | Returns the pathname of a directory in which application-specific
@@ -1054,11 +1054,11 @@ getAppUserDataDirectory :: String -> IO FilePath
 getAppUserDataDirectory appName = do
   modifyIOError ((`ioeSetLocation` "getAppUserDataDirectory")) $ do
 #if defined(mingw32_HOST_OS)
-  s <- Win32.sHGetFolderPath nullPtr Win32.cSIDL_APPDATA nullPtr 0
-  return (s++'\\':appName)
+    s <- Win32.sHGetFolderPath nullPtr Win32.cSIDL_APPDATA nullPtr 0
+    return (s++'\\':appName)
 #else
-  path <- getEnv "HOME"
-  return (path++'/':'.':appName)
+    path <- getEnv "HOME"
+    return (path++'/':'.':appName)
 #endif
 
 {- | Returns the current user's document directory.
@@ -1086,9 +1086,9 @@ getUserDocumentsDirectory :: IO FilePath
 getUserDocumentsDirectory = do
   modifyIOError ((`ioeSetLocation` "getUserDocumentsDirectory")) $ do
 #if defined(mingw32_HOST_OS)
-  Win32.sHGetFolderPath nullPtr Win32.cSIDL_PERSONAL nullPtr 0
+    Win32.sHGetFolderPath nullPtr Win32.cSIDL_PERSONAL nullPtr 0
 #else
-  getEnv "HOME"
+    getEnv "HOME"
 #endif
 
 {- | Returns the current directory for temporary files.
