@@ -21,7 +21,9 @@ module System.Directory
 
     -- * Actions on directories
       createDirectory		-- :: FilePath -> IO ()
+#ifndef __NHC__
     , createDirectoryIfMissing  -- :: Bool -> FilePath -> IO ()
+#endif
     , removeDirectory		-- :: FilePath -> IO ()
     , removeDirectoryRecursive  -- :: FilePath -> IO ()
     , renameDirectory		-- :: FilePath -> FilePath -> IO ()
@@ -82,9 +84,9 @@ import Control.Monad           ( when, unless )
 import Control.Exception.Base
 
 #ifdef __NHC__
-import Directory hiding ( getDirectoryContents
-                        , doesDirectoryExist, doesFileExist
-                        , getModificationTime )
+import Directory -- hiding ( getDirectoryContents
+                 --        , doesDirectoryExist, doesFileExist
+                 --        , getModificationTime )
 import System (system)
 #endif /* __NHC__ */
 
@@ -329,6 +331,7 @@ copyPermissions fromFPath toFPath
 
 #endif
 
+#ifndef __NHC__
 -- | @'createDirectoryIfMissing' parents dir@ creates a new directory 
 -- @dir@ if it doesn\'t exist. If the first argument is 'True'
 -- the function will also create all parent directories if they are missing.
@@ -376,6 +379,7 @@ createDirectoryIfMissing create_parents path0
 #endif
               ) `catch` ((\_ -> return ()) :: IOException -> IO ())
           | otherwise              -> throw e
+#endif  /* !__NHC__ */
 
 #if __GLASGOW_HASKELL__
 {- | @'removeDirectory' dir@ removes an existing directory /dir/.  The
@@ -739,7 +743,7 @@ findExecutable binary =
 #endif
 
 
-#ifndef __HUGS__
+#ifdef __GLASGOW_HASKELL__
 {- |@'getDirectoryContents' dir@ returns a list of /all/ entries
 in /dir/. 
 
@@ -804,7 +808,7 @@ getDirectoryContents path =
                  -- no need to reverse, ordering is undefined
 #endif /* mingw32 */
 
-#endif /* !__HUGS__ */
+#endif /* __GLASGOW_HASKELL__ */
 
 
 {- |If the operating system has a notion of current directories,
@@ -883,7 +887,7 @@ setCurrentDirectory path =
 
 #endif /* __GLASGOW_HASKELL__ */
 
-#ifndef __HUGS__
+#ifdef __GLASGOW_HASKELL__
 {- |The operation 'doesDirectoryExist' returns 'True' if the argument file
 exists and is a directory, and 'False' otherwise.
 -}
@@ -937,7 +941,7 @@ getModificationTime name = do
 #endif
 
 
-#endif /* !__HUGS__ */
+#endif /* __GLASGOW_HASKELL__ */
 
 #ifdef mingw32_HOST_OS
 withFileStatus :: String -> FilePath -> (Ptr CStat -> IO a) -> IO a
