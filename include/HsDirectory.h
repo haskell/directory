@@ -12,6 +12,12 @@
 #ifdef __NHC__
 #include "Nhc98BaseConfig.h"
 #else
+
+// On Solaris we have to make sure _FILE_OFFSET_BITS is defined 
+// before including <sys/stat.h> below, because that header
+// will try and define it if it isn't already.
+#include "HsFFI.h"
+
 #include "HsDirectoryConfig.h"
 #endif
 // Otherwise these clash with similar definitions from other packages:
