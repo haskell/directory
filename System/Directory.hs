@@ -203,7 +203,7 @@ getPermissions name = do
   write_ok <- Posix.fileAccess name False True  False
   exec_ok  <- Posix.fileAccess name False False True
   stat <- Posix.getFileStatus name
-  let is_dir = Posix.fileMode stat .&. Posix.directoryMode /= 0
+  let is_dir = Posix.isDirectory stat
   return (
     Permissions {
       readable   = read_ok,
@@ -373,7 +373,7 @@ createDirectoryIfMissing create_parents path0
                           else throw e
 #else
               stat <- Posix.getFileStatus dir
-              if Posix.fileMode stat .&. Posix.directoryMode /= 0 
+              if Posix.isDirectory stat
                  then return ()
                  else throw e
 #endif
@@ -618,7 +618,7 @@ renameFile opath npath = do
    is_dir <- isDirectory st
 #else
    stat <- Posix.getSymbolicLinkStatus opath
-   let is_dir = Posix.fileMode stat .&. Posix.directoryMode /= 0
+   let is_dir = Posix.isDirectory stat
 #endif
    if is_dir
 	then ioException (ioeSetErrorString
@@ -898,7 +898,7 @@ doesDirectoryExist name =
    (withFileStatus "doesDirectoryExist" name $ \st -> isDirectory st)
 #else
    (do stat <- Posix.getFileStatus name
-       return (Posix.fileMode stat .&. Posix.directoryMode /= 0))
+       return (Posix.isDirectory stat))
 #endif
    `catch` ((\ _ -> return False) :: IOException -> IO Bool)
 
@@ -912,7 +912,7 @@ doesFileExist name =
    (withFileStatus "doesFileExist" name $ \st -> do b <- isDirectory st; return (not b))
 #else
    (do stat <- Posix.getFileStatus name
-       return (Posix.fileMode stat .&. Posix.directoryMode == 0))
+       return (not (Posix.isDirectory stat)))
 #endif
    `catch` ((\ _ -> return False) :: IOException -> IO Bool)
 
