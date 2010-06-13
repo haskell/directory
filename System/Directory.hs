@@ -685,7 +685,7 @@ canonicalizePath fpath =
 #else
   withCString fpath $ \pInPath ->
   allocaBytes long_path_size $ \pOutPath ->
-    do c_realpath pInPath pOutPath
+    do throwErrnoPathIfNull "canonicalizePath" fpath $ c_realpath pInPath pOutPath
        path <- peekCString pOutPath
 #endif
        return (normalise path)
