@@ -1,5 +1,5 @@
 name:		directory
-version:	1.0.1.1
+version:	1.0.1.2
 license:	BSD3
 license-file:	LICENSE
 maintainer:	libraries@haskell.org
@@ -30,7 +30,7 @@ Library {
     includes: HsDirectory.h
     install-includes: HsDirectory.h HsDirectoryConfig.h
     extensions: CPP, ForeignFunctionInterface
-    build-depends: base >= 4.1 && < 4.4,
+    build-depends: base >= 4.2 && < 4.4,
                    old-time >= 1.0 && < 1.1,
                    filepath >= 1.1 && < 1.3
     if !impl(nhc98) {
