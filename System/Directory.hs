@@ -936,10 +936,15 @@ getModificationTime name = do
  modificationTime st
 #else
   stat <- Posix.getFileStatus name
-  let realToInteger = round . realToFrac :: Real a => a -> Integer
-  return (TOD (realToInteger (Posix.modificationTime stat)) 0)
+  let mod_time :: Posix.EpochTime 
+      mod_time = Posix.modificationTime stat
+      dbl_time :: Double
+      dbl_time = realToFrac mod_time
+  return (TOD (round dbl_time) 0)
 #endif
-
+   -- For info
+   -- round :: (RealFrac a, Integral b => a -> b
+   -- realToFrac :: (Real a, Fractional b) => a -> b
 
 #endif /* __GLASGOW_HASKELL__ */
 
@@ -963,8 +968,9 @@ withFileOrSymlinkStatus loc name f = do
 modificationTime :: Ptr CStat -> IO ClockTime
 modificationTime stat = do
     mtime <- st_mtime stat
-    let realToInteger = round . realToFrac :: Real a => a -> Integer
-    return (TOD (realToInteger (mtime :: CTime)) 0)
+    let dbl_time :: Double
+        dbl_time = realToFrac (mtime :: CTime)
+    return (TOD (round dbl_time) 0)
     
 isDirectory :: Ptr CStat -> IO Bool
 isDirectory stat = do
