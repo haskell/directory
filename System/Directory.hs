@@ -55,13 +55,15 @@ module System.Directory
 
     -- $permissions
 
-    , Permissions(
-	Permissions,
-	readable,		-- :: Permissions -> Bool
-	writable,		-- :: Permissions -> Bool
-	executable,		-- :: Permissions -> Bool
-	searchable		-- :: Permissions -> Bool
-      )
+    , Permissions
+    , readable          -- :: Permissions -> Bool
+    , writable          -- :: Permissions -> Bool
+    , executable        -- :: Permissions -> Bool
+    , searchable        -- :: Permissions -> Bool
+    , setOwnerReadable
+    , setOwnerWritable
+    , setOwnerExecutable
+    , setOwnerSearchable
 
     , getPermissions            -- :: FilePath -> IO Permissions
     , setPermissions	        -- :: FilePath -> Permissions -> IO ()
@@ -160,6 +162,18 @@ data Permissions
     readable,   writable, 
     executable, searchable :: Bool 
    } deriving (Eq, Ord, Read, Show)
+
+setOwnerReadable :: Bool -> Permissions -> Permissions
+setOwnerReadable b p = p { readable = b }
+
+setOwnerWritable :: Bool -> Permissions -> Permissions
+setOwnerWritable b p = p { writable = b }
+
+setOwnerExecutable :: Bool -> Permissions -> Permissions
+setOwnerExecutable b p = p { executable = b }
+
+setOwnerSearchable :: Bool -> Permissions -> Permissions
+setOwnerSearchable b p = p { searchable = b }
 
 {- |The 'getPermissions' operation returns the
 permissions for the file or directory.
