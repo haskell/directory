@@ -56,6 +56,7 @@ module System.Directory
     -- $permissions
 
     , Permissions
+    , emptyPermissions
     , readable          -- :: Permissions -> Bool
     , writable          -- :: Permissions -> Bool
     , executable        -- :: Permissions -> Bool
@@ -162,6 +163,14 @@ data Permissions
     readable,   writable, 
     executable, searchable :: Bool 
    } deriving (Eq, Ord, Read, Show)
+
+emptyPermissions :: Permissions
+emptyPermissions = Permissions {
+                       readable   = False,
+                       writable   = False,
+                       executable = False,
+                       searchable = False
+                   }
 
 setOwnerReadable :: Bool -> Permissions -> Permissions
 setOwnerReadable b p = p { readable = b }
