@@ -120,6 +120,8 @@ import qualified System.Win32 as Win32
 import qualified System.Posix as Posix
 #endif
 
+#endif /* __GLASGOW_HASKELL__ */
+
 {- $intro
 A directory contains a series of entries, each of which is a named
 reference to a file system object (file, directory etc.).  Some
@@ -195,6 +197,8 @@ The operation may fail with:
 * 'isDoesNotExistError' if the file or directory does not exist.
 
 -}
+
+#ifdef __GLASGOW_HASKELL__
 
 getPermissions :: FilePath -> IO Permissions
 getPermissions name = do
