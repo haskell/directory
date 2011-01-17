@@ -30,6 +30,8 @@ Library {
     includes: HsDirectory.h
     install-includes: HsDirectory.h HsDirectoryConfig.h
     extensions: CPP, ForeignFunctionInterface
+    if impl(ghc >= 7.1)
+        extensions: NondecreasingIndentation
     build-depends: base >= 4.2 && < 4.4,
                    old-time >= 1.0 && < 1.1,
                    filepath >= 1.1 && < 1.3
