@@ -862,6 +862,11 @@ Insufficient resources are available to perform the operation.
 * 'UnsupportedOperation'
 The operating system has no notion of current directory.
 
+Note that in a concurrent program, the current directory is global
+state shared between all threads of the process.  When using
+filesystem operations from multiple threads, it is therefore highly
+recommended to use absolute rather than relative `FilePath`s.
+
 -}
 #ifdef __GLASGOW_HASKELL__
 getCurrentDirectory :: IO FilePath
@@ -901,6 +906,11 @@ current directory cannot be dynamically changed.
 * 'InappropriateType'
 The path refers to an existing non-directory object.
 @[ENOTDIR]@
+
+Note that in a concurrent program, the current directory is global
+state shared between all threads of the process.  When using
+filesystem operations from multiple threads, it is therefore highly
+recommended to use absolute rather than relative `FilePath`s.
 
 -}
 
