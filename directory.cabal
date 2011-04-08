@@ -18,8 +18,8 @@ extra-source-files:
 cabal-version: >= 1.6
 
 source-repository head
-    type:     darcs
-    location: http://darcs.haskell.org/packages/directory/
+    type:     git
+    location: http://darcs.haskell.org/packages/directory.git/
 
 Library {
     exposed-modules:
