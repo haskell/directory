@@ -112,6 +112,11 @@ import GHC.IO.Exception	( IOException(..), IOErrorType(..), ioException )
 import GHC.IOBase	( IOException(..), IOErrorType(..), ioException )
 #endif
 
+#if __GLASGOW_HASKELL__ > 700
+import GHC.IO.Encoding
+import GHC.Foreign as GHC
+#endif
+
 #ifdef mingw32_HOST_OS
 import System.Posix.Types
 import System.Posix.Internals
@@ -710,10 +715,17 @@ canonicalizePath fpath =
 #if defined(mingw32_HOST_OS)
     do path <- Win32.getFullPathName fpath
 #else
+#if __GLASGOW_HASKELL__ > 700
+  GHC.withCString fileSystemEncoding fpath $ \pInPath ->
+  allocaBytes long_path_size $ \pOutPath ->
+    do throwErrnoPathIfNull "canonicalizePath" fpath $ c_realpath pInPath pOutPath
+       path <- GHC.peekCString fileSystemEncoding pOutPath
+#else
   withCString fpath $ \pInPath ->
   allocaBytes long_path_size $ \pOutPath ->
     do throwErrnoPathIfNull "canonicalizePath" fpath $ c_realpath pInPath pOutPath
        path <- peekCString pOutPath
+#endif
 #endif
        return (normalise path)
         -- normalise does more stuff, like upper-casing the drive letter
