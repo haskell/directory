@@ -57,7 +57,7 @@
  * (PATH_MAX is not defined on systems with unlimited path length,
  * e.g. the Hurd).
  */
-INLINE HsInt __hscore_long_path_size() {
+INLINE HsInt __hscore_long_path_size(void) {
 #ifdef PATH_MAX
     return PATH_MAX;
 #else
@@ -65,10 +65,10 @@ INLINE HsInt __hscore_long_path_size() {
 #endif
 }
 
-INLINE mode_t __hscore_S_IRUSR() { return S_IRUSR; }
-INLINE mode_t __hscore_S_IWUSR() { return S_IWUSR; }
-INLINE mode_t __hscore_S_IXUSR() { return S_IXUSR; }
-INLINE mode_t __hscore_S_IFDIR() { return S_IFDIR; }
+INLINE mode_t __hscore_S_IRUSR(void) { return S_IRUSR; }
+INLINE mode_t __hscore_S_IWUSR(void) { return S_IWUSR; }
+INLINE mode_t __hscore_S_IXUSR(void) { return S_IXUSR; }
+INLINE mode_t __hscore_S_IFDIR(void) { return S_IFDIR; }
 
 #endif /* __HSDIRECTORY_H__ */
 
