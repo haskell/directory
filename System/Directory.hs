@@ -1,8 +1,8 @@
+{-# OPTIONS_GHC -w #-}
+-- XXX We get some warnings on Windows
 #if __GLASGOW_HASKELL__ >= 701
 {-# LANGUAGE Trustworthy #-}
 #endif
-{-# OPTIONS_GHC -w #-}
--- XXX We get some warnings on Windows
 
 -----------------------------------------------------------------------------
 -- |
