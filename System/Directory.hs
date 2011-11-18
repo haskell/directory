@@ -23,13 +23,13 @@ module System.Directory
     -- $intro
 
     -- * Actions on directories
-      createDirectory		-- :: FilePath -> IO ()
+      createDirectory           -- :: FilePath -> IO ()
 #ifndef __NHC__
     , createDirectoryIfMissing  -- :: Bool -> FilePath -> IO ()
 #endif
-    , removeDirectory		-- :: FilePath -> IO ()
+    , removeDirectory           -- :: FilePath -> IO ()
     , removeDirectoryRecursive  -- :: FilePath -> IO ()
-    , renameDirectory		-- :: FilePath -> FilePath -> IO ()
+    , renameDirectory           -- :: FilePath -> FilePath -> IO ()
 
     , getDirectoryContents      -- :: FilePath -> IO [FilePath]
     , getCurrentDirectory       -- :: IO FilePath
@@ -42,7 +42,7 @@ module System.Directory
     , getTemporaryDirectory
 
     -- * Actions on files
-    , removeFile		-- :: FilePath -> IO ()
+    , removeFile                -- :: FilePath -> IO ()
     , renameFile                -- :: FilePath -> FilePath -> IO ()
     , copyFile                  -- :: FilePath -> FilePath -> IO ()
     
@@ -51,7 +51,7 @@ module System.Directory
     , findExecutable
 
     -- * Existence tests
-    , doesFileExist		-- :: FilePath -> IO Bool
+    , doesFileExist             -- :: FilePath -> IO Bool
     , doesDirectoryExist        -- :: FilePath -> IO Bool
 
     -- * Permissions
@@ -70,7 +70,7 @@ module System.Directory
     , setOwnerSearchable
 
     , getPermissions            -- :: FilePath -> IO Permissions
-    , setPermissions	        -- :: FilePath -> Permissions -> IO ()
+    , setPermissions            -- :: FilePath -> Permissions -> IO ()
     , copyPermissions
 
     -- * Timestamps
@@ -110,9 +110,9 @@ import System.Time             ( ClockTime(..) )
 #ifdef __GLASGOW_HASKELL__
 
 #if __GLASGOW_HASKELL__ >= 611
-import GHC.IO.Exception	( IOException(..), IOErrorType(..), ioException )
+import GHC.IO.Exception ( IOException(..), IOErrorType(..), ioException )
 #else
-import GHC.IOBase	( IOException(..), IOErrorType(..), ioException )
+import GHC.IOBase       ( IOException(..), IOErrorType(..), ioException )
 #endif
 
 #if __GLASGOW_HASKELL__ > 700
@@ -371,8 +371,8 @@ copyPermissions fromFPath toFPath
 -- @dir@ if it doesn\'t exist. If the first argument is 'True'
 -- the function will also create all parent directories if they are missing.
 createDirectoryIfMissing :: Bool     -- ^ Create its parents too?
-		         -> FilePath -- ^ The path to the directory you want to make
-		         -> IO ()
+                         -> FilePath -- ^ The path to the directory you want to make
+                         -> IO ()
 createDirectoryIfMissing create_parents path0
   | create_parents = createDirs (parents path0)
   | otherwise      = createDirs (take 1 (parents path0))
@@ -590,10 +590,10 @@ renameDirectory opath npath = do
    let is_dir = Posix.fileMode stat .&. Posix.directoryMode /= 0
 #endif
    if (not is_dir)
-	then ioException (ioeSetErrorString
+        then ioException (ioeSetErrorString
                           (mkIOError InappropriateType "renameDirectory" Nothing (Just opath))
                           "not a directory")
-	else do
+        else do
 #ifdef mingw32_HOST_OS
    Win32.moveFileEx opath npath Win32.mOVEFILE_REPLACE_EXISTING
 #else
@@ -656,10 +656,10 @@ renameFile opath npath = do
    let is_dir = Posix.isDirectory stat
 #endif
    if is_dir
-	then ioException (ioeSetErrorString
-			  (mkIOError InappropriateType "renameFile" Nothing (Just opath))
-			  "is a directory")
-	else do
+        then ioException (ioeSetErrorString
+                          (mkIOError InappropriateType "renameFile" Nothing (Just opath))
+                          "is a directory")
+        else do
 #ifdef mingw32_HOST_OS
    Win32.moveFileEx opath npath Win32.mOVEFILE_REPLACE_EXISTING
 #else
@@ -1020,7 +1020,7 @@ withFileStatus loc name f = do
     allocaBytes sizeof_stat $ \p ->
       withFilePath (fileNameEndClean name) $ \s -> do
         throwErrnoIfMinus1Retry_ loc (c_stat s p)
-	f p
+        f p
 
 withFileOrSymlinkStatus :: String -> FilePath -> (Ptr CStat -> IO a) -> IO a
 withFileOrSymlinkStatus loc name f = do
@@ -1028,7 +1028,7 @@ withFileOrSymlinkStatus loc name f = do
     allocaBytes sizeof_stat $ \p ->
       withFilePath name $ \s -> do
         throwErrnoIfMinus1Retry_ loc (lstat s p)
-	f p
+        f p
 
 modificationTime :: Ptr CStat -> IO ClockTime
 modificationTime stat = do
@@ -1058,7 +1058,7 @@ foreign import ccall unsafe "__hscore_long_path_size"
   long_path_size :: Int
 #else
 long_path_size :: Int
-long_path_size = 2048	--  // guess?
+long_path_size = 2048   --  // guess?
 #endif /* __GLASGOW_HASKELL__ */
 
 {- | Returns the current user's home directory.
@@ -1215,3 +1215,4 @@ exeExtension = "exe"
 #else
 exeExtension = ""
 #endif
+
