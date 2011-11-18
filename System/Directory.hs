@@ -128,6 +128,11 @@ import qualified System.Win32 as Win32
 import qualified System.Posix as Posix
 #endif
 
+#if __GLASGOW_HASKELL__ < 703
+getFileSystemEncoding :: IO TextEncoding
+getFileSystemEncoding = return fileSystemEncoding
+#endif
+
 #endif /* __GLASGOW_HASKELL__ */
 
 {- $intro
@@ -716,21 +721,22 @@ copyFile fromFPath toFPath =
 canonicalizePath :: FilePath -> IO FilePath
 canonicalizePath fpath =
 #if defined(mingw32_HOST_OS)
-    do path <- Win32.getFullPathName fpath
+         do path <- Win32.getFullPathName fpath
 #else
 #if __GLASGOW_HASKELL__ > 700
-  GHC.withCString fileSystemEncoding fpath $ \pInPath ->
-  allocaBytes long_path_size $ \pOutPath ->
-    do throwErrnoPathIfNull "canonicalizePath" fpath $ c_realpath pInPath pOutPath
-       path <- GHC.peekCString fileSystemEncoding pOutPath
+  do enc <- getFileSystemEncoding
+     GHC.withCString enc fpath $ \pInPath ->
+       allocaBytes long_path_size $ \pOutPath ->
+         do throwErrnoPathIfNull "canonicalizePath" fpath $ c_realpath pInPath pOutPath
+            path <- GHC.peekCString enc pOutPath
 #else
   withCString fpath $ \pInPath ->
-  allocaBytes long_path_size $ \pOutPath ->
-    do throwErrnoPathIfNull "canonicalizePath" fpath $ c_realpath pInPath pOutPath
-       path <- peekCString pOutPath
+    allocaBytes long_path_size $ \pOutPath ->
+         do throwErrnoPathIfNull "canonicalizePath" fpath $ c_realpath pInPath pOutPath
+            path <- peekCString pOutPath
 #endif
 #endif
-       return (normalise path)
+            return (normalise path)
         -- normalise does more stuff, like upper-casing the drive letter
 
 #if !defined(mingw32_HOST_OS)
