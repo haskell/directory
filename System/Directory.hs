@@ -714,24 +714,37 @@ copyFile fromFPath toFPath =
 -- in either direction: this function can make only a best-effort
 -- attempt.
 canonicalizePath :: FilePath -> IO FilePath
-canonicalizePath fpath =
+
 #if defined(mingw32_HOST_OS)
-    do path <- Win32.getFullPathName fpath
+canonicalizePath fpath = do
+    path <- Win32.getFullPathName fpath
+    -- normalise does more stuff, like upper-casing the drive letter
+    return (normalise path)
+
+#elif __GLASGOW_HASKELL__ > 700
+canonicalizePath fpath = do
+    enc <- getFileSystemEncoding
+    GHC.withCString enc fpath $ \pInPath ->
+        allocaBytes long_path_size $ \pOutPath -> do
+            throwErrnoPathIfNull "canonicalizePath" fpath $ c_realpath pInPath pOutPath
+            path <- GHC.peekCString enc pOutPath
+            -- normalise does more stuff, like upper-casing the drive letter
+            return (normalise path)
+
 #else
-#if __GLASGOW_HASKELL__ > 700
-  GHC.withCString fileSystemEncoding fpath $ \pInPath ->
-  allocaBytes long_path_size $ \pOutPath ->
-    do throwErrnoPathIfNull "canonicalizePath" fpath $ c_realpath pInPath pOutPath
-       path <- GHC.peekCString fileSystemEncoding pOutPath
-#else
-  withCString fpath $ \pInPath ->
-  allocaBytes long_path_size $ \pOutPath ->
-    do throwErrnoPathIfNull "canonicalizePath" fpath $ c_realpath pInPath pOutPath
-       path <- peekCString pOutPath
+canonicalizePath fpath =
+    withCString fpath $ \pInPath ->
+        allocaBytes long_path_size $ \pOutPath -> do
+            throwErrnoPathIfNull "canonicalizePath" fpath $ c_realpath pInPath pOutPath
+            path <- peekCString pOutPath
+            -- normalise does more stuff, like upper-casing the drive letter
+            return (normalise path)
 #endif
+
+#if __GLASGOW_HASKELL__ < 703
+getFileSystemEncoding :: IO TextEncoding
+getFileSystemEncoding = return fileSystemEncoding
 #endif
-       return (normalise path)
-        -- normalise does more stuff, like upper-casing the drive letter
 
 #if !defined(mingw32_HOST_OS)
 foreign import ccall unsafe "realpath"
