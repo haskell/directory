@@ -128,6 +128,11 @@ import qualified System.Win32 as Win32
 import qualified System.Posix as Posix
 #endif
 
+#if __GLASGOW_HASKELL__ < 703
+getFileSystemEncoding :: IO TextEncoding
+getFileSystemEncoding = return fileSystemEncoding
+#endif
+
 #endif /* __GLASGOW_HASKELL__ */
 
 {- $intro
@@ -714,37 +719,25 @@ copyFile fromFPath toFPath =
 -- in either direction: this function can make only a best-effort
 -- attempt.
 canonicalizePath :: FilePath -> IO FilePath
-
-#if defined(mingw32_HOST_OS)
-canonicalizePath fpath = do
-    path <- Win32.getFullPathName fpath
-    -- normalise does more stuff, like upper-casing the drive letter
-    return (normalise path)
-
-#elif __GLASGOW_HASKELL__ > 700
-canonicalizePath fpath = do
-    enc <- getFileSystemEncoding
-    GHC.withCString enc fpath $ \pInPath ->
-        allocaBytes long_path_size $ \pOutPath -> do
-            throwErrnoPathIfNull "canonicalizePath" fpath $ c_realpath pInPath pOutPath
-            path <- GHC.peekCString enc pOutPath
-            -- normalise does more stuff, like upper-casing the drive letter
-            return (normalise path)
-
-#else
 canonicalizePath fpath =
-    withCString fpath $ \pInPath ->
-        allocaBytes long_path_size $ \pOutPath -> do
-            throwErrnoPathIfNull "canonicalizePath" fpath $ c_realpath pInPath pOutPath
+#if defined(mingw32_HOST_OS)
+         do path <- Win32.getFullPathName fpath
+#else
+#if __GLASGOW_HASKELL__ > 700
+  do enc <- getFileSystemEncoding
+     GHC.withCString enc fpath $ \pInPath ->
+       allocaBytes long_path_size $ \pOutPath ->
+         do throwErrnoPathIfNull "canonicalizePath" fpath $ c_realpath pInPath pOutPath
+            path <- GHC.peekCString enc pOutPath
+#else
+  withCString fpath $ \pInPath ->
+    allocaBytes long_path_size $ \pOutPath ->
+         do throwErrnoPathIfNull "canonicalizePath" fpath $ c_realpath pInPath pOutPath
             path <- peekCString pOutPath
-            -- normalise does more stuff, like upper-casing the drive letter
+#endif
+#endif
             return (normalise path)
-#endif
-
-#if __GLASGOW_HASKELL__ < 703
-getFileSystemEncoding :: IO TextEncoding
-getFileSystemEncoding = return fileSystemEncoding
-#endif
+        -- normalise does more stuff, like upper-casing the drive letter
 
 #if !defined(mingw32_HOST_OS)
 foreign import ccall unsafe "realpath"
@@ -1215,4 +1208,3 @@ exeExtension = "exe"
 #else
 exeExtension = ""
 #endif
-
