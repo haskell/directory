@@ -106,9 +106,7 @@ import Foreign.C
 {-# CFILES cbits/directory.c #-}
 
 import Data.Time
-#ifndef mingw32_HOST_OS
 import Data.Time.Clock.POSIX
-#endif
 
 #ifdef __GLASGOW_HASKELL__
 
@@ -1024,10 +1022,8 @@ withFileOrSymlinkStatus loc name f = do
 modificationTime :: Ptr CStat -> IO UTCTime
 modificationTime stat = do
     mtime <- st_mtime stat
-    let dbl_time :: Double
-        dbl_time = realToFrac (mtime :: CTime)
-    return (TOD (round dbl_time) 0)
-    
+    return $ posixSecondsToUTCTime $ realToFrac (mtime :: CTime)
+
 isDirectory :: Ptr CStat -> IO Bool
 isDirectory stat = do
   mode <- st_mode stat
