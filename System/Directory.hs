@@ -105,7 +105,10 @@ import Foreign.C
 
 {-# CFILES cbits/directory.c #-}
 
-import System.Time             ( ClockTime(..) )
+import Data.Time
+#ifndef mingw32_HOST_OS
+import Data.Time.Clock.POSIX
+#endif
 
 #ifdef __GLASGOW_HASKELL__
 
@@ -986,7 +989,7 @@ The operation may fail with:
 
 -}
 
-getModificationTime :: FilePath -> IO ClockTime
+getModificationTime :: FilePath -> IO UTCTime
 getModificationTime name = do
 #ifdef mingw32_HOST_OS
  -- ToDo: use Win32 API
@@ -994,15 +997,10 @@ getModificationTime name = do
  modificationTime st
 #else
   stat <- Posix.getFileStatus name
-  let mod_time :: Posix.EpochTime 
+  let mod_time :: Posix.EpochTime
       mod_time = Posix.modificationTime stat
-      dbl_time :: Double
-      dbl_time = realToFrac mod_time
-  return (TOD (round dbl_time) 0)
+  return $ posixSecondsToUTCTime $ realToFrac mod_time
 #endif
-   -- For info
-   -- round :: (RealFrac a, Integral b => a -> b
-   -- realToFrac :: (Real a, Fractional b) => a -> b
 
 #endif /* __GLASGOW_HASKELL__ */
 
@@ -1023,7 +1021,7 @@ withFileOrSymlinkStatus loc name f = do
         throwErrnoIfMinus1Retry_ loc (lstat s p)
         f p
 
-modificationTime :: Ptr CStat -> IO ClockTime
+modificationTime :: Ptr CStat -> IO UTCTime
 modificationTime stat = do
     mtime <- st_mtime stat
     let dbl_time :: Double
