@@ -46,7 +46,9 @@ main = do
 -- createDirectoryIfMissing is allowed to fail with isDoesNotExistError if
 -- another process/thread removes one of the directories during the proces
 -- of creating the hierarchy.
-create = tryJust (guard . isDoesNotExistError) $ createDirectoryIfMissing True testdir_a
+--
+-- It is also allowed to fail with permission errors (see #2924)
+create = tryJust (guard . (\e -> isDoesNotExistError e || isPermissionError e)) $ createDirectoryIfMissing True testdir_a
 
 cleanup = ignore $ removeDirectoryRecursive testdir
 
