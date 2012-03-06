@@ -1,0 +1,11 @@
+GNUmakefile
+autom4te.cache/
+config.log
+config.status
+configure
+dist-install/
+ghc.mk
+include/HsDirectoryConfig.h
+include/HsDirectoryConfig.h.in
+tests/copyFile001dir/target
+tests/copyFile002dir/target
