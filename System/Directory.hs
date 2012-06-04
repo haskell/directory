@@ -49,6 +49,7 @@ module System.Directory
     , canonicalizePath
     , makeRelativeToCurrentDirectory
     , findExecutable
+    , findFile
 
     -- * Existence tests
     , doesFileExist             -- :: FilePath -> IO Bool
@@ -778,10 +779,14 @@ findExecutable binary =
 #else
  do
   path <- getEnv "PATH"
-  search (splitSearchPath path)
-  where
-    fileName = binary <.> exeExtension
+  findFile (splitSearchPath path) (binary <.> exeExtension)
+#endif
 
+-- | Search through the given set of directories for the given file.
+-- Used by 'findExecutable' on non-windows platforms.
+findFile :: [FilePath] -> String -> IO (Maybe FilePath)
+findFile paths fileName = search paths
+  where
     search :: [FilePath] -> IO (Maybe FilePath)
     search [] = return Nothing
     search (d:ds) = do
@@ -789,8 +794,6 @@ findExecutable binary =
         b <- doesFileExist path
         if b then return (Just path)
              else search ds
-#endif
-
 
 #ifdef __GLASGOW_HASKELL__
 {- |@'getDirectoryContents' dir@ returns a list of /all/ entries
