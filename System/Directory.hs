@@ -76,7 +76,7 @@ module System.Directory
 
     -- * Timestamps
 
-    , getModificationTime       -- :: FilePath -> IO ClockTime
+    , getModificationTime       -- :: FilePath -> IO UTCTime
    ) where
 
 import Prelude hiding ( catch )
