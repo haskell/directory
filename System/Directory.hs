@@ -23,17 +23,17 @@ module System.Directory
     -- $intro
 
     -- * Actions on directories
-      createDirectory           -- :: FilePath -> IO ()
+      createDirectory
 #ifndef __NHC__
-    , createDirectoryIfMissing  -- :: Bool -> FilePath -> IO ()
+    , createDirectoryIfMissing
 #endif
-    , removeDirectory           -- :: FilePath -> IO ()
-    , removeDirectoryRecursive  -- :: FilePath -> IO ()
-    , renameDirectory           -- :: FilePath -> FilePath -> IO ()
+    , removeDirectory
+    , removeDirectoryRecursive
+    , renameDirectory
 
-    , getDirectoryContents      -- :: FilePath -> IO [FilePath]
-    , getCurrentDirectory       -- :: IO FilePath
-    , setCurrentDirectory       -- :: FilePath -> IO ()
+    , getDirectoryContents
+    , getCurrentDirectory
+    , setCurrentDirectory
 
     -- * Pre-defined directories
     , getHomeDirectory
@@ -42,9 +42,9 @@ module System.Directory
     , getTemporaryDirectory
 
     -- * Actions on files
-    , removeFile                -- :: FilePath -> IO ()
-    , renameFile                -- :: FilePath -> FilePath -> IO ()
-    , copyFile                  -- :: FilePath -> FilePath -> IO ()
+    , removeFile
+    , renameFile
+    , copyFile
     
     , canonicalizePath
     , makeRelativeToCurrentDirectory
@@ -52,8 +52,8 @@ module System.Directory
     , findFile
 
     -- * Existence tests
-    , doesFileExist             -- :: FilePath -> IO Bool
-    , doesDirectoryExist        -- :: FilePath -> IO Bool
+    , doesFileExist
+    , doesDirectoryExist
 
     -- * Permissions
 
@@ -61,22 +61,22 @@ module System.Directory
 
     , Permissions
     , emptyPermissions
-    , readable          -- :: Permissions -> Bool
-    , writable          -- :: Permissions -> Bool
-    , executable        -- :: Permissions -> Bool
-    , searchable        -- :: Permissions -> Bool
+    , readable
+    , writable
+    , executable
+    , searchable
     , setOwnerReadable
     , setOwnerWritable
     , setOwnerExecutable
     , setOwnerSearchable
 
-    , getPermissions            -- :: FilePath -> IO Permissions
-    , setPermissions            -- :: FilePath -> Permissions -> IO ()
+    , getPermissions
+    , setPermissions
     , copyPermissions
 
     -- * Timestamps
 
-    , getModificationTime       -- :: FilePath -> IO UTCTime
+    , getModificationTime
    ) where
 
 import Prelude hiding ( catch )
