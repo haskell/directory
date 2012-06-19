@@ -79,14 +79,11 @@ module System.Directory
     , getModificationTime
    ) where
 
-import Prelude hiding ( catch )
-import qualified Prelude
-
 import Control.Monad (guard)
 import System.Environment      ( getEnv )
 import System.FilePath
 import System.IO
-import System.IO.Error hiding ( catch, try )
+import System.IO.Error
 import Control.Monad           ( when, unless )
 import Control.Exception.Base
 
@@ -685,11 +682,11 @@ copyFile :: FilePath -> FilePath -> IO ()
 #ifdef __NHC__
 copyFile fromFPath toFPath =
     do readFile fromFPath >>= writeFile toFPath
-       Prelude.catch (copyPermissions fromFPath toFPath)
-                     (\_ -> return ())
+       catchIOError (copyPermissions fromFPath toFPath)
+                    (\_ -> return ())
 #else
 copyFile fromFPath toFPath =
-    copy `Prelude.catch` (\exc -> throw $ ioeSetLocation exc "copyFile")
+    copy `catchIOError` (\exc -> throw $ ioeSetLocation exc "copyFile")
     where copy = bracket (openBinaryFile fromFPath ReadMode) hClose $ \hFrom ->
                  bracketOnError openTmp cleanTmp $ \(tmpFPath, hTmp) ->
                  do allocaBytes bufferSize $ copyContents hFrom hTmp
@@ -708,9 +705,7 @@ copyFile fromFPath toFPath =
                           hPutBuf hTo buffer count
                           copyContents hFrom hTo buffer
 
-          ignoreIOExceptions io = io `catch` ioExceptionIgnorer
-          ioExceptionIgnorer :: IOException -> IO ()
-          ioExceptionIgnorer _ = return ()
+          ignoreIOExceptions io = io `catchIOError` (\_ -> return ())
 #endif
 
 -- | Given path referring to a file or directory, returns a
@@ -1189,10 +1184,10 @@ getTemporaryDirectory = do
 #else
   getEnv "TMPDIR"
 #if !__NHC__
-    `Prelude.catch` \e -> if isDoesNotExistError e then return "/tmp"
+    `catchIOError` \e -> if isDoesNotExistError e then return "/tmp"
                           else throw e
 #else
-    `Prelude.catch` (\ex -> return "/tmp")
+    `catchIOError` (\ex -> return "/tmp")
 #endif
 #endif
 
