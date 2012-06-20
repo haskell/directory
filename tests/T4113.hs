@@ -2,7 +2,6 @@
 module Main (main) where
 
 import Control.Exception
-import Prelude hiding (catch)
 import System.Directory
 
 main :: IO ()

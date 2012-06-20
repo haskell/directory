@@ -5,7 +5,7 @@ import Control.Monad
 import Control.Exception
 import System.Directory
 import System.FilePath
-import System.IO.Error hiding (try)
+import System.IO.Error
 
 testdir = "createDirectoryIfMissing001.d"
 testdir_a = testdir </> "a"
