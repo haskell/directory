@@ -34,7 +34,7 @@ Library {
         extensions: NondecreasingIndentation
     build-depends: base >= 4.2 && < 4.7,
                    time < 1.5,
-                   filepath >= 1.1 && < 1.3
+                   filepath >= 1.1 && < 1.4
     if !impl(nhc98) {
       if os(windows) {
           build-depends: Win32
