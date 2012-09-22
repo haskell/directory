@@ -85,7 +85,7 @@ import System.FilePath
 import System.IO
 import System.IO.Error
 import Control.Monad           ( when, unless )
-import Control.Exception.Base
+import Control.Exception.Base as E
 
 #ifdef __NHC__
 import Directory -- hiding ( getDirectoryContents
@@ -127,9 +127,16 @@ import qualified System.Win32 as Win32
 import qualified System.Posix as Posix
 #endif
 
-#if __GLASGOW_HASKELL__ < 703
+#if __GLASGOW_HASKELL__ == 702
+-- fileSystemEncoding exists only in base-4.4
 getFileSystemEncoding :: IO TextEncoding
 getFileSystemEncoding = return fileSystemEncoding
+#endif
+
+#if __GLASGOW_HASKELL__ < 702
+-- just like in base >= 4.4
+catchIOError :: IO a -> (IOError -> IO a) -> IO a
+catchIOError = E.catch
 #endif
 
 #endif /* __GLASGOW_HASKELL__ */
@@ -392,7 +399,7 @@ createDirectoryIfMissing create_parents path0
 
     createDir :: FilePath -> (IOException -> IO ()) -> IO ()
     createDir dir notExistHandler = do
-      r <- try $ createDirectory dir
+      r <- E.try $ createDirectory dir
       case (r :: Either IOException ()) of
         Right ()                   -> return ()
         Left  e
@@ -416,7 +423,7 @@ createDirectoryIfMissing create_parents path0
                  then return ()
                  else throw e
 #endif
-              ) `catch` ((\_ -> return ()) :: IOException -> IO ())
+              ) `E.catch` ((\_ -> return ()) :: IOException -> IO ())
           | otherwise              -> throw e
 #endif  /* !__NHC__ */
 
@@ -482,7 +489,7 @@ removeDirectoryRecursive startLoc = do
   removeDirectory startLoc
   where
     rm :: FilePath -> IO ()
-    rm f = do temp <- try (removeFile f)
+    rm f = do temp <- E.try (removeFile f)
               case temp of
                 Left e  -> do isDir <- doesDirectoryExist f
                               -- If f is not a directory, re-throw the error
@@ -957,7 +964,7 @@ doesDirectoryExist name =
    (do stat <- Posix.getFileStatus name
        return (Posix.isDirectory stat))
 #endif
-   `catch` ((\ _ -> return False) :: IOException -> IO Bool)
+   `E.catch` ((\ _ -> return False) :: IOException -> IO Bool)
 
 {- |The operation 'doesFileExist' returns 'True'
 if the argument file exists and is not a directory, and 'False' otherwise.
@@ -971,7 +978,7 @@ doesFileExist name =
    (do stat <- Posix.getFileStatus name
        return (not (Posix.isDirectory stat)))
 #endif
-   `catch` ((\ _ -> return False) :: IOException -> IO Bool)
+   `E.catch` ((\ _ -> return False) :: IOException -> IO Bool)
 
 {- |The 'getModificationTime' operation returns the
 clock time at which the file or directory was last modified.
@@ -1071,11 +1078,11 @@ getHomeDirectory :: IO FilePath
 getHomeDirectory =
   modifyIOError ((`ioeSetLocation` "getHomeDirectory")) $ do
 #if defined(mingw32_HOST_OS)
-    r <- try $ Win32.sHGetFolderPath nullPtr Win32.cSIDL_PROFILE nullPtr 0
+    r <- E.try $ Win32.sHGetFolderPath nullPtr Win32.cSIDL_PROFILE nullPtr 0
     case (r :: Either IOException String) of
       Right s -> return s
       Left  _ -> do
-        r1 <- try $ Win32.sHGetFolderPath nullPtr Win32.cSIDL_WINDOWS nullPtr 0
+        r1 <- E.try $ Win32.sHGetFolderPath nullPtr Win32.cSIDL_WINDOWS nullPtr 0
         case r1 of
           Right s -> return s
           Left  e -> ioError (e :: IOException)
