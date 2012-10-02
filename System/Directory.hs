@@ -1037,7 +1037,7 @@ instead.
 On Unix, 'getHomeDirectory' returns the value of the @HOME@
 environment variable.  On Windows, the system is queried for a
 suitable path; a typical path might be 
-@C:/Documents And Settings/user@.
+@C:\/Documents And Settings\/user@.
 
 The operation may fail with:
 
@@ -1112,7 +1112,7 @@ instead.
 On Unix, 'getUserDocumentsDirectory' returns the value of the @HOME@
 environment variable.  On Windows, the system is queried for a
 suitable path; a typical path might be 
-@C:\/Documents and Settings\/user\/My Documents@.
+@C:\/Documents And Settings\/user\/My Documents@.
 
 The operation may fail with:
 
