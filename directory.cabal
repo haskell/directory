@@ -33,7 +33,7 @@ Library {
     extensions: CPP, ForeignFunctionInterface
     if impl(ghc >= 7.1)
         extensions: NondecreasingIndentation
-    build-depends: base >= 4.2 && < 4.8,
+    build-depends: base >= 4.5 && < 4.8,
                    time < 1.5,
                    filepath >= 1.1 && < 1.4
     if !impl(nhc98) {
