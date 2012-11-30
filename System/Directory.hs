@@ -1,6 +1,6 @@
 {-# OPTIONS_GHC -w #-}
 -- XXX We get some warnings on Windows
-#if __GLASGOW_HASKELL__ >= 701
+#ifdef __GLASGOW_HASKELL__
 {-# LANGUAGE Trustworthy #-}
 #endif
 
@@ -108,16 +108,9 @@ import Data.Time.Clock.POSIX
 
 #ifdef __GLASGOW_HASKELL__
 
-#if __GLASGOW_HASKELL__ >= 611
 import GHC.IO.Exception ( IOException(..), IOErrorType(..), ioException )
-#else
-import GHC.IOBase       ( IOException(..), IOErrorType(..), ioException )
-#endif
-
-#if __GLASGOW_HASKELL__ > 700
 import GHC.IO.Encoding
 import GHC.Foreign as GHC
-#endif
 
 #ifdef mingw32_HOST_OS
 import System.Posix.Types
@@ -125,18 +118,6 @@ import System.Posix.Internals
 import qualified System.Win32 as Win32
 #else
 import qualified System.Posix as Posix
-#endif
-
-#if __GLASGOW_HASKELL__ == 702
--- fileSystemEncoding exists only in base-4.4
-getFileSystemEncoding :: IO TextEncoding
-getFileSystemEncoding = return fileSystemEncoding
-#endif
-
-#if __GLASGOW_HASKELL__ < 702
--- just like in base >= 4.4
-catchIOError :: IO a -> (IOError -> IO a) -> IO a
-catchIOError = E.catch
 #endif
 
 #endif /* __GLASGOW_HASKELL__ */
@@ -727,18 +708,11 @@ canonicalizePath fpath =
 #if defined(mingw32_HOST_OS)
          do path <- Win32.getFullPathName fpath
 #else
-#if __GLASGOW_HASKELL__ > 700
   do enc <- getFileSystemEncoding
      GHC.withCString enc fpath $ \pInPath ->
        allocaBytes long_path_size $ \pOutPath ->
          do throwErrnoPathIfNull "canonicalizePath" fpath $ c_realpath pInPath pOutPath
             path <- GHC.peekCString enc pOutPath
-#else
-  withCString fpath $ \pInPath ->
-    allocaBytes long_path_size $ \pOutPath ->
-         do throwErrnoPathIfNull "canonicalizePath" fpath $ c_realpath pInPath pOutPath
-            path <- peekCString pOutPath
-#endif
 #endif
             return (normalise path)
         -- normalise does more stuff, like upper-casing the drive letter
