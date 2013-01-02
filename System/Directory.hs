@@ -969,14 +969,14 @@ The operation may fail with:
 getModificationTime :: FilePath -> IO UTCTime
 getModificationTime name = do
 #ifdef mingw32_HOST_OS
- -- ToDo: use Win32 API
+ -- ToDo: use Win32 API so we can get sub-second resolution
  withFileStatus "getModificationTime" name $ \ st -> do
  modificationTime st
 #else
   stat <- Posix.getFileStatus name
-  let mod_time :: Posix.EpochTime
-      mod_time = Posix.modificationTime stat
-  return $ posixSecondsToUTCTime $ realToFrac mod_time
+  let mod_time :: POSIXTime
+      mod_time = Posix.modificationTimeHiRes stat
+  return $ posixSecondsToUTCTime mod_time
 #endif
 
 #endif /* __GLASGOW_HASKELL__ */
