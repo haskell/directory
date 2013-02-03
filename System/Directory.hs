@@ -392,7 +392,14 @@ createDirectoryIfMissing create_parents path0
           -- the case that the dir did exist but another process deletes the
           -- directory and creates a file in its place before we can check
           -- that the directory did indeed exist.
-          | isAlreadyExistsError e -> (do
+          -- We also follow this path when we get a permissions error, as
+          -- trying to create "." when in the root directory on Windows
+          -- fails with
+          --     CreateDirectory ".": permission denied (Access is denied.)
+          -- This caused GHCi to crash when loading a module in the root
+          -- directory.
+          | isAlreadyExistsError e
+         || isPermissionError e -> (do
 #ifdef mingw32_HOST_OS
               withFileStatus "createDirectoryIfMissing" dir $ \st -> do
                  isDir <- isDirectory st
