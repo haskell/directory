@@ -7,5 +7,5 @@
 #define INLINE
 #include "HsDirectory.h"
 
-#endif /* !__NHC__ */
+#endif
 

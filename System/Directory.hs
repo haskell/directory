@@ -24,9 +24,7 @@ module System.Directory
 
     -- * Actions on directories
       createDirectory
-#ifndef __NHC__
     , createDirectoryIfMissing
-#endif
     , removeDirectory
     , removeDirectoryRecursive
     , renameDirectory
@@ -86,13 +84,6 @@ import System.IO
 import System.IO.Error
 import Control.Monad           ( when, unless )
 import Control.Exception.Base as E
-
-#ifdef __NHC__
-import Directory -- hiding ( getDirectoryContents
-                 --        , doesDirectoryExist, doesFileExist
-                 --        , getModificationTime )
-import System (system)
-#endif /* __NHC__ */
 
 #ifdef __HUGS__
 import Hugs.Directory
@@ -358,7 +349,6 @@ copyPermissions fromFPath toFPath
 
 #endif
 
-#ifndef __NHC__
 -- | @'createDirectoryIfMissing' parents dir@ creates a new directory 
 -- @dir@ if it doesn\'t exist. If the first argument is 'True'
 -- the function will also create all parent directories if they are missing.
@@ -413,7 +403,6 @@ createDirectoryIfMissing create_parents path0
 #endif
               ) `E.catch` ((\_ -> return ()) :: IOException -> IO ())
           | otherwise              -> throw e
-#endif  /* !__NHC__ */
 
 #if __GLASGOW_HASKELL__
 {- | @'removeDirectory' dir@ removes an existing directory /dir/.  The
@@ -674,12 +663,6 @@ copied to /new/, if possible.
 -}
 
 copyFile :: FilePath -> FilePath -> IO ()
-#ifdef __NHC__
-copyFile fromFPath toFPath =
-    do readFile fromFPath >>= writeFile toFPath
-       catchIOError (copyPermissions fromFPath toFPath)
-                    (\_ -> return ())
-#else
 copyFile fromFPath toFPath =
     copy `catchIOError` (\exc -> throw $ ioeSetLocation exc "copyFile")
     where copy = bracket (openBinaryFile fromFPath ReadMode) hClose $ \hFrom ->
@@ -701,7 +684,6 @@ copyFile fromFPath toFPath =
                           copyContents hFrom hTo buffer
 
           ignoreIOExceptions io = io `catchIOError` (\_ -> return ())
-#endif
 
 -- | Given path referring to a file or directory, returns a
 -- canonicalized path, with the intent that two paths referring
@@ -1171,12 +1153,8 @@ getTemporaryDirectory = do
   Win32.getTemporaryDirectory
 #else
   getEnv "TMPDIR"
-#if !__NHC__
     `catchIOError` \e -> if isDoesNotExistError e then return "/tmp"
                           else throw e
-#else
-    `catchIOError` (\ex -> return "/tmp")
-#endif
 #endif
 
 -- ToDo: This should be determined via autoconf (AC_EXEEXT)
