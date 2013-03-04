@@ -685,13 +685,21 @@ copyFile fromFPath toFPath =
 
           ignoreIOExceptions io = io `catchIOError` (\_ -> return ())
 
--- | Given path referring to a file or directory, returns a
--- canonicalized path, with the intent that two paths referring
+-- | Given a path referring to a file or directory, returns a
+-- canonicalized path. The intent is that two paths referring
 -- to the same file\/directory will map to the same canonicalized
--- path. Note that it is impossible to guarantee that the
+-- path.
+--
+-- Note that it is impossible to guarantee that the
 -- implication (same file\/dir \<=\> same canonicalizedPath) holds
 -- in either direction: this function can make only a best-effort
 -- attempt.
+--
+-- The precise behaviour is that of the C realpath function
+-- GetFullPathNameW on Windows). In particular, the behaviour
+-- on paths that do not exist is known to vary from platform
+-- to platform. Some platforms do not alter the input, some
+-- do, and on some an exception will be thrown.
 canonicalizePath :: FilePath -> IO FilePath
 canonicalizePath fpath =
 #if defined(mingw32_HOST_OS)
