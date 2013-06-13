@@ -11,8 +11,10 @@ test('getDirContents002', [ normalise_exe, exit_code(1) ],
 # Depends on binary from previous run, which gets removed by the driver way=ghci
 test('getPermissions001', omit_ways(['ghci']), compile_and_run, ['-cpp'])
 
-test('copyFile001',  extra_clean(['copyFile/target']), compile_and_run, [''])
-test('copyFile002',  extra_clean(['copyFile/target']), compile_and_run, [''])
+test('copyFile001', extra_clean(['copyFile001dir/target']),
+                    compile_and_run, [''])
+test('copyFile002', extra_clean(['copyFile002dir/target']),
+                    compile_and_run, [''])
 
 test('renameFile001', extra_clean(['renameFile001.tmp1','renameFile001.tmp2']),
       compile_and_run, [''])
