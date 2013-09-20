@@ -924,7 +924,8 @@ setCurrentDirectory path =
 
 #ifdef __GLASGOW_HASKELL__
 {- |The operation 'doesDirectoryExist' returns 'True' if the argument file
-exists and is a directory, and 'False' otherwise.
+exists and is either a directory or a symbolic link to a directory,
+and 'False' otherwise.
 -}
 
 doesDirectoryExist :: FilePath -> IO Bool
