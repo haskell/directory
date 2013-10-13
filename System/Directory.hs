@@ -3,11 +3,6 @@
 {-# LANGUAGE Trustworthy #-}
 #endif
 
-#ifdef mingw32_HOST_OS
-{-# OPTIONS_GHC -w #-}
--- XXX We get some warnings on Windows
-#endif
-
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  System.Directory
@@ -81,7 +76,6 @@ module System.Directory
     , getModificationTime
    ) where
 
-import System.Environment      ( getEnv )
 import System.FilePath
 import System.IO
 import System.IO.Error
@@ -103,14 +97,15 @@ import Data.Time.Clock.POSIX
 #ifdef __GLASGOW_HASKELL__
 
 import GHC.IO.Exception ( IOErrorType(InappropriateType) )
-import GHC.IO.Encoding
-import GHC.Foreign as GHC
 
 #ifdef mingw32_HOST_OS
 import System.Posix.Types
 import System.Posix.Internals
 import qualified System.Win32 as Win32
 #else
+import GHC.IO.Encoding
+import GHC.Foreign as GHC
+import System.Environment ( getEnv )
 import qualified System.Posix as Posix
 #endif
 
@@ -1030,7 +1025,7 @@ foreign import ccall unsafe "HsDirectory.h __hscore_S_IXUSR" s_IXUSR :: CMode
 foreign import ccall unsafe "__hscore_S_IFDIR" s_IFDIR :: CMode
 #endif
 
-
+#ifndef mingw32_HOST_OS
 #ifdef __GLASGOW_HASKELL__
 foreign import ccall unsafe "__hscore_long_path_size"
   long_path_size :: Int
@@ -1038,6 +1033,7 @@ foreign import ccall unsafe "__hscore_long_path_size"
 long_path_size :: Int
 long_path_size = 2048   --  // guess?
 #endif /* __GLASGOW_HASKELL__ */
+#endif /* !mingw32_HOST_OS */
 
 {- | Returns the current user's home directory.
 
