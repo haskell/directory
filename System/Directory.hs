@@ -1,7 +1,11 @@
-{-# OPTIONS_GHC -w #-}
--- XXX We get some warnings on Windows
+{-# LANGUAGE CPP, NondecreasingIndentation #-}
 #ifdef __GLASGOW_HASKELL__
 {-# LANGUAGE Trustworthy #-}
+#endif
+
+#ifdef mingw32_HOST_OS
+{-# OPTIONS_GHC -w #-}
+-- XXX We get some warnings on Windows
 #endif
 
 -----------------------------------------------------------------------------
@@ -77,7 +81,6 @@ module System.Directory
     , getModificationTime
    ) where
 
-import Control.Monad (guard)
 import System.Environment      ( getEnv )
 import System.FilePath
 import System.IO
@@ -99,7 +102,7 @@ import Data.Time.Clock.POSIX
 
 #ifdef __GLASGOW_HASKELL__
 
-import GHC.IO.Exception ( IOException(..), IOErrorType(..), ioException )
+import GHC.IO.Exception ( IOErrorType(InappropriateType) )
 import GHC.IO.Encoding
 import GHC.Foreign as GHC
 
@@ -578,7 +581,7 @@ renameDirectory opath npath = do
    let is_dir = Posix.fileMode stat .&. Posix.directoryMode /= 0
 #endif
    if (not is_dir)
-        then ioException (ioeSetErrorString
+        then ioError (ioeSetErrorString
                           (mkIOError InappropriateType "renameDirectory" Nothing (Just opath))
                           "not a directory")
         else do
@@ -644,7 +647,7 @@ renameFile opath npath = do
    let is_dir = Posix.isDirectory stat
 #endif
    if is_dir
-        then ioException (ioeSetErrorString
+        then ioError (ioeSetErrorString
                           (mkIOError InappropriateType "renameFile" Nothing (Just opath))
                           "is a directory")
         else do
@@ -708,7 +711,8 @@ canonicalizePath fpath =
   do enc <- getFileSystemEncoding
      GHC.withCString enc fpath $ \pInPath ->
        allocaBytes long_path_size $ \pOutPath ->
-         do throwErrnoPathIfNull "canonicalizePath" fpath $ c_realpath pInPath pOutPath
+         do _ <- throwErrnoPathIfNull "canonicalizePath" fpath $ c_realpath pInPath pOutPath
+            -- NB: pOutPath will be passed thru as result pointer by c_realpath
             path <- GHC.peekCString enc pOutPath
 #endif
             return (normalise path)
