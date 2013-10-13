@@ -966,6 +966,10 @@ The operation may fail with:
 
 * 'isDoesNotExistError' if the file or directory does not exist.
 
+Note: When linked against @unix-2.6.0.0@ or later the reported time
+supports sub-second precision if provided by the underlying system
+call.
+
 -}
 
 getModificationTime :: FilePath -> IO UTCTime
@@ -977,7 +981,11 @@ getModificationTime name = do
 #else
   stat <- Posix.getFileStatus name
   let mod_time :: POSIXTime
+#if MIN_VERSION_unix(2,6,0)
       mod_time = Posix.modificationTimeHiRes stat
+#else
+      mod_time = realToFrac $ Posix.modificationTime stat
+#endif
   return $ posixSecondsToUTCTime mod_time
 #endif
 
