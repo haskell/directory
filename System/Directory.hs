@@ -252,8 +252,10 @@ setPermissions name (Permissions r w e s) = do
 #ifdef mingw32_HOST_OS
   allocaBytes sizeof_stat $ \ p_stat -> do
   withFilePath name $ \p_name -> do
-    throwErrnoIfMinus1_ "setPermissions" $ do
+    throwErrnoIfMinus1_ "setPermissions" $
       c_stat p_name p_stat
+
+    throwErrnoIfMinus1_ "setPermissions" $ do
       mode <- st_mode p_stat
       let mode1 = modifyBit r mode s_IRUSR
       let mode2 = modifyBit w mode1 s_IWUSR
