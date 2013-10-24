@@ -25,6 +25,7 @@ extra-source-files:
     config.sub
     configure
     configure.ac
+    directory.buildinfo
     include/HsDirectoryConfig.h.in
     install-sh
 
@@ -54,7 +55,6 @@ Library
         HsDirectory.h
     install-includes:
         HsDirectory.h
-        HsDirectoryConfig.h
 
     build-depends:
         base     >= 4.5 && < 4.8,
