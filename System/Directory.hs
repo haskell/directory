@@ -47,6 +47,8 @@ module System.Directory
     , makeRelativeToCurrentDirectory
     , findExecutable
     , findFile
+    , findFiles
+    , findFilesWith
 
     -- * Existence tests
     , doesFileExist
@@ -90,6 +92,8 @@ import Foreign
 import Foreign.C
 
 {-# CFILES cbits/directory.c #-}
+
+import Data.Maybe
 
 import Data.Time
 import Data.Time.Clock.POSIX
@@ -747,27 +751,50 @@ makeRelativeToCurrentDirectory x = do
 -- details.
 --
 findExecutable :: String -> IO (Maybe FilePath)
-findExecutable binary =
+findExecutable fileName = do
+   files <- findExecutables fileName
+   return $ listToMaybe files
+
+-- | Given a file name, searches for the file and returns a list of all
+-- occurences that are executable.
+findExecutables :: String -> IO [FilePath]
+findExecutables binary = do
 #if defined(mingw32_HOST_OS)
-  Win32.searchPath Nothing binary ('.':exeExtension)
+    file <- Win32.searchPath Nothing fileName ('.':exeExtension)
+    return $ maybeToList file
 #else
- do
-  path <- getEnv "PATH"
-  findFile (splitSearchPath path) (binary <.> exeExtension)
+    path <- getEnv "PATH"
+    findFilesWith isExecutable (splitSearchPath path) (binary <.> exeExtension)
+  where isExecutable file = do
+            perms <- getPermissions file
+            return $ executable perms
 #endif
 
 -- | Search through the given set of directories for the given file.
 -- Used by 'findExecutable' on non-windows platforms.
 findFile :: [FilePath] -> String -> IO (Maybe FilePath)
-findFile paths fileName = search paths
-  where
-    search :: [FilePath] -> IO (Maybe FilePath)
-    search [] = return Nothing
-    search (d:ds) = do
-        let path = d </> fileName
-        b <- doesFileExist path
-        if b then return (Just path)
-             else search ds
+findFile path fileName = do
+    files <- findFiles path fileName
+    return $ listToMaybe files
+
+-- | Search through the given set of directories for the given file and
+-- returns a list of paths where the given file exists.
+findFiles :: [FilePath] -> String -> IO [FilePath]
+findFiles = findFilesWith (\_ -> return True)
+
+-- | Search through the given set of directories for the given file and
+-- with the given property (usually permissions) and returns a list of
+-- paths where the given file exists and has the property.
+findFilesWith :: (FilePath -> IO Bool) -> [FilePath] -> String -> IO [FilePath]
+findFilesWith _ [] _ = return []
+findFilesWith f (d:ds) fileName = do
+    let file = d </> fileName
+    exist <- doesFileExist file
+    b <- if exist then f file else return False
+    if b then do
+               files <- findFilesWith f ds fileName
+               return $ file : files
+        else findFilesWith f ds fileName
 
 #ifdef __GLASGOW_HASKELL__
 {- |@'getDirectoryContents' dir@ returns a list of /all/ entries
