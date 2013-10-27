@@ -4,7 +4,7 @@ version:        1.2.0.2
 license:        BSD3
 license-file:   LICENSE
 maintainer:     libraries@haskell.org
-bug-reports:    http://hackage.haskell.org/trac/ghc/newticket?component=libraries/directory
+bug-reports:    http://ghc.haskell.org/trac/ghc/newticket?component=libraries/directory
 synopsis:       library for directory handling
 description:
         This package provides a library for handling directories.
