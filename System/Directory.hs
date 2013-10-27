@@ -760,7 +760,7 @@ findExecutable fileName = do
 findExecutables :: String -> IO [FilePath]
 findExecutables binary = do
 #if defined(mingw32_HOST_OS)
-    file <- Win32.searchPath Nothing fileName ('.':exeExtension)
+    file <- Win32.searchPath Nothing binary ('.':exeExtension)
     return $ maybeToList file
 #else
     path <- getEnv "PATH"
