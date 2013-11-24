@@ -422,11 +422,11 @@ The operation may fail with:
 
 * 'HardwareFault'
 A physical I\/O error has occurred.
-EIO
+@[EIO]@
 
 * 'InvalidArgument'
 The operand is not a valid directory name.
-[ENAMETOOLONG, ELOOP]
+@[ENAMETOOLONG, ELOOP]@
 
 * 'isDoesNotExistError' \/ 'NoSuchThing'
 The directory does not exist.
