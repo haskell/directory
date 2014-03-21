@@ -20,7 +20,7 @@ extra-tmp-files:
     include/HsDirectoryConfig.h
 
 extra-source-files:
-    changelog
+    changelog.md
     config.guess
     config.sub
     configure
