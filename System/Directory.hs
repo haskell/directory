@@ -757,6 +757,8 @@ findExecutable fileName = do
 
 -- | Given a file name, searches for the file and returns a list of all
 -- occurences that are executable.
+--
+-- /Since: 1.2.1.0/
 findExecutables :: String -> IO [FilePath]
 findExecutables binary = do
 #if defined(mingw32_HOST_OS)
@@ -779,12 +781,16 @@ findFile path fileName = do
 
 -- | Search through the given set of directories for the given file and
 -- returns a list of paths where the given file exists.
+--
+-- /Since: 1.2.1.0/
 findFiles :: [FilePath] -> String -> IO [FilePath]
 findFiles = findFilesWith (\_ -> return True)
 
 -- | Search through the given set of directories for the given file and
 -- with the given property (usually permissions) and returns a list of
 -- paths where the given file exists and has the property.
+--
+-- /Since: 1.2.1.0/
 findFilesWith :: (FilePath -> IO Bool) -> [FilePath] -> String -> IO [FilePath]
 findFilesWith _ [] _ = return []
 findFilesWith f (d:ds) fileName = do

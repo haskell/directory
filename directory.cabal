@@ -1,5 +1,5 @@
 name:           directory
-version:        1.2.0.2
+version:        1.2.1.0
 -- GHC 7.6.3 released with 1.2.0.1
 license:        BSD3
 license-file:   LICENSE
