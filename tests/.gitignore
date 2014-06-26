@@ -1,0 +1,24 @@
+.hpc*/
+*.o
+*.hi
+*.comp.std*
+*.run.std*
+*.eventlog
+*.genscript
+*.exe
+
+# specific files
+/T4113
+/copyFile001
+/copyFile002
+/createDirectory001
+/createDirectoryIfMissing001
+/currentDirectory001
+/directory001
+/doesDirectoryExist001
+/getDirContents001
+/getDirContents002
+/getHomeDirectory001
+/getPermissions001
+/renameFile001
+/renameFile001.tmp1
