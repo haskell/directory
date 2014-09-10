@@ -95,8 +95,8 @@ import Foreign.C
 
 import Data.Maybe
 
-import Data.Time
-import Data.Time.Clock.POSIX
+import Data.Time ( UTCTime )
+import Data.Time.Clock.POSIX ( POSIXTime, posixSecondsToUTCTime )
 
 #ifdef __GLASGOW_HASKELL__
 
@@ -1041,7 +1041,7 @@ withFileOrSymlinkStatus loc name f = do
 modificationTime :: Ptr CStat -> IO UTCTime
 modificationTime stat = do
     mtime <- st_mtime stat
-    return $ posixSecondsToUTCTime $ realToFrac (mtime :: CTime)
+    return $ posixSecondsToUTCTime (realToFrac (mtime :: CTime) :: POSIXTime)
 
 isDirectory :: Ptr CStat -> IO Bool
 isDirectory stat = do
