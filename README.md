@@ -1,4 +1,4 @@
-The `directory` Package  [![Build Status](https://travis-ci.org/ghc/packages-directory.png?branch=master)](https://travis-ci.org/ghc/packages-directory)
+The `directory` Package  [![Build Status](https://travis-ci.org/haskell/directory.svg?branch=master)](https://travis-ci.org/haskell/directory)
 =======================
 
 See [`directory` on Hackage](http://hackage.haskell.org/package/directory) for
