@@ -1,4 +1,4 @@
-The `directory` Package  [![Build Status](https://travis-ci.org/haskell/directory.svg?branch=master)](https://travis-ci.org/haskell/directory)
+The `directory` Package   [![Hackage](https://img.shields.io/hackage/v/directory.svg)](https://hackage.haskell.org/package/directory) [![Build Status](https://travis-ci.org/haskell/directory.svg?branch=master)](https://travis-ci.org/haskell/directory)
 =======================
 
 See [`directory` on Hackage](http://hackage.haskell.org/package/directory) for
