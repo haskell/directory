@@ -638,24 +638,31 @@ Either path refers to an existing directory.
 
 renameFile :: FilePath -> FilePath -> IO ()
 renameFile opath npath = do
-   -- XXX this test isn't performed atomically with the following rename
+   -- XXX the isDirectory tests are not performed atomically with the rename
+   checkNotDir opath
+   doRename `E.catch` renameExcHandler
+ where checkNotDir path = do
+                isdir <- pathIsDir path `E.catch` ((\ _ -> return False) :: IOException -> IO Bool)
+                when isdir $ dirIoError path
+       dirIoError path = ioError $ ioeSetErrorString (mkIOError InappropriateType "renameFile" Nothing (Just path)) "is a directory"
+       renameExcHandler :: IOException -> IO ()
+       renameExcHandler exc = do
+                -- The underlying rename implementation throws odd exceptions
+                -- sometimes when the destination is a directory. For example,
+                -- Windows throws a permission error. In those cases check
+                -- if the cause is actually the destination being a directory
+                -- and throw InapprioriateType in that case.
+                checkNotDir npath
+                throw exc
+       doRename :: IO ()
+       pathIsDir :: FilePath -> IO (Bool)
 #ifdef mingw32_HOST_OS
-   -- ToDo: use Win32 API
-   withFileOrSymlinkStatus "renameFile" opath $ \st -> do
-   is_dir <- isDirectory st
+       -- ToDo: use Win32 API
+       pathIsDir path = withFileOrSymlinkStatus "renameFile" path isDirectory
+       doRename = Win32.moveFileEx opath npath Win32.mOVEFILE_REPLACE_EXISTING
 #else
-   stat <- Posix.getSymbolicLinkStatus opath
-   let is_dir = Posix.isDirectory stat
-#endif
-   if is_dir
-        then ioError (ioeSetErrorString
-                          (mkIOError InappropriateType "renameFile" Nothing (Just opath))
-                          "is a directory")
-        else do
-#ifdef mingw32_HOST_OS
-   Win32.moveFileEx opath npath Win32.mOVEFILE_REPLACE_EXISTING
-#else
-   Posix.rename opath npath
+       pathIsDir path = Posix.isDirectory `fmap` Posix.getSymbolicLinkStatus path
+       doRename = Posix.rename opath npath
 #endif
 
 #endif /* __GLASGOW_HASKELL__ */
