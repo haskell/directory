@@ -405,7 +405,7 @@ createDirectoryIfMissing create_parents path0
                  then return ()
                  else throw e
 #endif
-              ) `E.catch` ((\_ -> return ()) :: IOException -> IO ())
+              )
           | otherwise              -> throw e
 
 #if __GLASGOW_HASKELL__
