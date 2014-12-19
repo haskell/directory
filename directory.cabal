@@ -11,7 +11,7 @@ description:
 category:       System
 build-type:     Configure
 cabal-version:  >= 1.10
-tested-with:    GHC==7.6.3, GHC==7.6.2, GHC==7.6.1, GHC==7.4.2, GHC==7.4.1
+tested-with:    GHC>=7.4.1
 
 extra-tmp-files:
     autom4te.cache

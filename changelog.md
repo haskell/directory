@@ -1,8 +1,10 @@
 # Changelog for [`directory` package](http://hackage.haskell.org/package/directory)
 
-## 1.2.1.1  *TBA*
+## 1.2.1.1  *Dec 2014*
 
-  * Bundled with GHC 7.10.1(?)
+  * Bundled with GHC 7.10.1
+
+  * make `getModificationTime` support sub-second resolution on windows
 
 ## 1.2.1.0  *Mar 2014*
 
