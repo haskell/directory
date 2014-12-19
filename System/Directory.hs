@@ -96,7 +96,7 @@ import Foreign.C
 import Data.Maybe
 
 import Data.Time ( UTCTime )
-import Data.Time.Clock.POSIX ( POSIXTime, posixSecondsToUTCTime )
+import Data.Time.Clock.POSIX ( posixSecondsToUTCTime )
 
 #ifdef __GLASGOW_HASKELL__
 
@@ -996,28 +996,35 @@ The operation may fail with:
 
 * 'isDoesNotExistError' if the file or directory does not exist.
 
-Note: When linked against @unix-2.6.0.0@ or later the reported time
-supports sub-second precision if provided by the underlying system
-call.
-
+Note: This function returns a timestamp with sub-second resolution
+only if this package is compiled against @unix-2.6.0.0@ or later
+for unix systems, and @Win32-2.3.1.0@ or later for windows systems.
+Of course this also requires that the underlying file system supports
+such high resolution timestamps.
 -}
 
 getModificationTime :: FilePath -> IO UTCTime
 getModificationTime name = do
 #ifdef mingw32_HOST_OS
- -- ToDo: use Win32 API so we can get sub-second resolution
- withFileStatus "getModificationTime" name $ \ st -> do
- modificationTime st
+#if MIN_VERSION_Win32(2,3,1)
+  fad <- Win32.getFileAttributesExStandard name
+  let win32_epoch_adjust = 116444736000000000
+      Win32.FILETIME ft = Win32.fadLastWriteTime fad
+      mod_time = fromIntegral (ft - win32_epoch_adjust) / 10000000
+#else
+  mod_time <- withFileStatus "getModificationTime" name $ \stat -> do
+    mtime <- st_mtime stat
+    return $ realToFrac (mtime :: CTime)
+#endif
 #else
   stat <- Posix.getFileStatus name
-  let mod_time :: POSIXTime
 #if MIN_VERSION_unix(2,6,0)
-      mod_time = Posix.modificationTimeHiRes stat
+  let mod_time = Posix.modificationTimeHiRes stat
 #else
-      mod_time = realToFrac $ Posix.modificationTime stat
+  let mod_time = realToFrac $ Posix.modificationTime stat
+#endif
 #endif
   return $ posixSecondsToUTCTime mod_time
-#endif
 
 #endif /* __GLASGOW_HASKELL__ */
 
@@ -1037,11 +1044,6 @@ withFileOrSymlinkStatus loc name f = do
       withFilePath name $ \s -> do
         throwErrnoIfMinus1Retry_ loc (lstat s p)
         f p
-
-modificationTime :: Ptr CStat -> IO UTCTime
-modificationTime stat = do
-    mtime <- st_mtime stat
-    return $ posixSecondsToUTCTime (realToFrac (mtime :: CTime) :: POSIXTime)
 
 isDirectory :: Ptr CStat -> IO Bool
 isDirectory stat = do
