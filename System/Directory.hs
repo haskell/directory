@@ -392,8 +392,7 @@ createDirectoryIfMissing create_parents path0
           --     CreateDirectory ".": permission denied (Access is denied.)
           -- This caused GHCi to crash when loading a module in the root
           -- directory.
-          | isAlreadyExistsError e
-         || isPermissionError e -> (do
+          | isAlreadyExistsError e -> (do
 #ifdef mingw32_HOST_OS
               withFileStatus "createDirectoryIfMissing" dir $ \st -> do
                  isDir <- isDirectory st
@@ -405,7 +404,8 @@ createDirectoryIfMissing create_parents path0
                  then return ()
                  else throw e
 #endif
-              ) `E.catch` ((\_ -> return ()) :: IOException -> IO ())
+              )
+          | isPermissionError e -> throw e
           | otherwise              -> throw e
 
 #if __GLASGOW_HASKELL__
