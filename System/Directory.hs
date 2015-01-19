@@ -393,19 +393,15 @@ createDirectoryIfMissing create_parents path0
           -- This caused GHCi to crash when loading a module in the root
           -- directory.
           | isAlreadyExistsError e
-         || isPermissionError e -> (do
+         || isPermissionError e -> do
 #ifdef mingw32_HOST_OS
-              withFileStatus "createDirectoryIfMissing" dir $ \st -> do
-                 isDir <- isDirectory st
-                 if isDir then return ()
-                          else throwIO e
+              canIgnore <- (withFileStatus "createDirectoryIfMissing" dir isDirectory)
 #else
-              stat <- Posix.getFileStatus dir
-              if Posix.isDirectory stat
-                 then return ()
-                 else throwIO e
+              canIgnore <- (Posix.isDirectory `fmap` Posix.getFileStatus dir)
 #endif
-              ) `E.catch` ((\_ -> return ()) :: IOException -> IO ())
+                           `catch` ((\ _ -> return (isAlreadyExistsError e))
+                                    :: IOException -> IO Bool)
+              unless canIgnore (throwIO e)
           | otherwise              -> throwIO e
 
 #if __GLASGOW_HASKELL__

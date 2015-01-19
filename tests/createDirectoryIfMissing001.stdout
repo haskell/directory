@@ -4,3 +4,5 @@ createDirectoryIfMissing001.d/a: createDirectory: does not exist (No such file o
 ()
 ()
 ()
+createDirectoryIfMissing001.d: createDirectory: already exists (File exists)
+createDirectoryIfMissing001.d/a: createDirectory: inappropriate type (Not a directory)

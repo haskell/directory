@@ -43,6 +43,18 @@ main = do
 
   cleanup
 
+  -- these are all supposed to fail
+
+  writeFile testdir testdir
+  report $ createDirectoryIfMissing False testdir
+  removeFile testdir
+  cleanup
+
+  writeFile testdir testdir
+  report $ createDirectoryIfMissing True testdir_a
+  removeFile testdir
+  cleanup
+
 -- createDirectoryIfMissing is allowed to fail with isDoesNotExistError if
 -- another process/thread removes one of the directories during the proces
 -- of creating the hierarchy.
