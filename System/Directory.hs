@@ -366,11 +366,11 @@ createDirectoryIfMissing create_parents path0
     parents = reverse . scanl1 (</>) . splitDirectories . normalise
 
     createDirs []         = return ()
-    createDirs (dir:[])   = createDir dir throw
+    createDirs (dir:[])   = createDir dir throwIO
     createDirs (dir:dirs) =
       createDir dir $ \_ -> do
         createDirs dirs
-        createDir dir throw
+        createDir dir throwIO
 
     createDir :: FilePath -> (IOException -> IO ()) -> IO ()
     createDir dir notExistHandler = do
@@ -398,15 +398,15 @@ createDirectoryIfMissing create_parents path0
               withFileStatus "createDirectoryIfMissing" dir $ \st -> do
                  isDir <- isDirectory st
                  if isDir then return ()
-                          else throw e
+                          else throwIO e
 #else
               stat <- Posix.getFileStatus dir
               if Posix.isDirectory stat
                  then return ()
-                 else throw e
+                 else throwIO e
 #endif
               ) `E.catch` ((\_ -> return ()) :: IOException -> IO ())
-          | otherwise              -> throw e
+          | otherwise              -> throwIO e
 
 #if __GLASGOW_HASKELL__
 {- | @'removeDirectory' dir@ removes an existing directory /dir/.  The
@@ -475,7 +475,7 @@ removeDirectoryRecursive startLoc = do
               case temp of
                 Left e  -> do isDir <- doesDirectoryExist f
                               -- If f is not a directory, re-throw the error
-                              unless isDir $ throw (e :: SomeException)
+                              unless isDir $ throwIO (e :: SomeException)
                               removeDirectoryRecursive f
                 Right _ -> return ()
 
@@ -669,7 +669,7 @@ copied to /new/, if possible.
 
 copyFile :: FilePath -> FilePath -> IO ()
 copyFile fromFPath toFPath =
-    copy `catchIOError` (\exc -> throw $ ioeSetLocation exc "copyFile")
+    copy `catchIOError` (\exc -> throwIO $ ioeSetLocation exc "copyFile")
     where copy = bracket (openBinaryFile fromFPath ReadMode) hClose $ \hFrom ->
                  bracketOnError openTmp cleanTmp $ \(tmpFPath, hTmp) ->
                  do allocaBytes bufferSize $ copyContents hFrom hTmp
@@ -1209,7 +1209,7 @@ getTemporaryDirectory = do
 #else
   getEnv "TMPDIR"
     `catchIOError` \e -> if isDoesNotExistError e then return "/tmp"
-                          else throw e
+                          else throwIO e
 #endif
 
 -- ToDo: This should be determined via autoconf (AC_EXEEXT)
