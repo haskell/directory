@@ -6,6 +6,10 @@
 
   * make `getModificationTime` support sub-second resolution on windows
 
+  * Fix silent failure in `createDirectoryIfMissing`
+
+  * Replace `throw` by better defined `throwIO`s
+
 ## 1.2.1.0  *Mar 2014*
 
   * Bundled with GHC 7.8.1
