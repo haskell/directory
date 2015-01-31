@@ -14,7 +14,9 @@
 
   * Expose `findExecutables` [#14](https://github.com/haskell/directory/issues/14)
 
-  * Clarify conditions under which `removeDirectoryRecursive` may follow a symlink
+  * `removeDirectoryRecursive` no longer follows symlinks under any
+    circumstances, fixing the inconsistency as noted in
+    [#15](https://github.com/haskell/directory/issues/15)
 
 ## 1.2.1.0  *Mar 2014*
 

@@ -406,6 +406,33 @@ createDirectoryIfMissing create_parents path0
           | otherwise              -> throwIO e
 
 #if __GLASGOW_HASKELL__
+
+-- | * @'NotDirectory'@:   not a directory.
+--   * @'Directory'@:      a true directory (not a symbolic link).
+--   * @'DirectoryLink'@:  a directory symbolic link (only exists on Windows).
+data DirectoryType = NotDirectory
+                   | Directory
+                   | DirectoryLink
+                   deriving (Enum, Eq, Ord, Read, Show)
+
+-- | Obtain the type of a directory.
+getDirectoryType :: FilePath -> IO DirectoryType
+getDirectoryType path =
+  (`ioeSetLocation` "getDirectoryType") `modifyIOError` do
+#ifdef mingw32_HOST_OS
+    fmap classify (Win32.getFileAttributes path)
+    where fILE_ATTRIBUTE_REPARSE_POINT = 0x400
+          classify attr
+            | attr .&. Win32.fILE_ATTRIBUTE_DIRECTORY == 0 = NotDirectory
+            | attr .&. fILE_ATTRIBUTE_REPARSE_POINT   == 0 = Directory
+            | otherwise                                    = DirectoryLink
+#else
+    stat <- Posix.getSymbolicLinkStatus path
+    return $ if Posix.isDirectory stat
+             then Directory
+             else NotDirectory
+#endif
+
 {- | @'removeDirectory' dir@ removes an existing directory /dir/.  The
 implementation may specify additional constraints which must be
 satisfied before a directory can be removed (e.g. the directory has to
@@ -457,24 +484,39 @@ removeDirectory path =
 
 #endif
 
--- | @'removeDirectoryRecursive' dir@  removes an existing directory /dir/
--- together with its content and all subdirectories. Be careful, if the
--- directory contains symlinks, this function will follow them if you don't
--- have permission to delete them.
+-- | @'removeDirectoryRecursive' dir@ removes an existing directory /dir/
+-- together with its contents and subdirectories. Symbolic links are removed
+-- without affecting their the targets.
 removeDirectoryRecursive :: FilePath -> IO ()
-removeDirectoryRecursive startLoc = do
-  cont <- getDirectoryContents startLoc
-  sequence_ [rm (startLoc </> x) | x <- cont, x /= "." && x /= ".."]
-  removeDirectory startLoc
-  where
-    rm :: FilePath -> IO ()
-    rm f = do temp <- E.try (removeFile f)
-              case temp of
-                Left e  -> do isDir <- doesDirectoryExist f
-                              -- If f is not a directory, re-throw the error
-                              unless isDir $ throwIO (e :: SomeException)
-                              removeDirectoryRecursive f
-                Right _ -> return ()
+removeDirectoryRecursive path =
+  (`ioeSetLocation` "removeDirectoryRecursive") `modifyIOError` do
+    dirType <- getDirectoryType path
+    case dirType of
+      Directory -> removeContentsRecursive path
+      _         -> ioError . (`ioeSetErrorString` "not a directory") $
+                   mkIOError InappropriateType "" Nothing (Just path)
+
+-- | @'removePathRecursive' path@ removes an existing file or directory at
+-- /path/ together with its contents and subdirectories. Symbolic links are
+-- removed without affecting their the targets.
+removePathRecursive :: FilePath -> IO ()
+removePathRecursive path =
+  (`ioeSetLocation` "removePathRecursive") `modifyIOError` do
+    dirType <- getDirectoryType path
+    case dirType of
+      NotDirectory  -> removeFile path
+      Directory     -> removeContentsRecursive path
+      DirectoryLink -> removeDirectory path
+
+-- | @'removeContentsRecursive' dir@ removes the contents of the directory
+-- /dir/ recursively. Symbolic links are removed without affecting their the
+-- targets.
+removeContentsRecursive :: FilePath -> IO ()
+removeContentsRecursive path =
+  (`ioeSetLocation` "removeContentsRecursive") `modifyIOError` do
+    cont <- getDirectoryContents path
+    mapM_ removePathRecursive [path </> x | x <- cont, x /= "." && x /= ".."]
+    removeDirectory path
 
 #if __GLASGOW_HASKELL__
 {- |'removeFile' /file/ removes the directory entry for an existing file
@@ -635,21 +677,13 @@ Either path refers to an existing directory.
 -}
 
 renameFile :: FilePath -> FilePath -> IO ()
-renameFile opath npath = do
+renameFile opath npath = (`ioeSetLocation` "renameFile") `modifyIOError` do
    -- XXX this test isn't performed atomically with the following rename
-#ifdef mingw32_HOST_OS
-   -- ToDo: use Win32 API
-   withFileOrSymlinkStatus "renameFile" opath $ \st -> do
-   is_dir <- isDirectory st
-#else
-   stat <- Posix.getSymbolicLinkStatus opath
-   let is_dir = Posix.isDirectory stat
-#endif
-   if is_dir
-        then ioError (ioeSetErrorString
-                          (mkIOError InappropriateType "renameFile" Nothing (Just opath))
-                          "is a directory")
-        else do
+   dirType <- getDirectoryType opath
+   case dirType of
+     Directory -> ioError . (`ioeSetErrorString` "is a directory") $
+                  mkIOError InappropriateType "" Nothing (Just opath)
+     _         -> return ()
 #ifdef mingw32_HOST_OS
    Win32.moveFileEx opath npath Win32.mOVEFILE_REPLACE_EXISTING
 #else
@@ -1036,14 +1070,6 @@ withFileStatus loc name f = do
     allocaBytes sizeof_stat $ \p ->
       withFilePath (fileNameEndClean name) $ \s -> do
         throwErrnoIfMinus1Retry_ loc (c_stat s p)
-        f p
-
-withFileOrSymlinkStatus :: String -> FilePath -> (Ptr CStat -> IO a) -> IO a
-withFileOrSymlinkStatus loc name f = do
-  modifyIOError (`ioeSetFileName` name) $
-    allocaBytes sizeof_stat $ \p ->
-      withFilePath name $ \s -> do
-        throwErrnoIfMinus1Retry_ loc (lstat s p)
         f p
 
 isDirectory :: Ptr CStat -> IO Bool
