@@ -1,5 +1,9 @@
 # Changelog for [`directory` package](http://hackage.haskell.org/package/directory)
 
+## Unreleased
+
+  * Avoid stack overflow in `getDirectoryContents` [#17](https://github.com/haskell/directory/pull/17)
+
 ## 1.2.2.0  *Jan 2014*
 
   * Bundled with GHC 7.10.1
