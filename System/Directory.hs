@@ -46,6 +46,7 @@ module System.Directory
     , canonicalizePath
     , makeRelativeToCurrentDirectory
     , findExecutable
+    , findExecutables
     , findFile
     , findFiles
     , findFilesWith
@@ -755,7 +756,7 @@ findExecutable fileName = do
 -- | Given a file name, searches for the file and returns a list of all
 -- occurences that are executable.
 --
--- /Since: 1.2.1.0/
+-- /Since: 1.2.2.0/
 findExecutables :: String -> IO [FilePath]
 findExecutables binary = do
 #if defined(mingw32_HOST_OS)

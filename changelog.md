@@ -12,6 +12,8 @@
 
   * Avoid stack overflow in `getDirectoryContents` [#17](https://github.com/haskell/directory/pull/17)
 
+  * Expose `findExecutables` [#14](https://github.com/haskell/directory/issues/14)
+
 ## 1.2.1.0  *Mar 2014*
 
   * Bundled with GHC 7.8.1
