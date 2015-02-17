@@ -21,6 +21,7 @@ extra-tmp-files:
 
 extra-source-files:
     changelog.md
+    README.md
     config.guess
     config.sub
     configure
