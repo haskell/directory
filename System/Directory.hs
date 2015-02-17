@@ -399,7 +399,7 @@ createDirectoryIfMissing create_parents path0
 #else
               canIgnore <- (Posix.isDirectory `fmap` Posix.getFileStatus dir)
 #endif
-                           `catch` ((\ _ -> return (isAlreadyExistsError e))
+                           `E.catch` ((\ _ -> return (isAlreadyExistsError e))
                                     :: IOException -> IO Bool)
               unless canIgnore (throwIO e)
           | otherwise              -> throwIO e
@@ -839,13 +839,16 @@ getDirectoryContents path =
     bracket
       (Posix.openDirStream path)
       Posix.closeDirStream
-      loop
+      start
  where
-  loop dirp = do
-     e <- Posix.readDirStream dirp
-     if null e then return [] else do
-       es <- loop dirp
-       return (e:es)
+  start dirp =
+      loop id
+    where
+      loop acc = do
+        e <- Posix.readDirStream dirp
+        if null e
+          then return (acc [])
+          else loop (acc . (e:))
 #else
   bracket
      (Win32.findFirstFile (path </> "*"))
