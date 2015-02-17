@@ -839,13 +839,16 @@ getDirectoryContents path =
     bracket
       (Posix.openDirStream path)
       Posix.closeDirStream
-      loop
+      start
  where
-  loop dirp = do
-     e <- Posix.readDirStream dirp
-     if null e then return [] else do
-       es <- loop dirp
-       return (e:es)
+  start dirp =
+      loop id
+    where
+      loop acc = do
+        e <- Posix.readDirStream dirp
+        if null e
+          then return (acc [])
+          else loop (acc . (e:))
 #else
   bracket
      (Win32.findFirstFile (path </> "*"))
