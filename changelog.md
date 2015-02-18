@@ -14,6 +14,8 @@
 
   * Expose `findExecutables` [#14](https://github.com/haskell/directory/issues/14)
 
+  * Clarify conditions under which `removeDirectoryRecursive` may follow a symlink
+
 ## 1.2.1.0  *Mar 2014*
 
   * Bundled with GHC 7.8.1
