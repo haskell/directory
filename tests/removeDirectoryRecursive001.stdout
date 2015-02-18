@@ -1,0 +1,19 @@
+. .. a b c d
+. .. t x y z
+. .. g
+. .. h
+. .. t x y z
+
+. .. a b c
+. .. t x y z
+. .. g
+. .. h
+
+. .. a b
+. .. t x y z
+. .. g
+
+. .. a
+. .. t x y z
+
+. ..

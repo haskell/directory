@@ -28,3 +28,5 @@ test('createDirectoryIfMissing001',  normal, compile_and_run, [''])
 test('getHomeDirectory001',  ignore_output, compile_and_run, [''])
 
 test('T8482',  normal, compile_and_run, [''])
+
+test('removeDirectoryRecursive001', normal, compile_and_run, [''])
