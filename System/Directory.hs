@@ -1124,7 +1124,7 @@ writable.
 On Unix, this function returns @$HOME\/.appName@.  On Windows, a
 typical path might be
 
-> C:/Documents And Settings/user/Application Data/appName
+> C:/Users/user/AppData/Roaming/appName
 
 The operation may fail with:
 
