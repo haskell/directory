@@ -457,10 +457,9 @@ removeDirectory path =
 
 #endif
 
--- | @'removeDirectoryRecursive' dir@ removes an existing directory
--- /dir/ together with its content and all subdirectories. If the
--- directory contains symlinks this function removes but does not
--- follow them.
+-- | @'removeDirectoryRecursive' dir@  removes an existing directory /dir/
+-- together with its content and all subdirectories. Be careful,
+-- if the directory contains symlinks, the function will follow them.
 removeDirectoryRecursive :: FilePath -> IO ()
 removeDirectoryRecursive startLoc = do
   cont <- getDirectoryContents startLoc
