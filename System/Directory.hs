@@ -748,7 +748,7 @@ canonicalizePath fpath =
   do enc <- getFileSystemEncoding
      GHC.withCString enc fpath $ \pInPath ->
        allocaBytes long_path_size $ \pOutPath ->
-         do _ <-c_realpath pInPath pOutPath
+         do _ <- throwErrnoPathIfNull "canonicalizePath" fpath $ c_realpath pInPath pOutPath
 
             -- NB: pOutPath will be passed thru as result pointer by c_realpath
             path <- GHC.peekCString enc pOutPath
