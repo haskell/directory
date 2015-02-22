@@ -736,7 +736,11 @@ copyFile fromFPath toFPath =
 -- on paths that do not exist is known to vary from platform
 -- to platform. Some platforms do not alter the input, some
 -- do, and on some an exception will be thrown.
+--
+-- If passed an empty string, behaviour is equivalent to
+-- calling canonicalizePath on the current directory.
 canonicalizePath :: FilePath -> IO FilePath
+canonicalizePath ""    = canonicalizePath "."
 canonicalizePath fpath =
 #if defined(mingw32_HOST_OS)
          do path <- Win32.getFullPathName fpath
@@ -744,7 +748,8 @@ canonicalizePath fpath =
   do enc <- getFileSystemEncoding
      GHC.withCString enc fpath $ \pInPath ->
        allocaBytes long_path_size $ \pOutPath ->
-         do _ <- throwErrnoPathIfNull "canonicalizePath" fpath $ c_realpath pInPath pOutPath
+         do _ <-c_realpath pInPath pOutPath
+
             -- NB: pOutPath will be passed thru as result pointer by c_realpath
             path <- GHC.peekCString enc pOutPath
 #endif
