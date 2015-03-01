@@ -1,0 +1,62 @@
+# allow ghc and its tools to be located in different directories
+--- testsuite/mk/boilerplate.mk
++++ testsuite/mk/boilerplate.mk
+@@ -56,6 +56,7 @@ TEST_HC := $(STAGE2_GHC)
+ endif
+ 
+ else
++implicit_compiler = YES
+ IN_TREE_COMPILER = NO
+ TEST_HC := $(shell which ghc)
+ endif
+@@ -87,24 +88,30 @@ endif
+ # containing spaces
+ BIN_ROOT = $(shell dirname '$(TEST_HC)')
+ 
++ifeq "$(implicit_compiler)" "YES"
++find_tool = $(shell which $(1))
++else
++find_tool = $(BIN_ROOT)/$(1)
++endif
++
+ ifeq "$(GHC_PKG)" ""
+-GHC_PKG := $(BIN_ROOT)/ghc-pkg
++GHC_PKG := $(call find_tool,ghc-pkg)
+ endif
+ 
+ ifeq "$(RUNGHC)" ""
+-RUNGHC := $(BIN_ROOT)/runghc
++RUNGHC := $(call find_tool,runghc)
+ endif
+ 
+ ifeq "$(HSC2HS)" ""
+-HSC2HS := $(BIN_ROOT)/hsc2hs
++HSC2HS := $(call find_tool,hsc2hs)
+ endif
+ 
+ ifeq "$(HP2PS_ABS)" ""
+-HP2PS_ABS := $(BIN_ROOT)/hp2ps
++HP2PS_ABS := $(call find_tool,hp2ps)
+ endif
+ 
+ ifeq "$(HPC)" ""
+-HPC := $(BIN_ROOT)/hpc
++HPC := $(call find_tool,hpc)
+ endif
+ 
+ $(eval $(call canonicaliseExecutable,TEST_HC))
+
+# 'die' is not available until GHC 7.10
+--- testsuite/timeout/timeout.hs
++++ testsuite/timeout/timeout.hs
+@@ -30,8 +30,8 @@ main = do
+       [secs,cmd] ->
+           case reads secs of
+           [(secs', "")] -> run secs' cmd
+-          _ -> die ("Can't parse " ++ show secs ++ " as a number of seconds")
+-      _ -> die ("Bad arguments " ++ show args)
++          _ -> ((>> exitFailure) . hPutStrLn stderr) ("Can't parse " ++ show secs ++ " as a number of seconds")
++      _ -> ((>> exitFailure) . hPutStrLn stderr) ("Bad arguments " ++ show args)
+ 
+ timeoutMsg :: String
+ timeoutMsg = "Timeout happened...killing process..."

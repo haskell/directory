@@ -1,0 +1,50 @@
+#!/bin/sh
+# run all of the tests under the `tests` directory using the GHC test
+# framework; for more info about this framework, see:
+# https://ghc.haskell.org/trac/ghc/wiki/Building/RunningTests
+#
+# arguments received by this script are passed as arguments to the `make`
+# invocation that initiates the tests
+set -e
+
+# check if `-package-db` is supported (didn't exist until 1.20)
+# note that we don't use `-package-db` directly because older versions will
+# interpret it as `-package -db`
+if ghc 2>&1 -no-user-package-db |
+   grep >/dev/null 2>&1 "ghc: unrecognised flags: -no-user-package-db"
+then db=conf
+else db=db
+fi
+
+[ -z "$HSFLAGS" ] || HSFLAGS=\ $HSFLAGS
+HSFLAGS="-package-$db ../dist/package.conf.inplace$HSFLAGS"
+HSFLAGS="-optP-include -optP../dist/build/autogen/cabal_macros.h $HSFLAGS"
+export HSFLAGS
+
+# download the GHC repository
+[ -f dist/testsuite/ghc.ok ] || {
+    rm -fr dist/testsuite/ghc
+    git clone --depth 1 https://github.com/ghc/ghc dist/testsuite/ghc
+    patch <tools/ghc.patch -d dist/testsuite/ghc -N -p 0 -r - || :
+    touch dist/testsuite/ghc.ok
+}
+
+# we can't just specify `TOP` as an argument for `make` because it will
+# override `TOP` for *every* included makefile
+sed >dist/testsuite/Makefile \
+    "s|^TOP=.*$|TOP=../dist/testsuite/ghc/testsuite|" \
+    tests/Makefile
+
+cd tests
+make -f ../dist/testsuite/Makefile WAY=normal EXTRA_HC_OPTS="$HSFLAGS" "$@" |
+    tee ../dist/testsuite/test.out
+
+# since the test framework doesn't report an exit status, we need to manually
+# find out whether the test had any failures>
+{
+    grep '^ *0 had missing libraries$'     ../dist/testsuite/test.out
+    grep '^ *0 caused framework failures$' ../dist/testsuite/test.out
+    grep '^ *0 unexpected passes$'         ../dist/testsuite/test.out
+    grep '^ *0 unexpected failures$'       ../dist/testsuite/test.out
+    grep '^ *0 unexpected stat failures$'  ../dist/testsuite/test.out
+} >/dev/null 2>/dev/null
