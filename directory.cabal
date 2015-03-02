@@ -29,6 +29,23 @@ extra-source-files:
     directory.buildinfo
     include/HsDirectoryConfig.h.in
     install-sh
+    tests/*.hs
+    tests/*.stderr
+    tests/*.stdout
+    tests/Makefile
+    tests/all.T
+    tests/copyFile001dir/source
+    tests/copyFile002dir/source
+    tests/createDirectory001.stdout-mingw32
+    tests/createDirectoryIfMissing001.stdout-mingw32
+    tests/getDirContents002.stderr-mingw32
+    tests/getPermissions001.stdout-alpha-dec-osf3
+    tests/getPermissions001.stdout-i386-unknown-freebsd
+    tests/getPermissions001.stdout-i386-unknown-openbsd
+    tests/getPermissions001.stdout-mingw
+    tests/getPermissions001.stdout-x86_64-unknown-openbsd
+    tools/ghc.patch
+    tools/run-tests
 
 source-repository head
     type:     git
