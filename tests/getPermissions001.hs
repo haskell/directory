@@ -1,13 +1,17 @@
 import System.Directory
 
 main = do
+#ifndef mingw32_HOST_OS
+  let exe = ".exe"
+#else
+  let exe = ""
+#endif
   p <- getPermissions "."
   print p
   p <- getPermissions "getPermissions001.hs"
   print p
-#ifndef mingw32_HOST_OS
-  p <- getPermissions "getPermissions001"
-#else
-  p <- getPermissions "getPermissions001.exe"
-#endif
+  p <- getPermissions ("getPermissions001" ++ exe)
   print p
+
+  -- issue #9: Windows doesn't like trailing path separators
+  _ <- getPermissions "../tests/"

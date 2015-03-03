@@ -197,7 +197,8 @@ The operation may fail with:
 getPermissions :: FilePath -> IO Permissions
 getPermissions name = do
 #ifdef mingw32_HOST_OS
-  withFilePath name $ \s -> do
+  -- issue #9: Windows doesn't like trailing path separators
+  withFilePath (dropTrailingPathSeparator name) $ \s -> do
   -- stat() does a better job of guessing the permissions on Windows
   -- than access() does.  e.g. for execute permission, it looks at the
   -- filename extension :-)
