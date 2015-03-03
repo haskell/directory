@@ -1,7 +1,8 @@
+{-# LANGUAGE CPP #-}
 import System.Directory
 
 main = do
-#ifndef mingw32_HOST_OS
+#ifdef mingw32_HOST_OS
   let exe = ".exe"
 #else
   let exe = ""
@@ -15,3 +16,5 @@ main = do
 
   -- issue #9: Windows doesn't like trailing path separators
   _ <- getPermissions "../tests/"
+
+  return ()
