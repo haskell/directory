@@ -1,3 +1,6 @@
+# we want to use our custom environment, but the Travis YAML validator
+# requires this field to be specified, so we'll just use 'c'
+language: c
 env:
  # we have to use CABALVER=1.16 for GHC<7.6 as well, as there's
  # no package for earlier cabal versions in the PPA
@@ -20,8 +23,17 @@ before_install:
 
 install:
  - travis_retry cabal update
- - cabal install --only-dependencies
+ - cabal install --enable-tests --only-dependencies
  - ghc --version
+
+before_script:
+ - | # check if 'streaming' is supported (didn't exist until 1.20)
+     if cabal 2>&1 test --show-details=streaming __dummy |
+        grep >/dev/null 2>&1 "cabal: --show-details flag expects"
+     then streaming=always
+     else streaming=streaming
+     fi
+     export streaming
 
 script:
  - autoreconf -i
@@ -29,13 +41,13 @@ script:
  - cabal build
  - cabal check
  - cabal sdist
- - cabal test
-# The following scriptlet checks that the resulting source distribution can be built & installed
- - export SRC_TGZ=$(cabal info . | awk '{print $2 ".tar.gz";exit}') ;
-   cd dist/;
-   if [ -f "$SRC_TGZ" ]; then
-      cabal install --force-reinstalls "$SRC_TGZ";
-   else
-      echo "expected '$SRC_TGZ' not found";
-      exit 1;
-   fi
+ - cabal test --show-details=$streaming
+ - | # in the future, use '--run-tests' (didn't exist until 1.20)
+     cabal install --force-reinstalls dist/*-*.tar.gz
+     mkdir install-tmp
+     cd install-tmp
+     tar xzf ../dist/*-*.tar.gz
+     cd *-*
+     cabal configure --enable-tests
+     cabal build
+     cabal test
