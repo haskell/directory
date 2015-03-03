@@ -1,10 +1,8 @@
-module Main(main) where
-
-import Control.Exception
+module Main (main) where
 import System.Directory
+import System.IO.Error (catchIOError)
 
 main = do
   dot <- canonicalizePath "."
-  nul <- (canonicalizePath "")
-           `catch` ((\_ -> return "") :: IOException -> IO String)
+  nul <- canonicalizePath "" `catchIOError` \ _ -> return ""
   print (dot == nul)

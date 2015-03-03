@@ -2,7 +2,7 @@ module Main(main) where
 
 import Control.Concurrent
 import Control.Monad
-import Control.Exception
+import Control.Exception as E
 import System.Directory
 import System.FilePath
 import System.IO.Error
@@ -66,14 +66,14 @@ cleanup = ignore $ removeDirectoryRecursive testdir
 
 report :: Show a => IO a -> IO ()
 report io = do
-  r <- try io
+  r <- E.try io
   case r of
    Left e  -> print (e :: SomeException)
    Right a -> print a
 
 ignore :: IO a -> IO ()
 ignore io = do
-  r <- try io
+  r <- E.try io
   case r of
    Left e  -> let _ = e :: SomeException in return ()
    Right a -> return ()
