@@ -18,6 +18,9 @@
     circumstances, fixing the inconsistency as noted in
     [#15](https://github.com/haskell/directory/issues/15)
 
+  * Allow trailing path separators in `getPermissions` on Windows
+    (fixes [#9](https://github.com/haskell/directory/issues/9))
+
 ## 1.2.1.0  *Mar 2014*
 
   * Bundled with GHC 7.8.1
