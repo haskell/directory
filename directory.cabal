@@ -4,10 +4,11 @@ version:        1.2.2.0
 license:        BSD3
 license-file:   LICENSE
 maintainer:     libraries@haskell.org
-bug-reports:    http://ghc.haskell.org/trac/ghc/newticket?component=libraries/directory
-synopsis:       library for directory handling
+bug-reports:    https://github.com/haskell/directory/issues
+synopsis:       Platform-agnostic library for filesystem operations
 description:
-        This package provides a library for handling directories.
+  This library provides a basic set of operations for manipulating files and
+  directories in a portable way.
 category:       System
 build-type:     Configure
 cabal-version:  >= 1.10
