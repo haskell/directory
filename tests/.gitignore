@@ -9,6 +9,7 @@
 
 # specific files
 /T4113
+/canonicalizePath001
 /copyFile001
 /copyFile002
 /createDirectory001
