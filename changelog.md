@@ -21,6 +21,11 @@
   * Allow trailing path separators in `getPermissions` on Windows
     (fixes [#9](https://github.com/haskell/directory/issues/9))
 
+  * `renameFile` now always throws the correct error type
+    (`InappropriateType`) when the destination is a directory (as long as the
+    filesystem is not being modified concurrently).  See
+    [pull request #8](https://github.com/haskell/directory/pull/8).
+
 ## 1.2.1.0  *Mar 2014*
 
   * Bundled with GHC 7.8.1
