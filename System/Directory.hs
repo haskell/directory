@@ -679,17 +679,31 @@ Either path refers to an existing directory.
 
 renameFile :: FilePath -> FilePath -> IO ()
 renameFile opath npath = (`ioeSetLocation` "renameFile") `modifyIOError` do
-   -- XXX this test isn't performed atomically with the following rename
-   dirType <- getDirectoryType opath
-   case dirType of
-     Directory -> ioError . (`ioeSetErrorString` "is a directory") $
-                  mkIOError InappropriateType "" Nothing (Just opath)
-     _         -> return ()
+   -- XXX the tests are not performed atomically with the rename
+   checkNotDir opath
 #ifdef mingw32_HOST_OS
    Win32.moveFileEx opath npath Win32.mOVEFILE_REPLACE_EXISTING
 #else
    Posix.rename opath npath
 #endif
+     -- The underlying rename implementation can throw odd exceptions when the
+     -- destination is a directory.  For example, Windows typically throws a
+     -- permission error, while POSIX systems may throw a resource busy error
+     -- if one of the paths refers to the current directory.  In these cases,
+     -- we check if the destination is a directory and, if so, throw an
+     -- InappropriateType error.
+     `catchIOError` \ err -> do
+       checkNotDir npath
+       ioError err
+   where checkNotDir path = do
+           dirType <- getDirectoryType path
+                      `catchIOError` \ _ -> return NotDirectory
+           case dirType of
+             Directory     -> errIsDir path
+             DirectoryLink -> errIsDir path
+             NotDirectory  -> return ()
+         errIsDir path = ioError . (`ioeSetErrorString` "is a directory") $
+                         mkIOError InappropriateType "" Nothing (Just path)
 
 #endif /* __GLASGOW_HASKELL__ */
 
