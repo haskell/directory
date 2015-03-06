@@ -44,6 +44,7 @@ module System.Directory
     , copyFile
 
     , canonicalizePath
+    , makeAbsolute
     , makeRelativeToCurrentDirectory
     , findExecutable
     , findExecutables
@@ -777,6 +778,18 @@ foreign import ccall unsafe "realpath"
                               -> CString
                               -> IO CString
 #endif
+
+-- | Make a path absolute by prepending the current directory (if it isn't
+-- already absolute) and applying @'normalise'@ to the result.
+--
+-- The operation may fail with the same exceptions as @'getCurrentDirectory'@.
+--
+-- /Since: 1.2.2.0/
+makeAbsolute :: FilePath -> IO FilePath
+makeAbsolute = fmap normalise . absolutize
+  where absolutize path -- avoid the call to `getCurrentDirectory` if we can
+          | isRelative path = fmap (</> path) getCurrentDirectory
+          | otherwise       = return path
 
 -- | 'makeRelative' the current directory.
 makeRelativeToCurrentDirectory :: FilePath -> IO FilePath

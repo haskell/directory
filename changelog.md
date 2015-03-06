@@ -29,6 +29,9 @@ Changelog for the [`directory`][1] package
     (`InappropriateType`) when the destination is a directory, as long as the
     filesystem is not being modified concurrently
 
+  * Add `makeAbsolute`, which should be preferred over `canonicalizePath`
+    unless one requires symbolic links to be resolved
+
 ## 1.2.1.0 (Mar 2014)
 
   * Bundled with GHC 7.8.1
