@@ -81,8 +81,6 @@ tryCreateSymbolicLink target link = createSymbolicLink target link
 #ifdef mingw32_HOST_OS
   `catchIOError` \ e ->
     if isPermissionError e
-    then do
-      copyPathRecursive (takeDirectory link </> target) link
-      hPutStrLn stderr "warning: didn't test symlinks due to Group Policy"
+    then copyPathRecursive (takeDirectory link </> target) link
     else ioError e
 #endif
