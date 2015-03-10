@@ -1,6 +1,6 @@
 # Changelog for [`directory` package](http://hackage.haskell.org/package/directory)
 
-## 1.2.2.0  *Jan 2014*
+## 1.2.2.0  *Mar 2015*
 
   * Bundled with GHC 7.10.1
 
