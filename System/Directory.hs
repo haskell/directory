@@ -737,24 +737,27 @@ copyFile fromFPath toFPath =
 
           ignoreIOExceptions io = io `catchIOError` (\_ -> return ())
 
--- | Given a path referring to a file or directory, returns a
--- canonicalized path. The intent is that two paths referring
--- to the same file\/directory will map to the same canonicalized
--- path.
+-- | Canonicalize the path of an existing file or directory.  The intent is
+-- that two paths referring to the same file\/directory will map to the same
+-- canonicalized path.
 --
--- Note that it is impossible to guarantee that the
--- implication (same file\/dir \<=\> same canonicalizedPath) holds
--- in either direction: this function can make only a best-effort
--- attempt.
+-- __Note__: if you only require an absolute path, consider using
+-- @'makeAbsolute'@ instead, which is more reliable and does not have
+-- unspecified behavior on nonexistent paths.
 --
--- The precise behaviour is that of the C realpath function
--- GetFullPathNameW on Windows). In particular, the behaviour
--- on paths that do not exist is known to vary from platform
--- to platform. Some platforms do not alter the input, some
--- do, and on some an exception will be thrown.
+-- It is impossible to guarantee that the implication (same file\/dir \<=\>
+-- same canonicalized path) holds in either direction: this function can make
+-- only a best-effort attempt.
 --
--- If passed an empty string, behaviour is equivalent to
--- calling canonicalizePath on the current directory.
+-- The precise behaviour is that of the POSIX @realpath@ function (or
+-- @GetFullPathNameW@ on Windows).  In particular, the behaviour on paths that
+-- don't exist can vary from platform to platform.  Some platforms do not
+-- alter the input, some do, and some throw an exception.
+--
+-- An empty path is considered to be equivalent to the current directory.
+--
+-- /Known bug(s)/: on Windows, this function does not resolve symbolic links.
+--
 canonicalizePath :: FilePath -> IO FilePath
 canonicalizePath ""    = canonicalizePath "."
 canonicalizePath fpath =
