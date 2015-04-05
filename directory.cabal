@@ -10,7 +10,7 @@ description:
   This library provides a basic set of operations for manipulating files and
   directories in a portable way.
 category:       System
-build-type:     Configure
+build-type:     Custom
 cabal-version:  >= 1.10
 tested-with:    GHC>=7.4.1
 
@@ -86,6 +86,7 @@ test-suite test
     other-extensions: CPP ForeignFunctionInterface
     ghc-options:      -Wall
     hs-source-dirs:   tools
+    build-tools:      python, which
     main-is:          dispatch-tests.hs
     type:             exitcode-stdio-1.0
     build-depends:    base, directory
