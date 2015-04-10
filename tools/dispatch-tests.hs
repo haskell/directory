@@ -1,9 +1,12 @@
 {-# LANGUAGE CPP, ForeignFunctionInterface #-}
 module Main (main) where
+import Prelude (($), (.), (=<<), (==), Eq, IO, Int, String,
+                id, fromIntegral, otherwise, unwords)
+import Data.Functor ((<$>))
+import Data.Monoid ((<>), mconcat)
 import Foreign (Ptr)
 import Foreign.C (CChar(..), CInt(..), withCString)
-import Data.Functor ((<$>))
-import System.Directory ()     -- to make sure `directory` is built beforehand
+import System.Directory ()        -- to ensure `directory` is built beforehand
 import System.Environment (getArgs)
 import System.Exit (ExitCode(ExitSuccess, ExitFailure), exitWith)
 
@@ -19,7 +22,7 @@ main = do
                  ExitFailure _ -> []
 
   args <- getArgs
-  let command : arguments = prefix ++ ["sh", "tools/run-tests"] ++ args
+  let command : arguments = prefix <> ["sh", "tools/run-tests"] <> args
   exitWith =<< normalizeExitCode <$> rawSystem command arguments
 
 makeExitCode :: Int -> ExitCode
@@ -48,15 +51,16 @@ quoteCmdArgs cmdArgs =
   -- the arcane quoting rules require us to add an extra set of quotes
   -- around the entire thing: see `help cmd` or look at
   -- https://superuser.com/a/238813
-  "\"" ++ unwords (quote <$> cmdArgs) ++ "\""
-  where quote s = "\"" ++ replaceElem '"' "\"\"" s ++ "\""
+  let quote s = "\"" <> replaceElem '"' "\"\"" s <> "\""
+  in (\ s -> "\"" <> s <> "\"") $
 #else
-  unwords (quote <$> cmdArgs)
-  where quote s = "'" ++ replaceElem '\'' "'\\''" s ++ "'"
+  let quote s = "'" <> replaceElem '\'' "'\\''" s <> "'"
+  in id $
 #endif
+     unwords (quote <$> cmdArgs)
 
 replaceElem :: Eq a => a -> [a] -> [a] -> [a]
-replaceElem match repl = concat . (replace <$>)
+replaceElem match repl = mconcat . (replace <$>)
   where replace c | c == match = repl
                   | otherwise  = [c]
 
