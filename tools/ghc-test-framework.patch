@@ -1,6 +1,6 @@
 # 'die' is not available until GHC 7.10
---- testsuite/timeout/timeout.hs
-+++ testsuite/timeout/timeout.hs
+--- timeout/timeout.hs
++++ timeout/timeout.hs
 @@ -30,8 +30,8 @@ main = do
        [secs,cmd] ->
            case reads secs of

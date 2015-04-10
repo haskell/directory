@@ -1,0 +1,80 @@
+#!/bin/sh
+set -e
+
+# pack the given files (recursively) into a shell archive;
+# limitations: filenames must not contain newlines;
+#              file modes are not fully preserved
+pack() {
+
+    # escape paths that begin with hyphen
+    i=0
+    while [ "$i" -lt "$#" ]
+    do  i=`expr "$i" + 1`
+        x=$1
+        case $x in
+            -*) x=./$x;;
+        esac
+        set -- "$@" "$x"
+        shift
+    done
+
+    echo '#!/bin/sh'
+    printf "%s" "$PACK_COMMENT"
+    find "$@" -type f | LC_ALL=C sort |
+    while read fn
+    do
+        dir=`dirname "$fn"`
+        patt="s/'/'\\\\''/g"
+        escfn=\'`printf "%s" "$fn" | sed "$patt"`\'
+        escdir=\'`printf "%s" "$dir" | sed "$patt"`\'
+
+        # determine an approximate file mode
+        # (there's no easy way to get the full mode portably)
+        if [ -x "$fn" ]
+        then mode=755
+        else mode=644
+        fi
+
+        # write the commands needed to extract the files
+        printf '\nmkdir -p %s\n' "$escdir"
+        printf 'sed "s/^ //" <<"EOF" >%s\n' "$escfn"
+
+        # dump the file as a heredoc, prefixing each nonempty line with space
+        sed 's/^\(.\)/ \1/' "$fn"
+        printf 'EOF\nchmod %s %s\n' "$mode" "$escfn"
+    done
+}
+
+# remove copy of old testsuite
+rm -fr dist/testsuite
+
+# download GHC
+# (can't use haskell.org because it doesn't support `--depth 1`)
+git clone --depth 1 https://github.com/ghc/ghc dist/testsuite/ghc
+
+# record the SHA hash for future reference
+commit=`cd dist/testsuite/ghc && git rev-parse HEAD`
+PACK_COMMENT='# from ghc commit '"$commit"'
+'
+export PACK_COMMENT
+
+mv dist/testsuite/ghc/testsuite/LICENSE tools/ghc-test-framework.LICENSE
+(
+    set -e
+    cd dist/testsuite
+
+    # apply our own customizations
+    mv ghc/testsuite ghc-test-framework
+    patch >&2 -d ghc-test-framework -N -p 0 -r - || :
+
+    # pack into a single file to avoid bloating the `.cabal` file
+    pack                           \
+        ghc-test-framework/config  \
+        ghc-test-framework/driver  \
+        ghc-test-framework/mk      \
+        ghc-test-framework/timeout
+
+) <tools/ghc-test-framework.patch >tools/ghc-test-framework.shar
+
+# cleanup
+rm -fr dist/testsuite

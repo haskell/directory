@@ -21,18 +21,20 @@ HSFLAGS="-package-$db ../dist/package.conf.inplace$HSFLAGS"
 HSFLAGS="-optP-include -optP../dist/build/autogen/cabal_macros.h $HSFLAGS"
 export HSFLAGS
 
-# download the GHC repository
-[ -f dist/testsuite/ghc.ok ] || {
-    rm -fr dist/testsuite/ghc
-    git clone --depth 1 https://github.com/ghc/ghc dist/testsuite/ghc
-    patch <tools/ghc.patch -d dist/testsuite/ghc -N -p 0 -r - || :
-    touch dist/testsuite/ghc.ok
-}
+# extract the test framework if needed
+[ -f dist/testsuite/ghc-test-framework.ok ] || (
+    set -e
+    mkdir -p dist/testsuite
+    cd dist/testsuite
+    rm -fr ghc-test-framework
+    sh
+    touch ghc-test-framework.ok
+) <tools/ghc-test-framework.shar
 
 # we can't just specify `TOP` as an argument for `make` because it will
 # override `TOP` for *every* included makefile
 sed >dist/testsuite/Makefile \
-    "s|^TOP=.*$|TOP=../dist/testsuite/ghc/testsuite|" \
+    "s|^TOP=.*$|TOP=../dist/testsuite/ghc-test-framework|" \
     tests/Makefile
 
 cd tests

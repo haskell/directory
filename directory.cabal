@@ -45,7 +45,8 @@ extra-source-files:
     tests/getPermissions001.stdout-i386-unknown-openbsd
     tests/getPermissions001.stdout-mingw
     tests/getPermissions001.stdout-x86_64-unknown-openbsd
-    tools/ghc.patch
+    tools/ghc-test-framework.LICENSE
+    tools/ghc-test-framework.shar
     tools/run-tests
 
 source-repository head
