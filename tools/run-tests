@@ -16,9 +16,28 @@ then db=conf
 else db=db
 fi
 
-[ -z "$HSFLAGS" ] || HSFLAGS=\ $HSFLAGS
-HSFLAGS="-package-$db ../dist/package.conf.inplace$HSFLAGS"
-HSFLAGS="-optP-include -optP../dist/build/autogen/cabal_macros.h $HSFLAGS"
+# guess which package db(s) we should use;
+# very dirty hack but cabal doesn't expose it to us directly
+if [ -f cabal.sandbox.config ]
+then
+    patt="s/'/'\\\\''/g"
+    dbfn=`grep 'package-db: [^, }]*' cabal.sandbox.config \
+        | sed 's/^[^:]*: //'`
+    HSFLAGS="-package-$db $dbfn "$HSFLAGS
+fi
+if [ -f dist/package.conf.inplace ]
+then
+    HSFLAGS="-package-$db ../dist/package.conf.inplace "$HSFLAGS
+fi
+if [ -f dist/build/autogen/cabal_macros.h ]
+then
+    cabal_macros='-optP-include -optP../dist/build/autogen/cabal_macros.h'
+elif [ -f build/autogen/cabal_macros.h ]
+then
+    cabal_macros='-optP-include -optP../build/autogen/cabal_macros.h'
+fi
+HSFLAGS="$cabal_macros "$HSFLAGS
+HSFLAGS=`printf "%s" "$HSFLAGS" | sed 's/ *$//'`
 export HSFLAGS
 
 # extract the test framework if needed
