@@ -3,8 +3,8 @@ Changelog for the [`directory`][1] package
 
 ## 1.2.2.1 (Apr 2015)
 
-  * [#24](https://github.com/haskell/directory/issues/24):
-    Fix dependency problem on NixOS when building with tests
+  * Fix dependency problem on NixOS when building with tests
+    ([#24](https://github.com/haskell/directory/issues/24))
 
 ## 1.2.2.0 (Mar 2015)
 
@@ -16,23 +16,23 @@ Changelog for the [`directory`][1] package
 
   * Replace `throw` by better defined `throwIO`s
 
-  * [#17](https://github.com/haskell/directory/pull/17):
-    Avoid stack overflow in `getDirectoryContents`
+  * Avoid stack overflow in `getDirectoryContents`
+    ([#17](https://github.com/haskell/directory/pull/17))
 
-  * [#14](https://github.com/haskell/directory/issues/14):
-    Expose `findExecutables`
+  * Expose `findExecutables`
+    ([#14](https://github.com/haskell/directory/issues/14))
 
-  * [#15](https://github.com/haskell/directory/issues/15):
-    `removeDirectoryRecursive` no longer follows symlinks under any
+  * `removeDirectoryRecursive` no longer follows symlinks under any
     circumstances
+    ([#15](https://github.com/haskell/directory/issues/15))
 
-  * [#9](https://github.com/haskell/directory/issues/9):
-    Allow trailing path separators in `getPermissions` on Windows
+  * Allow trailing path separators in `getPermissions` on Windows
+    ([#9](https://github.com/haskell/directory/issues/9))
 
-  * [#8](https://github.com/haskell/directory/pull/8):
-    `renameFile` now always throws the correct error type
+  * `renameFile` now always throws the correct error type
     (`InappropriateType`) when the destination is a directory, as long as the
     filesystem is not being modified concurrently
+    ([#8](https://github.com/haskell/directory/pull/8))
 
   * Add `makeAbsolute`, which should be preferred over `canonicalizePath`
     unless one requires symbolic links to be resolved
