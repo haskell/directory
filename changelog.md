@@ -1,6 +1,11 @@
 Changelog for the [`directory`][1] package
 ==========================================
 
+## 1.2.2.1 (Apr 2015)
+
+  * [#24](https://github.com/haskell/directory/issues/24):
+    Fix dependency problem on NixOS when building with tests
+
 ## 1.2.2.0 (Mar 2015)
 
   * Bundled with GHC 7.10.1
