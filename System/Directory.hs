@@ -1142,8 +1142,7 @@ instead.
 
 On Unix, 'getHomeDirectory' returns the value of the @HOME@
 environment variable.  On Windows, the system is queried for a
-suitable path; a typical path might be
-@C:\/Documents And Settings\/user@.
+suitable path; a typical path might be @C:\/Users\//\<user\>/@.
 
 The operation may fail with:
 
@@ -1184,9 +1183,7 @@ first.  It is expected that the parent directory exists and is
 writable.
 
 On Unix, this function returns @$HOME\/.appName@.  On Windows, a
-typical path might be
-
-> C:/Users/user/AppData/Roaming/appName
+typical path might be @C:\/Users\//\<user\>/\/AppData\/Roaming\//\<app\>/@
 
 The operation may fail with:
 
@@ -1217,8 +1214,7 @@ instead.
 
 On Unix, 'getUserDocumentsDirectory' returns the value of the @HOME@
 environment variable.  On Windows, the system is queried for a
-suitable path; a typical path might be
-@C:\/Documents And Settings\/user\/My Documents@.
+suitable path; a typical path might be @C:\/Users\//\<user\>/\/Documents@.
 
 The operation may fail with:
 
