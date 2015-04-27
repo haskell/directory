@@ -82,7 +82,6 @@ module System.Directory
     , getModificationTime
    ) where
 
-import System.Environment ( getEnv )
 import System.FilePath
 import System.IO
 import System.IO.Error
@@ -114,6 +113,7 @@ import qualified System.Win32 as Win32
 #else
 import GHC.IO.Encoding
 import GHC.Foreign as GHC
+import System.Environment ( getEnv )
 import qualified System.Posix as Posix
 #endif
 
@@ -1216,29 +1216,44 @@ data XdgDirectory
 --
 --   /Since: 1.2.3.0/
 getXdgDirectory :: XdgDirectory -> IO FilePath
-getXdgDirectory xdgDir = modifyIOError (`ioeSetLocation` "getXdgDirectory") $
+getXdgDirectory xdgDir =
+  modifyIOError (`ioeSetLocation` "getXdgDirectory") .
+  fmap normalise $
   case xdgDir of
-    XdgData   -> get "XDG_DATA_HOME"   (alternative False ".local/share")
-    XdgConfig -> get "XDG_CONFIG_HOME" (alternative False ".config")
-    XdgCache  -> get "XDG_CACHE_HOME"  (alternative True  ".cache")
-  where get name fallback = do
-          env <- tryIOErrorType isDoesNotExistError (getEnv name)
-          case env of
-            Left  _                      -> fallback
-            Right path | isRelative path -> fallback
-                       | otherwise       -> return (normalise path)
-        tryIOErrorType check action = do
-          result <- tryIOError action
-          case result of
-            Left  err -> if check err then return (Left err) else throwIO err
-            Right val -> return (Right val)
+    XdgData   -> get False "XDG_DATA_HOME"   ".local/share"
+    XdgConfig -> get False "XDG_CONFIG_HOME" ".config"
+    XdgCache  -> get True  "XDG_CACHE_HOME"  ".cache"
+  where
 #if defined(mingw32_HOST_OS)
-        alternative local _ =
-          normalise `fmap` Win32.sHGetFolderPath nullPtr which nullPtr 0
-          where which | local     = Win32.cSIDL_LOCAL_APPDATA
-                      | otherwise = Win32.cSIDL_APPDATA
+    get isLocal _ _ = Win32.sHGetFolderPath nullPtr which nullPtr 0
+      where which | isLocal   = Win32.cSIDL_LOCAL_APPDATA
+                  | otherwise = Win32.cSIDL_APPDATA
 #else
-        alternative _  path = fmap (normalise . (</> path)) getHomeDirectory
+    get _ name fallback = do
+      env <- lookupEnv name
+      case env of
+        Nothing                     -> fallback'
+        Just path | isRelative path -> fallback'
+                  | otherwise       -> return path
+      where fallback' = fmap (</> fallback) getHomeDirectory
+
+-- | Return the value of an environment variable, or 'Nothing' if there is no
+--   such value.  (Equivalent to "lookupEnv" from base-4.6.)
+lookupEnv :: String -> IO (Maybe String)
+lookupEnv name = do
+  env <- tryIOErrorType isDoesNotExistError (getEnv name)
+  case env of
+    Left  _     -> return Nothing
+    Right value -> return (Just value)
+
+-- | Similar to 'try' but only catches a specify kind of 'IOError' as
+--   specified by the predicate.
+tryIOErrorType :: (IOError -> Bool) -> IO a -> IO (Either IOError a)
+tryIOErrorType check action = do
+  result <- tryIOError action
+  case result of
+    Left  err -> if check err then return (Left err) else throwIO err
+    Right val -> return (Right val)
 #endif
 
 -- | Obtain the path to a special directory for storing user-specific
