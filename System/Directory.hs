@@ -34,6 +34,8 @@ module System.Directory
 
     -- * Pre-defined directories
     , getHomeDirectory
+    , XdgDirectory(..)
+    , getXdgDirectory
     , getAppUserDataDirectory
     , getUserDocumentsDirectory
     , getTemporaryDirectory
@@ -80,6 +82,7 @@ module System.Directory
     , getModificationTime
    ) where
 
+import System.Environment ( getEnv )
 import System.FilePath
 import System.IO
 import System.IO.Error
@@ -111,7 +114,6 @@ import qualified System.Win32 as Win32
 #else
 import GHC.IO.Encoding
 import GHC.Foreign as GHC
-import System.Environment ( getEnv )
 import qualified System.Posix as Posix
 #endif
 
@@ -1169,31 +1171,101 @@ getHomeDirectory =
     getEnv "HOME"
 #endif
 
-{- | Returns the pathname of a directory in which application-specific
-data for the current user can be stored.  The result of
-'getAppUserDataDirectory' for a given application is specific to
-the current user.
+-- | Special directories for storing user-specific application data,
+--   configuration, and cache files, as specified by the
+--   <http://standards.freedesktop.org/basedir-spec/basedir-spec-latest.html XDG Base Directory Specification>.
+--
+--   These will also work on Windows, although in that case 'XdgData' and
+--   'XdgConfig' will map to the same directory.
+--
+--   Note: the directory may not actually exist, in which case you would need
+--   to create it with file mode @700@ (i.e. only accessible by the owner).
+--
+--   /Since: 1.2.3.0/
+data XdgDirectory
+  = XdgData
+    -- ^ Data files:
+    --   may be overridden by the @XDG_DATA_HOME@ environment variable;
+    --   defaults to @~\/.local\/share@;
+    --   Windows equivalent: @%APPDATA%@
+    --   (e.g. @C:\/Users\//\<user\>/\/AppData\/Roaming@)
+  | XdgConfig
+    -- ^ For configuration files;
+    --   may be overridden by the @XDG_CONFIG_HOME@ environment variable;
+    --   defaults to @~\/.config@;
+    --   Windows equivalent: @%APPDATA%@
+    --   (e.g. @C:\/Users\//\<user\>/\/AppData\/Roaming@)
+  | XdgCache
+    -- ^ For non-essential (cached) data;
+    --   may be overridden by the @XDG_CACHE_HOME@ environment variable;
+    --   defaults to @~\/.cache@;
+    --   Windows equivalent: @%LOCALAPPDATA%@
+    --   (e.g. @C:\/Users\//\<user\>/\/AppData\/Local@)
+  deriving (Eq, Ord, Read, Show)
 
-The argument should be the name of the application, which will be used
-to construct the pathname (so avoid using unusual characters that
-might result in an invalid pathname).
+-- | Obtain the path to special directories for storing user-specific
+--   application data, configuration, and cache files, as specified by the
+--   <http://standards.freedesktop.org/basedir-spec/basedir-spec-latest.html XDG Base Directory Specification>.
+--
+--   These will also work on Windows, although in that case 'XdgData' and
+--   'XdgConfig' will map to the same directory.  See 'XdgDirectory' for
+--   details.
+--
+--   Note: the directory may not actually exist, in which case you would need
+--   to create it with file mode @700@ (i.e. only accessible by the owner).
+--
+--   /Since: 1.2.3.0/
+getXdgDirectory :: XdgDirectory -> IO FilePath
+getXdgDirectory xdgDir = modifyIOError (`ioeSetLocation` "getXdgDirectory") $
+  case xdgDir of
+    XdgData   -> get "XDG_DATA_HOME"   (alternative False ".local/share")
+    XdgConfig -> get "XDG_CONFIG_HOME" (alternative False ".config")
+    XdgCache  -> get "XDG_CACHE_HOME"  (alternative True  ".cache")
+  where get name fallback = do
+          env <- tryIOErrorType isDoesNotExistError (getEnv name)
+          case env of
+            Left  _                      -> fallback
+            Right path | isRelative path -> fallback
+                       | otherwise       -> return (normalise path)
+        tryIOErrorType check action = do
+          result <- tryIOError action
+          case result of
+            Left  err -> if check err then return (Left err) else throwIO err
+            Right val -> return (Right val)
+#if defined(mingw32_HOST_OS)
+        alternative local _ =
+          normalise `fmap` Win32.sHGetFolderPath nullPtr which nullPtr 0
+          where which | local     = Win32.cSIDL_LOCAL_APPDATA
+                      | otherwise = Win32.cSIDL_APPDATA
+#else
+        alternative _  path = fmap (normalise . (</> path)) getHomeDirectory
+#endif
 
-Note: the directory may not actually exist, and may need to be created
-first.  It is expected that the parent directory exists and is
-writable.
-
-On Unix, this function returns @$HOME\/.appName@.  On Windows, a
-typical path might be @C:\/Users\//\<user\>/\/AppData\/Roaming\//\<app\>/@
-
-The operation may fail with:
-
-* 'UnsupportedOperation'
-The operating system has no notion of application-specific data directory.
-
-* 'isDoesNotExistError'
-The home directory for the current user does not exist, or
-cannot be found.
--}
+-- | Obtain the path to a special directory for storing user-specific
+--   application data.
+--
+--   The argument should the name of the application, which will be integrated
+--   into the directory name and therefore should not contain any unusual
+--   characters that result in an invalid path.
+--
+--   * On Unix-like systems, the path is @~\/./\<app\>/@.
+--   * On Windows, the path is @%APPDATA%\//\<app\>/@
+--     (e.g. @C:\/Users\//\<user\>/\/AppData\/Roaming\//\<app\>/@)
+--
+--   Note: the directory may not actually exist, in which case you would need
+--   to create it.  It is expected that the parent directory exists and is
+--   writable.
+--
+--   The operation may fail with:
+--
+--   * 'UnsupportedOperation'
+--     The operating system has no notion of application-specific data
+--     directory.
+--
+--   * 'isDoesNotExistError'
+--     The home directory for the current user does not exist, or cannot be
+--     found.
+--
 getAppUserDataDirectory :: String -> IO FilePath
 getAppUserDataDirectory appName = do
   modifyIOError ((`ioeSetLocation` "getAppUserDataDirectory")) $ do

@@ -1,6 +1,11 @@
 Changelog for the [`directory`][1] package
 ==========================================
 
+## 1.2.3.0 (May 2015)
+
+  * Add support for XDG Base Directory Specification
+    ([#6](https://github.com/haskell/directory/issues/6))
+
 ## 1.2.2.1 (Apr 2015)
 
   * Fix dependency problem on NixOS when building with tests
