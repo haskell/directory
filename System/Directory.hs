@@ -1215,10 +1215,10 @@ data XdgDirectory
 --   to create it with file mode @700@ (i.e. only accessible by the owner).
 --
 --   /Since: 1.2.3.0/
-getXdgDirectory :: XdgDirectory -> IO FilePath
-getXdgDirectory xdgDir =
+getXdgDirectory :: XdgDirectory -> FilePath -> IO FilePath
+getXdgDirectory xdgDir suffix =
   modifyIOError (`ioeSetLocation` "getXdgDirectory") .
-  fmap normalise $
+  fmap (normalise . (</> suffix)) $
   case xdgDir of
     XdgData   -> get False "XDG_DATA_HOME"   ".local/share"
     XdgConfig -> get False "XDG_CONFIG_HOME" ".config"
