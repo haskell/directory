@@ -1139,8 +1139,8 @@ long_path_size = 2048   --  // guess?
 
 The directory returned is expected to be writable by the current user,
 but note that it isn't generally considered good practice to store
-application-specific data here; use 'getAppUserDataDirectory'
-instead.
+application-specific data here; use 'getXdgDirectory' or
+'getAppUserDataDirectory' instead.
 
 On Unix, 'getHomeDirectory' returns the value of the @HOME@
 environment variable.  On Windows, the system is queried for a
@@ -1175,11 +1175,7 @@ getHomeDirectory =
 --   configuration, and cache files, as specified by the
 --   <http://standards.freedesktop.org/basedir-spec/basedir-spec-latest.html XDG Base Directory Specification>.
 --
---   These will also work on Windows, although in that case 'XdgData' and
---   'XdgConfig' will map to the same directory.
---
---   Note: the directory may not actually exist, in which case you would need
---   to create it with file mode @700@ (i.e. only accessible by the owner).
+--   Note: On Windows, 'XdgData' and 'XdgConfig' map to the same directory.
 --
 --   /Since: 1.2.3.0/
 data XdgDirectory
@@ -1203,19 +1199,28 @@ data XdgDirectory
     --   (e.g. @C:\/Users\//\<user\>/\/AppData\/Local@)
   deriving (Eq, Ord, Read, Show)
 
--- | Obtain the path to special directories for storing user-specific
---   application data, configuration, and cache files, as specified by the
+-- | Obtain the paths to special directories for storing user-specific
+--   application data, configuration, and cache files, conforming to the
 --   <http://standards.freedesktop.org/basedir-spec/basedir-spec-latest.html XDG Base Directory Specification>.
+--   Compared with 'getAppUserDataDirectory', this function provides a more
+--   fine-grained hierarchy as well as greater flexibility for the user.
 --
---   These will also work on Windows, although in that case 'XdgData' and
---   'XdgConfig' will map to the same directory.  See 'XdgDirectory' for
---   details.
+--   It also works on Windows, although in that case 'XdgData' and 'XdgConfig'
+--   will map to the same directory.
 --
---   Note: the directory may not actually exist, in which case you would need
+--   The second argument is usually the name of the application.  Since it
+--   will be integrated into the path, it must consist of valid path
+--   characters.
+--
+--   Note: The directory may not actually exist, in which case you would need
 --   to create it with file mode @700@ (i.e. only accessible by the owner).
 --
 --   /Since: 1.2.3.0/
-getXdgDirectory :: XdgDirectory -> FilePath -> IO FilePath
+getXdgDirectory :: XdgDirectory         -- ^ which special directory
+                -> FilePath             -- ^ a relative path that is appended
+                                        --   to the path; if empty, the base
+                                        --   path is returned
+                -> IO FilePath
 getXdgDirectory xdgDir suffix =
   modifyIOError (`ioeSetLocation` "getXdgDirectory") .
   fmap (normalise . (</> suffix)) $
@@ -1257,11 +1262,13 @@ tryIOErrorType check action = do
 #endif
 
 -- | Obtain the path to a special directory for storing user-specific
---   application data.
+--   application data (traditional Unix location).  Except for backward
+--   compatibility reasons, newer applications may prefer the the
+--   XDG-conformant location provided by 'getXdgDirectory', which offers a
+--   more fine-grained hierarchy as well as greater flexibility for the user.
 --
---   The argument should the name of the application, which will be integrated
---   into the directory name and therefore should not contain any unusual
---   characters that result in an invalid path.
+--   The argument is usually the name of the application.  Since it will be
+--   integrated into the path, it must consist of valid path characters.
 --
 --   * On Unix-like systems, the path is @~\/./\<app\>/@.
 --   * On Windows, the path is @%APPDATA%\//\<app\>/@
@@ -1281,7 +1288,9 @@ tryIOErrorType check action = do
 --     The home directory for the current user does not exist, or cannot be
 --     found.
 --
-getAppUserDataDirectory :: String -> IO FilePath
+getAppUserDataDirectory :: FilePath     -- ^ a relative path that is appended
+                                        --   to the path
+                        -> IO FilePath
 getAppUserDataDirectory appName = do
   modifyIOError ((`ioeSetLocation` "getAppUserDataDirectory")) $ do
 #if defined(mingw32_HOST_OS)
@@ -1296,8 +1305,8 @@ getAppUserDataDirectory appName = do
 
 The directory returned is expected to be writable by the current user,
 but note that it isn't generally considered good practice to store
-application-specific data here; use 'getAppUserDataDirectory'
-instead.
+application-specific data here; use 'getXdgDirectory' or
+'getAppUserDataDirectory' instead.
 
 On Unix, 'getUserDocumentsDirectory' returns the value of the @HOME@
 environment variable.  On Windows, the system is queried for a
