@@ -1200,7 +1200,7 @@ data XdgDirectory
     --   On Windows, it is @%LOCALAPPDATA%@
     --   (e.g. @C:\/Users\//\<user\>/\/AppData\/Local@).
     --   Can be considered as the user-specific equivalent of @\/var\/cache@.
-  deriving (Eq, Ord, Read, Show)
+  deriving (Bounded, Enum, Eq, Ord, Read, Show)
 
 -- | Obtain the paths to special directories for storing user-specific
 --   application data, configuration, and cache files, conforming to the
