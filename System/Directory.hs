@@ -1180,23 +1180,26 @@ getHomeDirectory =
 --   /Since: 1.2.3.0/
 data XdgDirectory
   = XdgData
-    -- ^ Data files:
-    --   may be overridden by the @XDG_DATA_HOME@ environment variable;
-    --   defaults to @~\/.local\/share@;
-    --   Windows equivalent: @%APPDATA%@
-    --   (e.g. @C:\/Users\//\<user\>/\/AppData\/Roaming@)
+    -- ^ For data files (e.g. images).
+    --   Defaults to @~\/.local\/share@ and can be
+    --   overridden by the @XDG_DATA_HOME@ environment variable.
+    --   On Windows, it is @%APPDATA%@
+    --   (e.g. @C:\/Users\//\<user\>/\/AppData\/Roaming@).
+    --   Can be considered as the user-specific equivalent of @\/usr\/share@.
   | XdgConfig
-    -- ^ For configuration files;
-    --   may be overridden by the @XDG_CONFIG_HOME@ environment variable;
-    --   defaults to @~\/.config@;
-    --   Windows equivalent: @%APPDATA%@
-    --   (e.g. @C:\/Users\//\<user\>/\/AppData\/Roaming@)
+    -- ^ For configuration files.
+    --   Defaults to @~\/.config@ and can be
+    --   overridden by the @XDG_CONFIG_HOME@ environment variable.
+    --   On Windows, it is @%APPDATA%@
+    --   (e.g. @C:\/Users\//\<user\>/\/AppData\/Roaming@).
+    --   Can be considered as the user-specific equivalent of @\/etc@.
   | XdgCache
-    -- ^ For non-essential (cached) data;
-    --   may be overridden by the @XDG_CACHE_HOME@ environment variable;
-    --   defaults to @~\/.cache@;
-    --   Windows equivalent: @%LOCALAPPDATA%@
-    --   (e.g. @C:\/Users\//\<user\>/\/AppData\/Local@)
+    -- ^ For non-essential files (e.g. cache).
+    --   Defaults to @~\/.cache@ and can be
+    --   overridden by the @XDG_CACHE_HOME@ environment variable.
+    --   On Windows, it is @%LOCALAPPDATA%@
+    --   (e.g. @C:\/Users\//\<user\>/\/AppData\/Local@).
+    --   Can be considered as the user-specific equivalent of @\/var\/cache@.
   deriving (Eq, Ord, Read, Show)
 
 -- | Obtain the paths to special directories for storing user-specific
@@ -1265,7 +1268,8 @@ tryIOErrorType check action = do
 --   application data (traditional Unix location).  Except for backward
 --   compatibility reasons, newer applications may prefer the the
 --   XDG-conformant location provided by 'getXdgDirectory', which offers a
---   more fine-grained hierarchy as well as greater flexibility for the user.
+--   more fine-grained hierarchy as well as greater flexibility for the user
+--   (<https://github.com/haskell/directory/issues/6#issuecomment-96521020 migration guide>).
 --
 --   The argument is usually the name of the application.  Since it will be
 --   integrated into the path, it must consist of valid path characters.
