@@ -10,7 +10,7 @@ description:
   This library provides a basic set of operations for manipulating files and
   directories in a portable way.
 category:       System
-build-type:     Custom
+build-type:     Configure
 cabal-version:  >= 1.10
 tested-with:    GHC>=7.4.1
 
