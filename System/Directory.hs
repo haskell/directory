@@ -489,8 +489,8 @@ removeDirectory path =
 #endif
 
 -- | @'removeDirectoryRecursive' dir@ removes an existing directory /dir/
--- together with its contents and subdirectories. Symbolic links are removed
--- without affecting their the targets.
+-- together with its contents and subdirectories. Within this directory,
+-- symbolic links are removed without affecting their the targets.
 removeDirectoryRecursive :: FilePath -> IO ()
 removeDirectoryRecursive path =
   (`ioeSetLocation` "removeDirectoryRecursive") `modifyIOError` do
