@@ -1,7 +1,7 @@
 {-# LANGUAGE CPP, ForeignFunctionInterface #-}
 module Main (main) where
 import Prelude (($), (.), (=<<), (==), Eq, IO, Int, String,
-                id, fromIntegral, otherwise, unwords)
+                fromIntegral, otherwise, unwords)
 import Data.Functor ((<$>))
 import Data.Monoid ((<>), mconcat)
 import Foreign (Ptr)
@@ -46,18 +46,19 @@ rawSystem cmd args  =
 
 -- handle the different quoting rules in CMD.EXE vs POSIX shells
 quoteCmdArgs :: [String] -> String
-quoteCmdArgs cmdArgs =
+quoteCmdArgs cmdArgs = quoted'
+  where
+    quoted  = unwords (quote <$> cmdArgs)
 #ifdef mingw32_HOST_OS
-  -- the arcane quoting rules require us to add an extra set of quotes
-  -- around the entire thing: see `help cmd` or look at
-  -- https://superuser.com/a/238813
-  let quote s = "\"" <> replaceElem '"' "\"\"" s <> "\""
-  in (\ s -> "\"" <> s <> "\"") $
+    -- the arcane quoting rules require us to add an extra set of quotes
+    -- around the entire thing: see `help cmd` or look at
+    -- https://superuser.com/a/238813
+    quote s = "\"" <> replaceElem '"' "\"\"" s <> "\""
+    quoted' = "\"" <> quoted <> "\""
 #else
-  let quote s = "'" <> replaceElem '\'' "'\\''" s <> "'"
-  in id $
+    quote s = "'" <> replaceElem '\'' "'\\''" s <> "'"
+    quoted' = quoted
 #endif
-     unwords (quote <$> cmdArgs)
 
 replaceElem :: Eq a => a -> [a] -> [a] -> [a]
 replaceElem match repl = mconcat . (replace <$>)
