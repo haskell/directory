@@ -80,7 +80,17 @@ module System.Directory
     -- * Timestamps
 
     , getModificationTime
+
    ) where
+#if !MIN_VERSION_base(4, 8, 0)
+import Data.Functor ((<$>))
+#endif
+import Data.Maybe
+  ( listToMaybe
+#ifdef mingw32_HOST_OS
+  , maybeToList
+#endif
+  )
 
 import System.FilePath
 import System.IO
@@ -96,8 +106,6 @@ import Foreign
 import Foreign.C
 
 {-# CFILES cbits/directory.c #-}
-
-import Data.Maybe
 
 import Data.Time ( UTCTime )
 import Data.Time.Clock.POSIX ( posixSecondsToUTCTime )
@@ -402,7 +410,7 @@ createDirectoryIfMissing create_parents path0
 #ifdef mingw32_HOST_OS
               canIgnore <- (withFileStatus "createDirectoryIfMissing" dir isDirectory)
 #else
-              canIgnore <- (Posix.isDirectory `fmap` Posix.getFileStatus dir)
+              canIgnore <- (Posix.isDirectory <$> Posix.getFileStatus dir)
 #endif
                            `E.catch` ((\ _ -> return (isAlreadyExistsError e))
                                     :: IOException -> IO Bool)
@@ -424,7 +432,7 @@ getDirectoryType :: FilePath -> IO DirectoryType
 getDirectoryType path =
   (`ioeSetLocation` "getDirectoryType") `modifyIOError` do
 #ifdef mingw32_HOST_OS
-    fmap classify (Win32.getFileAttributes path)
+    classify <$> Win32.getFileAttributes path
     where fILE_ATTRIBUTE_REPARSE_POINT = 0x400
           classify attr
             | attr .&. Win32.fILE_ATTRIBUTE_DIRECTORY == 0 = NotDirectory
@@ -791,9 +799,9 @@ foreign import ccall unsafe "realpath"
 --
 -- /Since: 1.2.2.0/
 makeAbsolute :: FilePath -> IO FilePath
-makeAbsolute = fmap normalise . absolutize
+makeAbsolute = (normalise <$>) . absolutize
   where absolutize path -- avoid the call to `getCurrentDirectory` if we can
-          | isRelative path = fmap (</> path) getCurrentDirectory
+          | isRelative path = (</> path) <$> getCurrentDirectory
           | otherwise       = return path
 
 -- | 'makeRelative' the current directory.
@@ -1225,8 +1233,8 @@ getXdgDirectory :: XdgDirectory         -- ^ which special directory
                                         --   path is returned
                 -> IO FilePath
 getXdgDirectory xdgDir suffix =
-  modifyIOError (`ioeSetLocation` "getXdgDirectory") .
-  fmap (normalise . (</> suffix)) $
+  modifyIOError (`ioeSetLocation` "getXdgDirectory") $
+  normalise . (</> suffix) <$>
   case xdgDir of
     XdgData   -> get False "XDG_DATA_HOME"   ".local/share"
     XdgConfig -> get False "XDG_CONFIG_HOME" ".config"
@@ -1243,7 +1251,7 @@ getXdgDirectory xdgDir suffix =
         Nothing                     -> fallback'
         Just path | isRelative path -> fallback'
                   | otherwise       -> return path
-      where fallback' = fmap (</> fallback) getHomeDirectory
+      where fallback' = (</> fallback) <$> getHomeDirectory
 
 -- | Return the value of an environment variable, or 'Nothing' if there is no
 --   such value.  (Equivalent to "lookupEnv" from base-4.6.)
