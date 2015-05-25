@@ -82,6 +82,8 @@ module System.Directory
     , getModificationTime
 
    ) where
+import Control.Exception ( bracket, bracketOnError )
+import Control.Monad ( when, unless )
 #if !MIN_VERSION_base(4, 8, 0)
 import Data.Functor ((<$>))
 #endif
@@ -95,8 +97,16 @@ import Data.Maybe
 import System.FilePath
 import System.IO
 import System.IO.Error
-import Control.Monad           ( when, unless )
-import Control.Exception.Base as E
+  ( catchIOError
+  , ioeSetErrorString
+  , ioeSetFileName
+  , ioeSetLocation
+  , isAlreadyExistsError
+  , isDoesNotExistError
+  , isPermissionError
+  , mkIOError
+  , modifyIOError
+  , tryIOError )
 
 #ifdef __HUGS__
 import Hugs.Directory
@@ -379,16 +389,15 @@ createDirectoryIfMissing create_parents path0
     parents = reverse . scanl1 (</>) . splitDirectories . normalise
 
     createDirs []         = return ()
-    createDirs (dir:[])   = createDir dir throwIO
+    createDirs (dir:[])   = createDir dir ioError
     createDirs (dir:dirs) =
       createDir dir $ \_ -> do
         createDirs dirs
-        createDir dir throwIO
+        createDir dir ioError
 
-    createDir :: FilePath -> (IOException -> IO ()) -> IO ()
     createDir dir notExistHandler = do
-      r <- E.try $ createDirectory dir
-      case (r :: Either IOException ()) of
+      r <- tryIOError (createDirectory dir)
+      case r of
         Right ()                   -> return ()
         Left  e
           | isDoesNotExistError  e -> notExistHandler e
@@ -406,16 +415,17 @@ createDirectoryIfMissing create_parents path0
           -- This caused GHCi to crash when loading a module in the root
           -- directory.
           | isAlreadyExistsError e
-         || isPermissionError e -> do
+         || isPermissionError    e -> do
+              canIgnore <- isDir `catchIOError` \ _ ->
+                           return (isAlreadyExistsError e)
+              unless canIgnore (ioError e)
+          | otherwise              -> ioError e
+      where
 #ifdef mingw32_HOST_OS
-              canIgnore <- (withFileStatus "createDirectoryIfMissing" dir isDirectory)
+        isDir = withFileStatus "createDirectoryIfMissing" dir isDirectory
 #else
-              canIgnore <- (Posix.isDirectory <$> Posix.getFileStatus dir)
+        isDir = (Posix.isDirectory <$> Posix.getFileStatus dir)
 #endif
-                           `E.catch` ((\ _ -> return (isAlreadyExistsError e))
-                                    :: IOException -> IO Bool)
-              unless canIgnore (throwIO e)
-          | otherwise              -> throwIO e
 
 #if __GLASGOW_HASKELL__
 
@@ -726,7 +736,7 @@ copied to /new/, if possible.
 
 copyFile :: FilePath -> FilePath -> IO ()
 copyFile fromFPath toFPath =
-    copy `catchIOError` (\exc -> throwIO $ ioeSetLocation exc "copyFile")
+    copy `catchIOError` (\ exc -> ioError (ioeSetLocation exc "copyFile"))
     where copy = bracket (openBinaryFile fromFPath ReadMode) hClose $ \hFrom ->
                  bracketOnError openTmp cleanTmp $ \(tmpFPath, hTmp) ->
                  do allocaBytes bufferSize $ copyContents hFrom hTmp
@@ -1051,7 +1061,7 @@ doesDirectoryExist name =
    (do stat <- Posix.getFileStatus name
        return (Posix.isDirectory stat))
 #endif
-   `E.catch` ((\ _ -> return False) :: IOException -> IO Bool)
+   `catchIOError` \ _ -> return False
 
 {- |The operation 'doesFileExist' returns 'True'
 if the argument file exists and is not a directory, and 'False' otherwise.
@@ -1065,7 +1075,7 @@ doesFileExist name =
    (do stat <- Posix.getFileStatus name
        return (not (Posix.isDirectory stat)))
 #endif
-   `E.catch` ((\ _ -> return False) :: IOException -> IO Bool)
+   `catchIOError` \ _ -> return False
 
 {- |The 'getModificationTime' operation returns the
 clock time at which the file or directory was last modified.
@@ -1164,19 +1174,14 @@ The home directory for the current user does not exist, or
 cannot be found.
 -}
 getHomeDirectory :: IO FilePath
-getHomeDirectory =
-  modifyIOError ((`ioeSetLocation` "getHomeDirectory")) $ do
+getHomeDirectory = modifyIOError (`ioeSetLocation` "getHomeDirectory") get
+  where
 #if defined(mingw32_HOST_OS)
-    r <- E.try $ Win32.sHGetFolderPath nullPtr Win32.cSIDL_PROFILE nullPtr 0
-    case (r :: Either IOException String) of
-      Right s -> return s
-      Left  _ -> do
-        r1 <- E.try $ Win32.sHGetFolderPath nullPtr Win32.cSIDL_WINDOWS nullPtr 0
-        case r1 of
-          Right s -> return s
-          Left  e -> ioError (e :: IOException)
+    get = getFolderPath Win32.cSIDL_PROFILE `catchIOError` \ _ ->
+          getFolderPath Win32.cSIDL_WINDOWS
+    getFolderPath what = Win32.sHGetFolderPath nullPtr what nullPtr 0
 #else
-    getEnv "HOME"
+    get = getEnv "HOME"
 #endif
 
 -- | Special directories for storing user-specific application data,
@@ -1268,7 +1273,7 @@ tryIOErrorType :: (IOError -> Bool) -> IO a -> IO (Either IOError a)
 tryIOErrorType check action = do
   result <- tryIOError action
   case result of
-    Left  err -> if check err then return (Left err) else throwIO err
+    Left  err -> if check err then return (Left err) else ioError err
     Right val -> return (Right val)
 #endif
 
@@ -1304,7 +1309,7 @@ getAppUserDataDirectory :: FilePath     -- ^ a relative path that is appended
                                         --   to the path
                         -> IO FilePath
 getAppUserDataDirectory appName = do
-  modifyIOError ((`ioeSetLocation` "getAppUserDataDirectory")) $ do
+  modifyIOError (`ioeSetLocation` "getAppUserDataDirectory") $ do
 #if defined(mingw32_HOST_OS)
     s <- Win32.sHGetFolderPath nullPtr Win32.cSIDL_APPDATA nullPtr 0
     return (s++'\\':appName)
@@ -1335,7 +1340,7 @@ cannot be found.
 -}
 getUserDocumentsDirectory :: IO FilePath
 getUserDocumentsDirectory = do
-  modifyIOError ((`ioeSetLocation` "getUserDocumentsDirectory")) $ do
+  modifyIOError (`ioeSetLocation` "getUserDocumentsDirectory") $ do
 #if defined(mingw32_HOST_OS)
     Win32.sHGetFolderPath nullPtr Win32.cSIDL_PERSONAL nullPtr 0
 #else
@@ -1369,13 +1374,12 @@ The operating system has no notion of temporary directory.
 The function doesn\'t verify whether the path exists.
 -}
 getTemporaryDirectory :: IO FilePath
-getTemporaryDirectory = do
+getTemporaryDirectory =
 #if defined(mingw32_HOST_OS)
   Win32.getTemporaryDirectory
 #else
-  getEnv "TMPDIR"
-    `catchIOError` \e -> if isDoesNotExistError e then return "/tmp"
-                          else throwIO e
+  getEnv "TMPDIR" `catchIOError` \ err ->
+  if isDoesNotExistError err then return "/tmp" else ioError err
 #endif
 
 -- ToDo: This should be determined via autoconf (AC_EXEEXT)
