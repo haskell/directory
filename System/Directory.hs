@@ -137,6 +137,15 @@ import qualified System.Posix as Posix
 
 #endif /* __GLASGOW_HASKELL__ */
 
+#ifdef mingw32_HOST_OS
+win32_cSIDL_LOCAL_APPDATA :: Win32.CSIDL
+#if MIN_VERSION_Win32(2, 3, 1)
+win32_cSIDL_LOCAL_APPDATA = Win32.cSIDL_LOCAL_APPDATA -- only on HEAD atm
+#else
+win32_cSIDL_LOCAL_APPDATA = 0x001c
+#endif
+#endif
+
 {- $intro
 A directory contains a series of entries, each of which is a named
 reference to a file system object (file, directory etc.).  Some
@@ -1247,7 +1256,7 @@ getXdgDirectory xdgDir suffix =
   where
 #if defined(mingw32_HOST_OS)
     get isLocal _ _ = Win32.sHGetFolderPath nullPtr which nullPtr 0
-      where which | isLocal   = Win32.cSIDL_LOCAL_APPDATA
+      where which | isLocal   = win32_cSIDL_LOCAL_APPDATA
                   | otherwise = Win32.cSIDL_APPDATA
 #else
     get _ name fallback = do
