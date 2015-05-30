@@ -62,6 +62,8 @@ Library
 
     exposed-modules:
         System.Directory
+    other-modules:
+        System.Directory.Internal
 
     c-sources:
         cbits/directory.c

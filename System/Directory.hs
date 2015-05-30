@@ -80,6 +80,7 @@ module System.Directory
     -- * Timestamps
 
     , getModificationTime
+    , setModificationTime
 
    ) where
 import Control.Exception ( bracket, bracketOnError )
@@ -118,7 +119,13 @@ import Foreign.C
 {-# CFILES cbits/directory.c #-}
 
 import Data.Time ( UTCTime )
-import Data.Time.Clock.POSIX ( posixSecondsToUTCTime )
+import Data.Time.Clock.POSIX
+  ( posixSecondsToUTCTime
+  , utcTimeToPOSIXSeconds
+#ifdef mingw32_HOST_OS
+  , POSIXTime
+#endif
+  )
 
 #ifdef __GLASGOW_HASKELL__
 
@@ -129,20 +136,29 @@ import System.Posix.Types
 import System.Posix.Internals
 import qualified System.Win32 as Win32
 #else
+#include <HsUnixConfig.h>
 import GHC.IO.Encoding
 import GHC.Foreign as GHC
 import System.Environment ( getEnv )
 import qualified System.Posix as Posix
 #endif
 
+#ifdef HAVE_UTIMENSAT
+import System.Directory.Internal
+import System.Posix.Internals ( withFilePath )
+#endif
+
 #endif /* __GLASGOW_HASKELL__ */
 
 #ifdef mingw32_HOST_OS
 win32_cSIDL_LOCAL_APPDATA :: Win32.CSIDL
+win32_fILE_SHARE_DELETE   :: Win32.ShareMode
 #if MIN_VERSION_Win32(2, 3, 1)
 win32_cSIDL_LOCAL_APPDATA = Win32.cSIDL_LOCAL_APPDATA -- only on HEAD atm
+win32_fILE_SHARE_DELETE   = Win32.fILE_SHARE_DELETE   -- added in 2.3.0.2
 #else
 win32_cSIDL_LOCAL_APPDATA = 0x001c
+win32_fILE_SHARE_DELETE   = 0x00000004
 #endif
 #endif
 
@@ -1086,45 +1102,125 @@ doesFileExist name =
 #endif
    `catchIOError` \ _ -> return False
 
-{- |The 'getModificationTime' operation returns the
-clock time at which the file or directory was last modified.
-
-The operation may fail with:
-
-* 'isPermissionError' if the user is not permitted to access
-  the modification time; or
-
-* 'isDoesNotExistError' if the file or directory does not exist.
-
-Note: This function returns a timestamp with sub-second resolution
-only if this package is compiled against @unix-2.6.0.0@ or later
-for unix systems, and @Win32-2.3.1.0@ or later for windows systems.
-Of course this also requires that the underlying file system supports
-such high resolution timestamps.
--}
-
-getModificationTime :: FilePath -> IO UTCTime
-getModificationTime name = do
 #ifdef mingw32_HOST_OS
-#if MIN_VERSION_Win32(2,3,1)
-  fad <- Win32.getFileAttributesExStandard name
-  let win32_epoch_adjust = 116444736000000000
-      Win32.FILETIME ft = Win32.fadLastWriteTime fad
-      mod_time = fromIntegral (ft - win32_epoch_adjust) / 10000000
-#else
-  mod_time <- withFileStatus "getModificationTime" name $ \stat -> do
-    mtime <- st_mtime stat
-    return $ realToFrac (mtime :: CTime)
+-- | Open the handle of an existing file or directory.
+openFileHandle :: String -> Win32.AccessMode -> IO Win32.HANDLE
+openFileHandle path mode = Win32.createFile path mode share Nothing
+                                            Win32.oPEN_EXISTING flags Nothing
+  where share =  win32_fILE_SHARE_DELETE
+             .|. Win32.fILE_SHARE_READ
+             .|. Win32.fILE_SHARE_WRITE
+        flags =  Win32.fILE_ATTRIBUTE_NORMAL
+             .|. Win32.fILE_FLAG_BACKUP_SEMANTICS -- required for directories
 #endif
+
+-- | Obtain the time at which the file or directory was last modified.
+--
+-- The operation may fail with:
+--
+-- * 'isPermissionError' if the user is not permitted to read
+--   the modification time; or
+--
+-- * 'isDoesNotExistError' if the file or directory does not exist.
+--
+-- Caveat for POSIX systems: This function returns a timestamp with sub-second
+-- resolution only if this package is compiled against @unix-2.6.0.0@ or later
+-- and the underlying filesystem supports them.
+--
+getModificationTime :: FilePath -> IO UTCTime
+getModificationTime path =
+  modifyIOError (`ioeSetLocation` "getModificationTime") $
+  posixSecondsToUTCTime <$> getTime
+  where
+    path' = normalise path              -- handle empty paths
+#ifdef mingw32_HOST_OS
+    getTime =
+      bracket (openFileHandle path' Win32.gENERIC_READ)
+              Win32.closeHandle $ \ handle ->
+      alloca $ \ mtime -> do
+        Win32.failIf_ not "" (Win32.c_GetFileTime handle nullPtr nullPtr mtime)
+        windowsToPosixTime <$> peek mtime
 #else
-  stat <- Posix.getFileStatus name
-#if MIN_VERSION_unix(2,6,0)
-  let mod_time = Posix.modificationTimeHiRes stat
+    getTime = convertTime <$> Posix.getFileStatus path'
+# if MIN_VERSION_unix(2, 6, 0)
+    convertTime = Posix.modificationTimeHiRes
+# else
+    convertTime = realToFrac . Posix.modificationTime
+# endif
+#endif
+
+-- | Change the time at which the file or directory was last modified.
+--
+-- The operation may fail with:
+--
+-- * 'isPermissionError' if the user is not permitted to alter the
+--   modification time; or
+--
+-- * 'isDoesNotExistError' if the file or directory does not exist.
+--
+-- Some caveats for POSIX systems:
+--
+-- * Not all systems support @utimensat@, in which case the function can only
+--   emulate the behavior by reading the access time and then setting both the
+--   access and modification times together.  On systems where @utimensat@ is
+--   supported, the modification time is set atomically with nanosecond
+--   precision.
+--
+-- * If compiled against a version of @unix@ prior to @2.7.0.0@, the function
+--   would not be able to set timestamps with sub-second resolution.  In this
+--   case, there would also be loss of precision in the access time.
+--
+-- /Since: 1.2.3.0/
+--
+setModificationTime :: FilePath -> UTCTime -> IO ()
+setModificationTime path mtime =
+  modifyIOError (`ioeSetLocation` "setModificationTime") setTime
+  where
+    path'  = normalise path             -- handle empty paths
+    mtime' = utcTimeToPOSIXSeconds mtime
+#ifdef mingw32_HOST_OS
+    setTime =
+      bracket (openFileHandle path' Win32.gENERIC_WRITE)
+              Win32.closeHandle $ \ handle ->
+      with (posixToWindowsTime mtime') $ \ mtime'' ->
+      Win32.failIf_ not "" (Win32.c_SetFileTime handle nullPtr nullPtr mtime'')
+#elif defined HAVE_UTIMENSAT
+    setTime =
+      withFilePath path' $ \ path'' ->
+      withArray [utimeOmit, toCTimeSpec mtime'] $ \ times ->
+      throwErrnoPathIfMinus1_ "" path' $
+      c_utimensat c_AT_FDCWD path'' times 0
 #else
-  let mod_time = realToFrac $ Posix.modificationTime stat
+    setTime = do
+      stat <- Posix.getFileStatus path'
+      setFileTimes path' (accessTime stat) (convertTime mtime')
+# if MIN_VERSION_unix(2, 7, 0)
+    accessTime   = Posix.accessTimeHiRes
+    setFileTimes = Posix.setFileTimesHiRes
+    convertTime  = id
+#  else
+    accessTime   = Posix.accessTime
+    setFileTimes = Posix.setFileTimes
+    convertTime  = fromInteger . truncate
+# endif
 #endif
+
+#ifdef mingw32_HOST_OS
+-- | Difference between the Windows and POSIX epochs in units of 100ns.
+windowsPosixEpochDifference :: Num a => a
+windowsPosixEpochDifference = 116444736000000000
+
+-- | Convert from Windows time to POSIX time.
+windowsToPosixTime :: Win32.FILETIME -> POSIXTime
+windowsToPosixTime (Win32.FILETIME t) =
+  (fromIntegral t - windowsPosixEpochDifference) / 10000000
+
+-- | Convert from POSIX time to Windows time.  This is lossy as Windows time
+--   has a resolution of only 100ns.
+posixToWindowsTime :: POSIXTime -> Win32.FILETIME
+posixToWindowsTime t = Win32.FILETIME $
+  truncate (t * 10000000 + windowsPosixEpochDifference)
 #endif
-  return $ posixSecondsToUTCTime mod_time
 
 #endif /* __GLASGOW_HASKELL__ */
 
