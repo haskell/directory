@@ -145,11 +145,12 @@ import qualified System.Posix as Posix
 #endif
 
 #ifdef HAVE_UTIMENSAT
-import System.Directory.Internal
 import System.Posix.Internals ( withFilePath )
 #endif
 
 #endif /* __GLASGOW_HASKELL__ */
+
+import System.Directory.Internal
 
 #ifdef mingw32_HOST_OS
 win32_cSIDL_LOCAL_APPDATA :: Win32.CSIDL
@@ -876,7 +877,7 @@ findExecutable fileName = do
 findExecutables :: String -> IO [FilePath]
 findExecutables binary = do
 #if defined(mingw32_HOST_OS)
-    file <- Win32.searchPath Nothing binary ('.':exeExtension)
+    file <- Win32.searchPath Nothing binary exeExtension
     return $ maybeToList file
 #else
     path <- getEnv "PATH"
@@ -1512,14 +1513,4 @@ getTemporaryDirectory =
 #else
   getEnv "TMPDIR" `catchIOError` \ err ->
   if isDoesNotExistError err then return "/tmp" else ioError err
-#endif
-
--- ToDo: This should be determined via autoconf (AC_EXEEXT)
--- | Extension for executable files
--- (typically @\"\"@ on Unix and @\"exe\"@ on Windows or OS\/2)
-exeExtension :: String
-#ifdef mingw32_HOST_OS
-exeExtension = "exe"
-#else
-exeExtension = ""
 #endif

@@ -13,4 +13,9 @@ AC_PROG_CC()
 # check for specific header (.h) files that we are interested in
 AC_CHECK_HEADERS([sys/types.h unistd.h sys/stat.h])
 
+# EXTEXT is defined automatically by AC_PROG_CC;
+# we just need to capture it in the header file
+AC_DEFINE_UNQUOTED([EXE_EXTENSION], ["$EXEEXT"],
+                   [Filename extension of executable files])
+
 AC_OUTPUT

@@ -1,5 +1,7 @@
 module System.Directory.Internal where
 
+#include <HsDirectory.h>
+
 #ifndef mingw32_HOST_OS
 # include <HsUnixConfig.h>
 #endif
@@ -12,6 +14,11 @@ import Foreign
 import Foreign.C
 import System.Posix.Types
 #endif
+
+-- | Filename extension for executable files (including the dot if any)
+--   (usually @\"\"@ on POSIX systems and @\".exe\"@ on Windows or OS\/2).
+exeExtension :: String
+exeExtension = (#const_str EXE_EXTENSION)
 
 #ifdef HAVE_UTIMENSAT
 
