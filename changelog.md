@@ -9,6 +9,8 @@ Changelog for the [`directory`][1] package
   * Implement `setModificationTime` counterpart to `getModificationTime`
     ([#13](https://github.com/haskell/directory/issues/13))
 
+  * Implement `getAccessTime`
+
 ## 1.2.2.1 (Apr 2015)
 
   * Fix dependency problem on NixOS when building with tests

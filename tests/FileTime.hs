@@ -1,5 +1,5 @@
 {-# LANGUAGE CPP #-}
-module ModificationTime where
+module FileTime where
 #include "util.inl"
 import System.Directory
 import Data.Foldable (for_)
@@ -15,8 +15,14 @@ main _t = do
        , (".",   someTimeAgo)
        , ("",    someTimeAgo) ] $ \ (file, mtime1) -> do
 
+    atime1 <- getAccessTime file
     setModificationTime file mtime1
+    atime2 <- getAccessTime file
     mtime2 <- getModificationTime file
 
     -- modification time should be set with at worst 1 sec resolution
     T(expectNearTime) ("mtime", file) mtime1 mtime2 1
+
+    -- access time should not change, although it may lose some precision
+    -- on POSIX systems without 'utimensat'
+    T(expectNearTime) ("atime", file) atime1 atime2 1

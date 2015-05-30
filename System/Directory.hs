@@ -79,6 +79,7 @@ module System.Directory
 
     -- * Timestamps
 
+    , getAccessTime
     , getModificationTime
     , setModificationTime
 
@@ -1114,6 +1115,25 @@ openFileHandle path mode = Win32.createFile path mode share Nothing
              .|. Win32.fILE_FLAG_BACKUP_SEMANTICS -- required for directories
 #endif
 
+-- | Obtain the time at which the file or directory was last accessed.
+--
+-- The operation may fail with:
+--
+-- * 'isPermissionError' if the user is not permitted to read
+--   the access time; or
+--
+-- * 'isDoesNotExistError' if the file or directory does not exist.
+--
+-- Caveat for POSIX systems: This function returns a timestamp with sub-second
+-- resolution only if this package is compiled against @unix-2.6.0.0@ or later
+-- and the underlying filesystem supports them.
+--
+-- /Since: 1.2.3.0/
+--
+getAccessTime :: FilePath -> IO UTCTime
+getAccessTime = modifyIOError (`ioeSetLocation` "getAccessTime") .
+                getFileTime False
+
 -- | Obtain the time at which the file or directory was last modified.
 --
 -- The operation may fail with:
@@ -1128,24 +1148,31 @@ openFileHandle path mode = Win32.createFile path mode share Nothing
 -- and the underlying filesystem supports them.
 --
 getModificationTime :: FilePath -> IO UTCTime
-getModificationTime path =
-  modifyIOError (`ioeSetLocation` "getModificationTime") $
-  posixSecondsToUTCTime <$> getTime
+getModificationTime = modifyIOError (`ioeSetLocation` "getModificationTime") .
+                      getFileTime True
+
+getFileTime :: Bool -> FilePath -> IO UTCTime
+getFileTime isMtime path = posixSecondsToUTCTime <$> getTime
   where
     path' = normalise path              -- handle empty paths
 #ifdef mingw32_HOST_OS
     getTime =
       bracket (openFileHandle path' Win32.gENERIC_READ)
               Win32.closeHandle $ \ handle ->
-      alloca $ \ mtime -> do
-        Win32.failIf_ not "" (Win32.c_GetFileTime handle nullPtr nullPtr mtime)
-        windowsToPosixTime <$> peek mtime
+      alloca $ \ time -> do
+        Win32.failIf_ not "" $
+          Win32.c_GetFileTime handle nullPtr
+            (if isMtime then nullPtr else time)
+            (if isMtime then time    else nullPtr)
+        windowsToPosixTime <$> peek time
 #else
     getTime = convertTime <$> Posix.getFileStatus path'
 # if MIN_VERSION_unix(2, 6, 0)
-    convertTime = Posix.modificationTimeHiRes
+    convertTime = if isMtime then Posix.modificationTimeHiRes
+                             else Posix.accessTimeHiRes
 # else
-    convertTime = realToFrac . Posix.modificationTime
+    convertTime = realToFrac . if isMtime then Posix.modificationTime
+                                          else Posix.accessTime
 # endif
 #endif
 
