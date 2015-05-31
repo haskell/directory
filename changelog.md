@@ -11,6 +11,11 @@ Changelog for the [`directory`][1] package
 
   * Implement `getAccessTime`
 
+  * Fix `canonicalizePath` so that it always returns a reasonable result even
+    if the path is inaccessible and will not throw exceptions unless the
+    current directory cannot be obtained
+    ([#23](https://github.com/haskell/directory/issues/23))
+
 ## 1.2.2.1 (Apr 2015)
 
   * Fix dependency problem on NixOS when building with tests

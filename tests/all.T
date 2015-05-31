@@ -1,4 +1,3 @@
-test('canonicalizePath001',     normal, compile_and_run, [''])
 test('currentDirectory001',     normal, compile_and_run, [''])
 test('directory001',            normal, compile_and_run, [''])
 test('doesDirectoryExist001',   normal, compile_and_run, [''])

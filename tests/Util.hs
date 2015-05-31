@@ -89,6 +89,14 @@ expect t file line context x =
   ["True"]
   ["False, but True was expected"]
 
+expectEq :: (Eq a, Show a, Show b) =>
+            TestEnv -> String -> Integer -> b -> a -> a -> IO ()
+expectEq t file line context x y =
+  check t (x == y)
+  [showContext file line context]
+  [show x <> " equals "     <> show y]
+  [show x <> " is not equal to " <> show y]
+
 expectNear :: (Num a, Ord a, Show a, Show b) =>
               TestEnv -> String -> Integer -> b -> a -> a -> a -> IO ()
 expectNear t file line context x y diff =

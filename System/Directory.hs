@@ -784,49 +784,78 @@ copyFile fromFPath toFPath =
 
           ignoreIOExceptions io = io `catchIOError` (\_ -> return ())
 
--- | Canonicalize the path of an existing file or directory.  The intent is
--- that two paths referring to the same file\/directory will map to the same
--- canonicalized path.
+-- | Make a path absolute and remove as many indirections from it as possible.
+-- Indirections include the two special directories @.@ and @..@, as well as
+-- any symbolic links.  The input path need not point to an existing file or
+-- directory.
 --
--- __Note__: if you only require an absolute path, consider using
--- @'makeAbsolute'@ instead, which is more reliable and does not have
--- unspecified behavior on nonexistent paths.
+-- __Note__: if you require only an absolute path, use 'makeAbsolute' instead.
+-- Most programs need not care about whether a path contains symbolic links.
 --
--- It is impossible to guarantee that the implication (same file\/dir \<=\>
--- same canonicalized path) holds in either direction: this function can make
--- only a best-effort attempt.
+-- Due to the fact that symbolic links and @..@ are dependent on the state of
+-- the existing filesystem, the function can only make a conservative,
+-- best-effort attempt.  Nevertheless, if the input path points to an existing
+-- file or directory, then the output path shall also point to the same file
+-- or directory.
 --
--- The precise behaviour is that of the POSIX @realpath@ function (or
--- @GetFullPathNameW@ on Windows).  In particular, the behaviour on paths that
--- don't exist can vary from platform to platform.  Some platforms do not
--- alter the input, some do, and some throw an exception.
+-- Formally, symbolic links and @..@ are removed from the longest prefix of
+-- the path that still points to an existing file.  The function is not
+-- atomic, therefore concurrent changes in the filesystem may lead to
+-- incorrect results.
 --
--- An empty path is considered to be equivalent to the current directory.
+-- (Despite the name, the function does not guarantee canonicity of the
+-- returned path due to the presence of hard links, mount points, etc.)
 --
--- /Known bug(s)/: on Windows, this function does not resolve symbolic links.
+-- Similar to 'normalise', an empty path is equivalent to the current
+-- directory.
+--
+-- /Known bug(s)/: on Windows, the function does not resolve symbolic links.
+--
+-- /Changes since 1.2.3.0:/ The function has been altered to be more robust
+-- and has the same exception behavior as 'makeAbsolute'.
 --
 canonicalizePath :: FilePath -> IO FilePath
-canonicalizePath ""    = canonicalizePath "."
-canonicalizePath fpath =
+canonicalizePath = \ path ->
+  modifyIOError ((`ioeSetLocation` "canonicalizePath") .
+                 (`ioeSetFileName` path)) $
+  -- normalise does more stuff, like upper-casing the drive letter
+  normalise <$> (transform =<< makeAbsolute path)
+  where
 #if defined(mingw32_HOST_OS)
-         do path <- Win32.getFullPathName fpath
+    transform path = Win32.getFullPathName path
+                     `catchIOError` \ _ -> return path
 #else
-  do enc <- getFileSystemEncoding
-     GHC.withCString enc fpath $ \pInPath ->
-       allocaBytes long_path_size $ \pOutPath ->
-         do _ <- throwErrnoPathIfNull "canonicalizePath" fpath $ c_realpath pInPath pOutPath
+    transform path = copySlash path <$> do
+      encoding <- getFileSystemEncoding
+      realpathPrefix encoding (reverse (zip prefixes suffixes)) path
+      where segments = splitPath path
+            prefixes = scanl1 (</>) segments
+            suffixes = tail (scanr (</>) "" segments)
 
-            -- NB: pOutPath will be passed thru as result pointer by c_realpath
-            path <- GHC.peekCString enc pOutPath
-#endif
-            return (normalise path)
-        -- normalise does more stuff, like upper-casing the drive letter
+    -- call realpath on the largest possible prefix
+    realpathPrefix encoding ((prefix, suffix) : rest) path = do
+      exist <- doesPathExist prefix
+      if exist -- never call realpath on an inaccessible path
+        then ((</> suffix) <$> realpath encoding prefix)
+             `catchIOError` \ _ -> realpathPrefix encoding rest path
+        else realpathPrefix encoding rest path
+    realpathPrefix _ _ path = return path
 
-#if !defined(mingw32_HOST_OS)
-foreign import ccall unsafe "realpath"
-                   c_realpath :: CString
-                              -> CString
-                              -> IO CString
+    realpath encoding path =
+      GHC.withCString encoding path $ \ pathIn ->
+      allocaBytes long_path_size $ \ pathOut -> do
+        _ <- throwErrnoIfNull "" (c_realpath pathIn pathOut)
+        GHC.peekCString encoding pathOut
+
+    doesPathExist path = (Posix.getFileStatus path >> return True)
+                         `catchIOError` \ _ -> return False
+
+    -- make sure trailing slash is preserved
+    copySlash path | hasTrailingPathSeparator path = addTrailingPathSeparator
+                   | otherwise                     = id
+
+foreign import ccall unsafe "realpath" c_realpath
+  :: CString -> CString -> IO CString
 #endif
 
 -- | Make a path absolute by prepending the current directory (if it isn't
@@ -1074,9 +1103,6 @@ setCurrentDirectory path =
   Posix.changeWorkingDirectory path
 #endif
 
-#endif /* __GLASGOW_HASKELL__ */
-
-#ifdef __GLASGOW_HASKELL__
 {- |The operation 'doesDirectoryExist' returns 'True' if the argument file
 exists and is either a directory or a symbolic link to a directory,
 and 'False' otherwise.
