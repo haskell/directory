@@ -2,6 +2,7 @@
 module FileTime where
 #include "util.inl"
 import System.Directory
+import System.IO.Error (isDoesNotExistError)
 import Data.Foldable (for_)
 import qualified Data.Time.Clock as Time
 
@@ -9,6 +10,13 @@ main :: TestEnv -> IO ()
 main _t = do
   now <- Time.getCurrentTime
   let someTimeAgo = Time.addUTCTime (-3600) now
+
+  T(expectIOErrorType) () isDoesNotExistError $
+    getAccessTime "nonexistent-file"
+  T(expectIOErrorType) () isDoesNotExistError $
+    getModificationTime "nonexistent-file"
+  T(expectIOErrorType) () isDoesNotExistError $
+    setModificationTime "nonexistent-file" someTimeAgo
 
   writeFile  "foo" ""
   for_ [ ("foo", someTimeAgo)

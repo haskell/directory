@@ -108,7 +108,7 @@ expectNearTime t file line context x y diff =
 
 expectIOErrorType :: Show a =>
                      TestEnv -> String -> Integer -> a
-                  -> (IOError -> Bool) -> IO a -> IO ()
+                  -> (IOError -> Bool) -> IO b -> IO ()
 expectIOErrorType t file line context which action = do
   result <- tryIOError action
   checkEither t [showContext file line context] $ case result of
