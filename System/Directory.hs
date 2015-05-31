@@ -1153,7 +1153,8 @@ getModificationTime = modifyIOError (`ioeSetLocation` "getModificationTime") .
                       getFileTime True
 
 getFileTime :: Bool -> FilePath -> IO UTCTime
-getFileTime isMtime path = posixSecondsToUTCTime <$> getTime
+getFileTime isMtime path = modifyIOError (`ioeSetFileName` path) $
+                           posixSecondsToUTCTime <$> getTime
   where
     path' = normalise path              -- handle empty paths
 #ifdef mingw32_HOST_OS
@@ -1202,7 +1203,8 @@ getFileTime isMtime path = posixSecondsToUTCTime <$> getTime
 --
 setModificationTime :: FilePath -> UTCTime -> IO ()
 setModificationTime path mtime =
-  modifyIOError (`ioeSetLocation` "setModificationTime") setTime
+  modifyIOError ((`ioeSetLocation` "setModificationTime") .
+                 (`ioeSetFileName` path)) setTime
   where
     path'  = normalise path             -- handle empty paths
     mtime' = utcTimeToPOSIXSeconds mtime
