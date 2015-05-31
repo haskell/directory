@@ -839,7 +839,8 @@ foreign import ccall unsafe "realpath"
 makeAbsolute :: FilePath -> IO FilePath
 makeAbsolute = (normalise <$>) . absolutize
   where absolutize path -- avoid the call to `getCurrentDirectory` if we can
-          | isRelative path = (</> path) <$> getCurrentDirectory
+          | isRelative path = (</> path) . addTrailingPathSeparator <$>
+                              getCurrentDirectory
           | otherwise       = return path
 
 -- | 'makeRelative' the current directory.
