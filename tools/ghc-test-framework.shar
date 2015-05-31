@@ -1,5 +1,5 @@
 #!/bin/sh
-# from ghc commit 6b96eeb72a17e35c59830952732170d29d99a598
+# from ghc commit 508a3a33988d2872f580d8b727036f7f443d8b6d
 
 mkdir -p 'ghc-test-framework/config'
 sed "s/^ //" <<"EOF" >'ghc-test-framework/config/bad.ps'
@@ -9,8 +9,8 @@ chmod 644 'ghc-test-framework/config/bad.ps'
 
 mkdir -p 'ghc-test-framework/config'
 sed "s/^ //" <<"EOF" >'ghc-test-framework/config/ghc'
- import os
  import re
+ import subprocess
 
  # Testsuite configuration setup for GHC
  #
@@ -20,6 +20,7 @@ sed "s/^ //" <<"EOF" >'ghc-test-framework/config/ghc'
  config.compiler              = 'ghc'
  config.compiler_always_flags = ghc_compiler_always_flags.split()
 
+ config.haddock               = 'haddock'
  config.hp2ps                 = 'hp2ps'
  config.hpc                   = 'hpc'
  config.gs                    = 'gs'
@@ -169,16 +170,11 @@ sed "s/^ //" <<"EOF" >'ghc-test-framework/config/ghc'
                        if '-fflvm' in x[1]]
 
  def get_compiler_info():
- # This should really not go through the shell
-     h = os.popen(config.compiler + ' --info', 'r')
-     s = h.read()
+     s = getStdout([config.compiler, '--info']).decode('utf8')
      s = re.sub('[\r\n]', '', s)
-     h.close()
      compilerInfoDict = dict(eval(s))
-     h = os.popen(config.compiler + ' +RTS --info', 'r')
-     s = h.read()
+     s = getStdout([config.compiler, '+RTS', '--info']).decode('utf8')
      s = re.sub('[\r\n]', '', s)
-     h.close()
      rtsInfoDict = dict(eval(s))
 
      # We use a '/'-separated path for libdir, even on Windows
@@ -258,10 +254,7 @@ sed "s/^ //" <<"EOF" >'ghc-test-framework/driver/runtests.py'
  # * If we import ctypes before subprocess on cygwin, then sys.exit(0)
  #   says "Aborted" and we fail with exit code 134.
  # So we import it here first, so that the testsuite doesn't appear to fail.
- try:
-     import subprocess
- except:
-     pass
+ import subprocess
 
  PYTHON3 = sys.version_info >= (3, 0)
  if PYTHON3:
@@ -283,7 +276,8 @@ sed "s/^ //" <<"EOF" >'ghc-test-framework/driver/runtests.py'
  # cmd-line options
 
  long_options = [
-   "config=",  		# config file
+   "configfile=",	# config file
+   "config=",  		# config field
    "rootdir=", 		# root of tree containing tests (default: .)
    "output-summary=", 	# file in which to save the (human-readable) summary
    "only=",		# just this test (can be give multiple --only= flags)
@@ -298,13 +292,17 @@ sed "s/^ //" <<"EOF" >'ghc-test-framework/driver/runtests.py'
  opts, args = getopt.getopt(sys.argv[1:], "e:", long_options)
         
  for opt,arg in opts:
-     if opt == '--config':
+     if opt == '--configfile':
          exec(open(arg).read())
 
      # -e is a string to execute from the command line.  For example:
      # testframe -e 'config.compiler=ghc-5.04'
      if opt == '-e':
          exec(arg)
+
+     if opt == '--config':
+         field, value = arg.split('=', 1)
+         setattr(config, field, value)
 
      if opt == '--rootdir':
          config.rootdirs.append(arg)
@@ -861,13 +859,7 @@ sed "s/^ //" <<"EOF" >'ghc-test-framework/driver/testlib.py'
  import glob
  from math import ceil, trunc
  import collections
-
- have_subprocess = False
- try:
-     import subprocess
-     have_subprocess = True
- except:
-     print("Warning: subprocess not found, will fall back to spawnv")
+ import subprocess
 
  from testglobals import *
  from testutil import *
@@ -947,24 +939,22 @@ sed "s/^ //" <<"EOF" >'ghc-test-framework/driver/testlib.py'
      if lib in have_lib:
          got_it = have_lib[lib]
      else:
-         if have_subprocess:
-             # By preference we use subprocess, as the alternative uses
-             # /dev/null which mingw doesn't have.
-             cmd = strip_quotes(config.ghc_pkg)
-             p = subprocess.Popen([cmd, '--no-user-package-db', 'describe', lib],
-                                  stdout=subprocess.PIPE,
-                                  stderr=subprocess.PIPE)
-             # read from stdout and stderr to avoid blocking due to
-             # buffers filling
-             p.communicate()
-             r = p.wait()
-         else:
-             r = os.system(config.ghc_pkg + ' --no-user-package-db describe '
-                                          + lib + ' > /dev/null 2> /dev/null')
+         cmd = strip_quotes(config.ghc_pkg)
+         p = subprocess.Popen([cmd, '--no-user-package-db', 'describe', lib],
+                              stdout=subprocess.PIPE,
+                              stderr=subprocess.PIPE)
+         # read from stdout and stderr to avoid blocking due to
+         # buffers filling
+         p.communicate()
+         r = p.wait()
          got_it = r == 0
          have_lib[lib] = got_it
 
      if not got_it:
+         opts.expect = 'missing-lib'
+
+ def req_haddock( name, opts ):
+     if not config.haddock:
          opts.expect = 'missing-lib'
 
  def req_profiling( name, opts ):
@@ -1972,7 +1962,10 @@ sed "s/^ //" <<"EOF" >'ghc-test-framework/driver/testlib.py'
 
      result = passed()
      if len(range_fields) > 0:
-         f = open(in_testdir(stats_file))
+         try:
+             f = open(in_testdir(stats_file))
+         except IOError as e:
+             return failBecause(str(e))
          contents = f.read()
          f.close()
 
@@ -2533,6 +2526,11 @@ sed "s/^ //" <<"EOF" >'ghc-test-framework/driver/testlib.py'
      return str
 
  def normalise_errmsg( str ):
+     # remove " error:" and lower-case " Warning:" to make patch for
+     # trac issue #10021 smaller
+     str = modify_lines(str, lambda l: re.sub(' error:', '', l))
+     str = modify_lines(str, lambda l: re.sub(' Warning:', ' warning:', l))
+
      # If somefile ends in ".exe" or ".exe:", zap ".exe" (for Windows)
      #    the colon is there because it appears in error messages; this
      #    hacky solution is used in place of more sophisticated filename
@@ -2588,6 +2586,10 @@ sed "s/^ //" <<"EOF" >'ghc-test-framework/driver/testlib.py'
      return str
 
  def normalise_output( str ):
+     # remove " error:" and lower-case " Warning:" to make patch for
+     # trac issue #10021 smaller
+     str = modify_lines(str, lambda l: re.sub(' error:', '', l))
+     str = modify_lines(str, lambda l: re.sub(' Warning:', ' warning:', l))
      # Remove a .exe extension (for Windows)
      # This can occur in error messages generated by the program.
      str = re.sub('([^\\s])\\.exe', '\\1', str)
@@ -2631,13 +2633,8 @@ sed "s/^ //" <<"EOF" >'ghc-test-framework/driver/testlib.py'
      # with the Windows (non-cygwin) python. An argument "a b c"
      # turns into three arguments ["a", "b", "c"].
 
-     # However, subprocess is new in python 2.4, so fall back to
-     # using spawnv if we don't have it
      cmd = cmd_and_args[0]
-     if have_subprocess:
-         return subprocess.call([strip_quotes(cmd)] + cmd_and_args[1:])
-     else:
-         return os.spawnv(os.P_WAIT, cmd, cmd_and_args)
+     return subprocess.call([strip_quotes(cmd)] + cmd_and_args[1:])
 
  # When running under native msys Python, any invocations of non-msys binaries,
  # including timeout.exe, will have their arguments munged according to some
@@ -3121,20 +3118,8 @@ sed "s/^ //" <<"EOF" >'ghc-test-framework/driver/testlib.py'
                            ' (' + ','.join(testInfos[directory][test][reason]) + ')\n')
      file.write('\n')
 
- def getStdout(cmd_and_args):
-     if have_subprocess:
-         p = subprocess.Popen([strip_quotes(cmd_and_args[0])] + cmd_and_args[1:],
-                              stdout=subprocess.PIPE,
-                              stderr=subprocess.PIPE)
-         (stdout, stderr) = p.communicate()
-         r = p.wait()
-         if r != 0:
-             raise Exception("Command failed: " + str(cmd_and_args))
-         if stderr != '':
-             raise Exception("stderr from command: " + str(cmd_and_args))
-         return stdout
-     else:
-         raise Exception("Need subprocess to get stdout, but don't have it")
+ def modify_lines(s, f):
+     return '\n'.join([f(l) for l in s.splitlines()])
 EOF
 chmod 644 'ghc-test-framework/driver/testlib.py'
 
@@ -3142,6 +3127,9 @@ mkdir -p 'ghc-test-framework/driver'
 sed "s/^ //" <<"EOF" >'ghc-test-framework/driver/testutil.py'
  # -----------------------------------------------------------------------------
  # Utils
+
+ import subprocess
+
  def version_to_ints(v):
      return [ int(x) for x in v.split('.') ]
 
@@ -3160,11 +3148,33 @@ sed "s/^ //" <<"EOF" >'ghc-test-framework/driver/testutil.py'
  def strip_quotes(s):
      # Don't wrap commands to subprocess.call/Popen in quotes.
      return s.strip('\'"')
+
+ def getStdout(cmd_and_args):
+     # Can't use subprocess.check_output as it's not available in Python 2.6;
+     # It's also not quite the same as check_output, since we also verify that
+     # no stderr was produced
+     p = subprocess.Popen([strip_quotes(cmd_and_args[0])] + cmd_and_args[1:],
+                          stdout=subprocess.PIPE,
+                          stderr=subprocess.PIPE)
+     (stdout, stderr) = p.communicate()
+     r = p.wait()
+     if r != 0:
+         raise Exception("Command failed: " + str(cmd_and_args))
+     if stderr != '':
+         raise Exception("stderr from command: " + str(cmd_and_args))
+     return stdout
 EOF
 chmod 644 'ghc-test-framework/driver/testutil.py'
 
 mkdir -p 'ghc-test-framework/mk'
 sed "s/^ //" <<"EOF" >'ghc-test-framework/mk/boilerplate.mk'
+ # Eliminate use of the built-in implicit rules, and clear out the default list
+ # of suffixes for suffix rules. Speeds up make quite a bit. Both are needed
+ # for the shortest `make -d` output.
+ # Don't set --no-builtin-variables; some rules might stop working if you do
+ # (e.g. 'make clean' in testsuite/ currently relies on an implicit $RM).
+ MAKEFLAGS += --no-builtin-rules
+ .SUFFIXES:
 
  default: all
 
@@ -3275,6 +3285,10 @@ sed "s/^ //" <<"EOF" >'ghc-test-framework/mk/boilerplate.mk'
  RUNGHC := $(call find_tool,runghc)
  endif
 
+ ifeq "$(HADDOCK)" ""
+ HADDOCK := $(call find_tool,haddock)
+ endif
+
  ifeq "$(HSC2HS)" ""
  HSC2HS := $(call find_tool,hsc2hs)
  endif
@@ -3295,6 +3309,12 @@ sed "s/^ //" <<"EOF" >'ghc-test-framework/mk/boilerplate.mk'
  $(eval $(call canonicaliseExecutable,GHC_PKG))
  ifeq "$(shell test -x '$(GHC_PKG)' && echo exists)" ""
  $(error Cannot find ghc-pkg: $(GHC_PKG))
+ endif
+
+ $(eval $(call canonicaliseExecutable,HADDOCK))
+ ifeq "$(shell test -x '$(HADDOCK)' && echo exists)" ""
+ # haddock is optional.
+ HADDOCK :=
  endif
 
  $(eval $(call canonicaliseExecutable,HSC2HS))
@@ -3344,6 +3364,7 @@ sed "s/^ //" <<"EOF" >'ghc-test-framework/mk/boilerplate.mk'
  	$(TOP)/mk/ghc-config "$(TEST_HC)" >"$@"; if [ $$? != 0 ]; then $(RM) "$@"; exit 1; fi
  # If the ghc-config fails, remove $@, and fail
 
+ # Note: $(CLEANING) is not defined in the testsuite.
  ifeq "$(findstring clean,$(MAKECMDGOALS))" ""
  include $(ghc-config-mk)
  endif
@@ -3661,7 +3682,7 @@ sed "s/^ //" <<"EOF" >'ghc-test-framework/mk/test.mk'
 
  RUNTEST_OPTS +=  \
  	--rootdir=. \
- 	--config=$(CONFIG) \
+ 	--configfile=$(CONFIG) \
  	-e 'config.confdir="$(CONFIGDIR)"' \
  	-e 'config.platform="$(TARGETPLATFORM)"' \
  	-e 'config.os="$(TargetOS_CPP)"' \
@@ -3672,15 +3693,23 @@ sed "s/^ //" <<"EOF" >'ghc-test-framework/mk/test.mk'
  	-e 'config.exeext="$(exeext)"' \
  	-e 'config.top="$(TOP_ABS)"'
 
- # Put an extra pair of quotes around program paths,
- # so we don't have to in .T scripts or driver/testlib.py.
+ # Wrap non-empty program paths in quotes, because they may contain spaces. Do
+ # it here, so we don't have to (and don't forget to do it) in the .T test
+ # scripts (search for '{compiler}' or '{hpc}'). This may or may not be a good
+ # idea.
+ # Use `--config` instead of `-e`, because `-e` (which calls Python's `eval`
+ # function) would require another pair of (escaped) quotes, which interfers
+ # with MinGW's magic path handling (see #10449, and
+ # http://www.mingw.org/wiki/Posix_path_conversion).
+ quote_path = $(if $1,"$1")
  RUNTEST_OPTS +=  \
- 	-e 'config.compiler="\"$(TEST_HC)\""' \
- 	-e 'config.ghc_pkg="\"$(GHC_PKG)\""' \
- 	-e 'config.hp2ps="\"$(HP2PS_ABS)\""' \
- 	-e 'config.hpc="\"$(HPC)\""' \
- 	-e 'config.gs="\"$(GS)\""' \
- 	-e 'config.timeout_prog="\"$(TIMEOUT_PROGRAM)\""'
+ 	--config 'compiler=$(call quote_path,$(TEST_HC))' \
+ 	--config 'ghc_pkg=$(call quote_path,$(GHC_PKG))' \
+ 	--config 'haddock=$(call quote_path,$(HADDOCK))' \
+ 	--config 'hp2ps=$(call quote_path,$(HP2PS_ABS))' \
+ 	--config 'hpc=$(call quote_path,$(HPC))' \
+ 	--config 'gs=$(call quote_path,$(GS))' \
+ 	--config 'timeout_prog=$(call quote_path,$(TIMEOUT_PROGRAM))'
 
  ifneq "$(OUTPUT_SUMMARY)" ""
  RUNTEST_OPTS +=  \
@@ -3814,7 +3843,7 @@ sed "s/^ //" <<"EOF" >'ghc-test-framework/timeout/Makefile'
  endif
 
  clean distclean maintainer-clean:
- 	-./Setup clean
+ 	test ! -f Setup || ./Setup clean
  	$(RM) -rf install-inplace
  	$(RM) -f calibrate.out
  	$(RM) -f Setup Setup.exe Setup.hi Setup.o
