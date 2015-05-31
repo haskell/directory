@@ -830,9 +830,10 @@ foreign import ccall unsafe "realpath"
 #endif
 
 -- | Make a path absolute by prepending the current directory (if it isn't
--- already absolute) and applying @'normalise'@ to the result.
+-- already absolute) and applying 'normalise' to the result.
 --
--- The operation may fail with the same exceptions as @'getCurrentDirectory'@.
+-- If the path is already absolute, the operation never fails.  Otherwise, the
+-- operation may fail with the same exceptions as 'getCurrentDirectory'.
 --
 -- /Since: 1.2.2.0/
 makeAbsolute :: FilePath -> IO FilePath
