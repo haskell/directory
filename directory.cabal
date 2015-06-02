@@ -23,13 +23,10 @@ extra-tmp-files:
 extra-source-files:
     changelog.md
     README.md
-    config.guess
-    config.sub
     configure
     configure.ac
     directory.buildinfo
     include/HsDirectoryConfig.h.in
-    install-sh
     tests/*.hs
     tests/*.stderr
     tests/*.stdout
