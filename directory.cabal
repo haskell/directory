@@ -62,6 +62,7 @@ Library
         System.Directory
     other-modules:
         System.Directory.Internal
+        System.Directory.Internal.C_utimensat
 
     c-sources:
         cbits/directory.c
