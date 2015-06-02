@@ -1,7 +1,4 @@
 {-# LANGUAGE CPP, NondecreasingIndentation #-}
-#ifdef __GLASGOW_HASKELL__
-{-# LANGUAGE Trustworthy #-}
-#endif
 
 -----------------------------------------------------------------------------
 -- |
@@ -115,7 +112,6 @@ import Hugs.Directory
 #endif /* __HUGS__ */
 
 import Foreign
-import Foreign.C
 
 {-# CFILES cbits/directory.c #-}
 
@@ -133,18 +129,20 @@ import Data.Time.Clock.POSIX
 import GHC.IO.Exception ( IOErrorType(InappropriateType) )
 
 #ifdef mingw32_HOST_OS
+import Foreign.C
 import System.Posix.Types
 import System.Posix.Internals
 import qualified System.Win32 as Win32
 #else
-#include <HsUnixConfig.h>
 import GHC.IO.Encoding
 import GHC.Foreign as GHC
 import System.Environment ( getEnv )
 import qualified System.Posix as Posix
 #endif
 
+#include <HsDirectoryConfig.h>
 #ifdef HAVE_UTIMENSAT
+import Foreign.C (throwErrnoPathIfMinus1_)
 import System.Posix.Internals ( withFilePath )
 #endif
 
@@ -842,10 +840,8 @@ canonicalizePath = \ path ->
     realpathPrefix _ _ path = return path
 
     realpath encoding path =
-      GHC.withCString encoding path $ \ pathIn ->
-      allocaBytes long_path_size $ \ pathOut -> do
-        _ <- throwErrnoIfNull "" (c_realpath pathIn pathOut)
-        GHC.peekCString encoding pathOut
+      GHC.withCString encoding path
+      (`withRealpath` GHC.peekCString encoding)
 
     doesPathExist path = (Posix.getFileStatus path >> return True)
                          `catchIOError` \ _ -> return False
@@ -853,9 +849,6 @@ canonicalizePath = \ path ->
     -- make sure trailing slash is preserved
     copySlash path | hasTrailingPathSeparator path = addTrailingPathSeparator
                    | otherwise                     = id
-
-foreign import ccall unsafe "realpath" c_realpath
-  :: CString -> CString -> IO CString
 #endif
 
 -- | Make a path absolute by prepending the current directory (if it isn't
@@ -1299,22 +1292,7 @@ isDirectory stat = do
 fileNameEndClean :: String -> String
 fileNameEndClean name = if isDrive name then addTrailingPathSeparator name
                                         else dropTrailingPathSeparator name
-
-foreign import ccall unsafe "HsDirectory.h __hscore_S_IRUSR" s_IRUSR :: CMode
-foreign import ccall unsafe "HsDirectory.h __hscore_S_IWUSR" s_IWUSR :: CMode
-foreign import ccall unsafe "HsDirectory.h __hscore_S_IXUSR" s_IXUSR :: CMode
-foreign import ccall unsafe "__hscore_S_IFDIR" s_IFDIR :: CMode
 #endif
-
-#ifndef mingw32_HOST_OS
-#ifdef __GLASGOW_HASKELL__
-foreign import ccall unsafe "__hscore_long_path_size"
-  long_path_size :: Int
-#else
-long_path_size :: Int
-long_path_size = 2048   --  // guess?
-#endif /* __GLASGOW_HASKELL__ */
-#endif /* !mingw32_HOST_OS */
 
 {- | Returns the current user's home directory.
 

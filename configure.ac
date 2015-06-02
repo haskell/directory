@@ -11,7 +11,9 @@ AC_ARG_WITH([cc],
 AC_PROG_CC()
 
 # check for specific header (.h) files that we are interested in
-AC_CHECK_HEADERS([sys/types.h unistd.h sys/stat.h])
+AC_CHECK_HEADERS([fcntl.h limits.h sys/types.h sys/stat.h time.h])
+
+AC_CHECK_FUNCS([utimensat])
 
 # EXTEXT is defined automatically by AC_PROG_CC;
 # we just need to capture it in the header file

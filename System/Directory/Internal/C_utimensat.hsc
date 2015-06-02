@@ -1,15 +1,20 @@
-#ifndef mingw32_HOST_OS
-# include <HsUnixConfig.h>
-#endif
+#include <HsDirectoryConfig.h>
 
-#include <fcntl.h>
-#include <sys/stat.h>
+#ifdef HAVE_FCNTL_H
+# include <fcntl.h>
+#endif
+#ifdef HAVE_TIME_H
+# include <time.h>
+#endif
+#ifdef HAVE_SYS_STAT_H
+# include <sys/stat.h>
+#endif
 
 module System.Directory.Internal.C_utimensat where
 #ifdef HAVE_UTIMENSAT
-import Data.Time.Clock.POSIX (POSIXTime)
 import Foreign
 import Foreign.C
+import Data.Time.Clock.POSIX (POSIXTime)
 import System.Posix.Types
 
 data CTimeSpec = CTimeSpec EpochTime CLong

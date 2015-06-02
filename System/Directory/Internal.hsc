@@ -1,8 +1,4 @@
-#include <HsDirectory.h>
-
-#ifndef mingw32_HOST_OS
-# include <HsUnixConfig.h>
-#endif
+#include <HsDirectoryConfig.h>
 
 module System.Directory.Internal
   ( module System.Directory.Internal
@@ -11,10 +7,22 @@ module System.Directory.Internal
   , module System.Directory.Internal.C_utimensat
 #endif
 
+#ifdef mingw32_HOST_OS
+  , module System.Directory.Internal.Windows
+#else
+  , module System.Directory.Internal.Posix
+#endif
+
 ) where
 
 #ifdef HAVE_UTIMENSAT
 import System.Directory.Internal.C_utimensat
+#endif
+
+#ifdef mingw32_HOST_OS
+import System.Directory.Internal.Windows
+#else
+import System.Directory.Internal.Posix
 #endif
 
 -- | Filename extension for executable files (including the dot if any)

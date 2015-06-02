@@ -63,6 +63,8 @@ Library
     other-modules:
         System.Directory.Internal
         System.Directory.Internal.C_utimensat
+        System.Directory.Internal.Posix
+        System.Directory.Internal.Windows
 
     c-sources:
         cbits/directory.c
