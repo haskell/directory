@@ -6,6 +6,9 @@
  *
  * ---------------------------------------------------------------------------*/
 
+/* [DEPRECATED] Do not include this header nor HsDirectoryConfig.h.  They are
+   for internal use only and may be removed in future versions. */
+
 #ifndef __HSDIRECTORY_H__
 #define __HSDIRECTORY_H__
 
@@ -49,10 +52,8 @@
 # endif
 #endif
 
-/* A size that will contain many path names, but not necessarily all
- * (PATH_MAX is not defined on systems with unlimited path length,
- * e.g. the Hurd).
- */
+/* Do not use: it may give the wrong value on systems where PATH_MAX is not
+   defined (e.g. Hurd).  Instead, use System.Directory.Internal.c_PATH_MAX. */
 INLINE HsInt __hscore_long_path_size(void) {
 #ifdef PATH_MAX
     return PATH_MAX;
@@ -67,4 +68,3 @@ INLINE mode_t __hscore_S_IXUSR(void) { return S_IXUSR; }
 INLINE mode_t __hscore_S_IFDIR(void) { return S_IFDIR; }
 
 #endif /* __HSDIRECTORY_H__ */
-
