@@ -16,6 +16,9 @@ Changelog for the [`directory`][1] package
     current directory cannot be obtained
     ([#23](https://github.com/haskell/directory/issues/23))
 
+  * Corrected the trailing slash behavior of `makeAbsolute`
+    so that `makeAbsolute "" == makeAbsolute "."`
+
   * Deprecate use of `HsDirectory.h` and `HsDirectoryConfig.h`
 
 ## 1.2.2.1 (Apr 2015)
