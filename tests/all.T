@@ -1,6 +1,3 @@
-# Depends on binary from previous run, which gets removed by the driver way=ghci
-test('getPermissions001', omit_ways(['ghci']), compile_and_run, ['-cpp'])
-
 test('copyFile001', extra_clean(['copyFile001dir/target']),
                     compile_and_run, [''])
 test('copyFile002', extra_clean(['copyFile002dir/target']),
