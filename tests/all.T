@@ -1,6 +1,3 @@
-test('copyFile002', extra_clean(['copyFile002dir/target']),
-                    compile_and_run, [''])
-
 test('renameFile001', extra_clean(['renameFile001.tmp1','renameFile001.tmp2']),
       compile_and_run, [''])
 
