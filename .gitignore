@@ -1,15 +1,10 @@
 .cabal-sandbox/
 cabal.sandbox.config
-GNUmakefile
 autom4te.cache/
 config.log
 config.status
 configure
-dist
-dist-install/
-ghc.mk
+dist/
 include/HsDirectoryConfig.h
 include/HsDirectoryConfig.h.in
-tests/copyFile001dir/target
-tests/copyFile002dir/target
 *~
