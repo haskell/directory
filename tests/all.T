@@ -1,5 +1,3 @@
-test('copyFile001', extra_clean(['copyFile001dir/target']),
-                    compile_and_run, [''])
 test('copyFile002', extra_clean(['copyFile002dir/target']),
                     compile_and_run, [''])
 

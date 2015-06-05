@@ -1,6 +1,7 @@
 module Main (main) where
 import qualified Util as T
 import qualified CanonicalizePath
+import qualified CopyFile001
 import qualified CurrentDirectory001
 import qualified Directory001
 import qualified DoesDirectoryExist001
@@ -13,6 +14,7 @@ import qualified T8482
 main :: IO ()
 main = T.testMain $ \ _t -> do
   T.isolatedRun _t "CanonicalizePath" CanonicalizePath.main
+  T.isolatedRun _t "CopyFile001" CopyFile001.main
   T.isolatedRun _t "CurrentDirectory001" CurrentDirectory001.main
   T.isolatedRun _t "Directory001" Directory001.main
   T.isolatedRun _t "DoesDirectoryExist001" DoesDirectoryExist001.main
