@@ -1,5 +1,3 @@
-test('createDirectory001',  normal, compile_and_run, [''])
-
 test('createDirectoryIfMissing001',  normal, compile_and_run, [''])
 
 # No sane way to tell whether the output is reasonable here...
