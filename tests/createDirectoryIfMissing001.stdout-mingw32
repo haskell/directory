@@ -1,8 +1,0 @@
-()
-CreateDirectory "createDirectoryIfMissing001.d\\a": does not exist (The system cannot find the path specified.)
-()
-()
-()
-()
-CreateDirectory "createDirectoryIfMissing001.d": already exists (Cannot create a file when that file already exists.)
-CreateDirectory "createDirectoryIfMissing001.d": already exists (Cannot create a file when that file already exists.)

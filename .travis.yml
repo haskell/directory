@@ -71,6 +71,7 @@ script:
  - cabal build
  - cabal check
  - cabal sdist
- - eval "$def_cabal_test" && cabal_test --show-details=$streaming
+ - eval "$def_cabal_test" &&
+   cabal_test --show-details=$streaming --test-option="+RTS -N2"
  - eval "$def_cabal_install_run_tests" &&
    cabal_install_run_tests --force-reinstalls dist/*-*.tar.gz

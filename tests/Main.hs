@@ -4,6 +4,7 @@ import qualified CanonicalizePath
 import qualified CopyFile001
 import qualified CopyFile002
 import qualified CreateDirectory001
+import qualified CreateDirectoryIfMissing001
 import qualified CurrentDirectory001
 import qualified Directory001
 import qualified DoesDirectoryExist001
@@ -20,6 +21,7 @@ main = T.testMain $ \ _t -> do
   T.isolatedRun _t "CopyFile001" CopyFile001.main
   T.isolatedRun _t "CopyFile002" CopyFile002.main
   T.isolatedRun _t "CreateDirectory001" CreateDirectory001.main
+  T.isolatedRun _t "CreateDirectoryIfMissing001" CreateDirectoryIfMissing001.main
   T.isolatedRun _t "CurrentDirectory001" CurrentDirectory001.main
   T.isolatedRun _t "Directory001" Directory001.main
   T.isolatedRun _t "DoesDirectoryExist001" DoesDirectoryExist001.main
