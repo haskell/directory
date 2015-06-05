@@ -1,6 +1,3 @@
-# This test is a bit bogus.  Disable for GHCi.
-test('getDirContents001', omit_ways(['ghci']), compile_and_run, ['-fno-gen-manifest'])
-
 test('getDirContents002', [ normalise_exe, exit_code(1) ],
                           compile_and_run, [''])
 

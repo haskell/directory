@@ -5,6 +5,7 @@ import qualified CurrentDirectory001
 import qualified Directory001
 import qualified DoesDirectoryExist001
 import qualified FileTime
+import qualified GetDirContents001
 import qualified T8482
 
 main :: IO ()
@@ -14,4 +15,5 @@ main = T.testMain $ \ _t -> do
   T.isolatedRun _t "Directory001" Directory001.main
   T.isolatedRun _t "DoesDirectoryExist001" DoesDirectoryExist001.main
   T.isolatedRun _t "FileTime" FileTime.main
+  T.isolatedRun _t "GetDirContents001" GetDirContents001.main
   T.isolatedRun _t "T8482" T8482.main
