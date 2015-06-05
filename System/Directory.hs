@@ -78,6 +78,7 @@ module System.Directory
 
     , getAccessTime
     , getModificationTime
+    , setAccessTime
     , setModificationTime
 
    ) where
@@ -92,6 +93,7 @@ import Data.Maybe
   , maybeToList
 #endif
   )
+import Data.Tuple (swap)
 
 import System.FilePath
 import System.IO
@@ -1183,10 +1185,9 @@ getFileTime isMtime path = modifyIOError (`ioeSetFileName` path) $
       bracket (openFileHandle path' Win32.gENERIC_READ)
               Win32.closeHandle $ \ handle ->
       alloca $ \ time -> do
-        Win32.failIf_ not "" $
-          Win32.c_GetFileTime handle nullPtr
-            (if isMtime then nullPtr else time)
-            (if isMtime then time    else nullPtr)
+        Win32.failIf_ not "" .
+          uncurry (Win32.c_GetFileTime handle nullPtr) $
+           swapIf isMtime (time, nullPtr)
         windowsToPosixTime <$> peek time
 #else
     getTime = convertTime <$> Posix.getFileStatus path'
@@ -1198,6 +1199,34 @@ getFileTime isMtime path = modifyIOError (`ioeSetFileName` path) $
                                           else Posix.accessTime
 # endif
 #endif
+
+-- | Change the time at which the file or directory was last accessed.
+--
+-- The operation may fail with:
+--
+-- * 'isPermissionError' if the user is not permitted to alter the
+--   access time; or
+--
+-- * 'isDoesNotExistError' if the file or directory does not exist.
+--
+-- Some caveats for POSIX systems:
+--
+-- * Not all systems support @utimensat@, in which case the function can only
+--   emulate the behavior by reading the modification time and then setting
+--   both the access and modification times together.  On systems where
+--   @utimensat@ is supported, the access time is set atomically with
+--   nanosecond precision.
+--
+-- * If compiled against a version of @unix@ prior to @2.7.0.0@, the function
+--   would not be able to set timestamps with sub-second resolution.  In this
+--   case, there would also be loss of precision in the modification time.
+--
+-- /Since: 1.2.3.0/
+--
+setAccessTime :: FilePath -> UTCTime -> IO ()
+setAccessTime path =
+  modifyIOError (`ioeSetLocation` "setAccessTime") .
+  setFileTime False path
 
 -- | Change the time at which the file or directory was last modified.
 --
@@ -1223,38 +1252,53 @@ getFileTime isMtime path = modifyIOError (`ioeSetFileName` path) $
 -- /Since: 1.2.3.0/
 --
 setModificationTime :: FilePath -> UTCTime -> IO ()
-setModificationTime path mtime =
-  modifyIOError ((`ioeSetLocation` "setModificationTime") .
-                 (`ioeSetFileName` path)) setTime
+setModificationTime path =
+  modifyIOError (`ioeSetLocation` "setModificationTime") .
+  setFileTime True path
+
+setFileTime :: Bool -> FilePath -> UTCTime -> IO ()
+setFileTime isMtime path = modifyIOError (`ioeSetFileName` path) .
+                           setTime . utcTimeToPOSIXSeconds
   where
     path'  = normalise path             -- handle empty paths
-    mtime' = utcTimeToPOSIXSeconds mtime
 #ifdef mingw32_HOST_OS
-    setTime =
+    setTime time =
       bracket (openFileHandle path' Win32.gENERIC_WRITE)
               Win32.closeHandle $ \ handle ->
-      with (posixToWindowsTime mtime') $ \ mtime'' ->
-      Win32.failIf_ not "" (Win32.c_SetFileTime handle nullPtr nullPtr mtime'')
+      with (posixToWindowsTime time) $ \ time' ->
+      Win32.failIf_ not "" .
+        uncurry (Win32.c_SetFileTime handle nullPtr) $
+          swapIf isMtime (time', nullPtr)
 #elif defined HAVE_UTIMENSAT
-    setTime =
+    setTime time =
       withFilePath path' $ \ path'' ->
-      withArray [utimeOmit, toCTimeSpec mtime'] $ \ times ->
+      withArray [atime, mtime] $ \ times ->
       throwErrnoPathIfMinus1_ "" path' $
       c_utimensat c_AT_FDCWD path'' times 0
+      where (atime, mtime) = swapIf isMtime (toCTimeSpec time, utimeOmit)
 #else
-    setTime = do
+    setTime time = do
       stat <- Posix.getFileStatus path'
-      setFileTimes path' (accessTime stat) (convertTime mtime')
+      uncurry (setFileTimes path') $
+        swapIf isMtime (convertTime time, otherTime stat)
 # if MIN_VERSION_unix(2, 7, 0)
-    accessTime   = Posix.accessTimeHiRes
     setFileTimes = Posix.setFileTimesHiRes
     convertTime  = id
+    otherTime    = if isMtime
+                   then Posix.accessTimeHiRes
+                   else Posix.modificationTimeHiRes
 #  else
-    accessTime   = Posix.accessTime
     setFileTimes = Posix.setFileTimes
     convertTime  = fromInteger . truncate
+    otherTime    = if isMtime
+                   then Posix.accessTime
+                   else Posix.modificationTime
 # endif
 #endif
+
+swapIf :: Bool -> (a, a) -> (a, a)
+swapIf True  = swap
+swapIf False = id
 
 #ifdef mingw32_HOST_OS
 -- | Difference between the Windows and POSIX epochs in units of 100ns.

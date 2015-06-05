@@ -9,28 +9,45 @@ import qualified Data.Time.Clock as Time
 main :: TestEnv -> IO ()
 main _t = do
   now <- Time.getCurrentTime
-  let someTimeAgo = Time.addUTCTime (-3600) now
+  let someTimeAgo  = Time.addUTCTime (-3600) now
+      someTimeAgo' = Time.addUTCTime (-7200) now
 
   T(expectIOErrorType) () isDoesNotExistError $
     getAccessTime "nonexistent-file"
+  T(expectIOErrorType) () isDoesNotExistError $
+    setAccessTime "nonexistent-file" someTimeAgo
   T(expectIOErrorType) () isDoesNotExistError $
     getModificationTime "nonexistent-file"
   T(expectIOErrorType) () isDoesNotExistError $
     setModificationTime "nonexistent-file" someTimeAgo
 
   writeFile  "foo" ""
-  for_ [ ("foo", someTimeAgo)
-       , (".",   someTimeAgo)
-       , ("",    someTimeAgo) ] $ \ (file, mtime1) -> do
+  for_ [ "foo", ".", "" ] $ \ file -> do
+    let mtime = someTimeAgo
+        atime = someTimeAgo'
 
     atime1 <- getAccessTime file
-    setModificationTime file mtime1
+
+    setModificationTime file mtime
+
     atime2 <- getAccessTime file
     mtime2 <- getModificationTime file
 
     -- modification time should be set with at worst 1 sec resolution
-    T(expectNearTime) ("mtime", file) mtime1 mtime2 1
+    T(expectNearTime) file mtime  mtime2 1
 
     -- access time should not change, although it may lose some precision
     -- on POSIX systems without 'utimensat'
-    T(expectNearTime) ("atime", file) atime1 atime2 1
+    T(expectNearTime) file atime1 atime2 1
+
+    setAccessTime file atime
+
+    atime3 <- getAccessTime file
+    mtime3 <- getModificationTime file
+
+    -- access time should be set with at worst 1 sec resolution
+    T(expectNearTime) file atime  atime3 1
+
+    -- modification time should not change, although it may lose some precision
+    -- on POSIX systems without 'utimensat'
+    T(expectNearTime) file mtime2 mtime3 1

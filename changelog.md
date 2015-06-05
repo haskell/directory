@@ -9,7 +9,7 @@ Changelog for the [`directory`][1] package
   * Implement `setModificationTime` counterpart to `getModificationTime`
     ([#13](https://github.com/haskell/directory/issues/13))
 
-  * Implement `getAccessTime`
+  * Implement `getAccessTime` and `setAccessTime`
 
   * Fix `canonicalizePath` so that it always returns a reasonable result even
     if the path is inaccessible and will not throw exceptions unless the
