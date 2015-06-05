@@ -1,6 +1,3 @@
-test('getDirContents002', [ normalise_exe, exit_code(1) ],
-                          compile_and_run, [''])
-
 # Depends on binary from previous run, which gets removed by the driver way=ghci
 test('getPermissions001', omit_ways(['ghci']), compile_and_run, ['-cpp'])
 
