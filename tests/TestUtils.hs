@@ -12,7 +12,6 @@ import System.IO.Error (ioeSetLocation, modifyIOError)
 import Foreign (Ptr)
 import Foreign.C (CUChar(..), CULong(..), CWchar(..), withCWString)
 import System.FilePath (takeDirectory)
-import System.IO (hPutStrLn, stderr)
 import System.IO.Error (catchIOError, ioeSetErrorString, isPermissionError,
                         mkIOError, permissionErrorType)
 import System.Win32.Types (failWith, getLastError)

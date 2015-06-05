@@ -93,6 +93,10 @@ test-suite test
     main-is:          Main.hs
     type:             exitcode-stdio-1.0
     build-depends:    base, directory, filepath, time
+    if os(windows)
+        build-depends: Win32
+    else
+        build-depends: unix
 
 test-suite test2
     default-language: Haskell2010
