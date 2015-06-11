@@ -859,7 +859,7 @@ canonicalizePath = \ path ->
 -- If the path is already absolute, the operation never fails.  Otherwise, the
 -- operation may fail with the same exceptions as 'getCurrentDirectory'.
 --
--- /Since: 1.2.2.0/
+-- @since 1.2.2.0
 makeAbsolute :: FilePath -> IO FilePath
 makeAbsolute = (normalise <$>) . absolutize
   where absolutize path -- avoid the call to `getCurrentDirectory` if we can
@@ -899,7 +899,7 @@ findExecutable fileName = do
 -- | Given a file name, searches for the file and returns a list of all
 -- occurences that are executable.
 --
--- /Since: 1.2.2.0/
+-- @since 1.2.2.0
 findExecutables :: String -> IO [FilePath]
 findExecutables binary = do
 #if defined(mingw32_HOST_OS)
@@ -923,7 +923,7 @@ findFile path fileName = do
 -- | Search through the given set of directories for the given file and
 -- returns a list of paths where the given file exists.
 --
--- /Since: 1.2.1.0/
+-- @since 1.2.1.0
 findFiles :: [FilePath] -> String -> IO [FilePath]
 findFiles = findFilesWith (\_ -> return True)
 
@@ -931,7 +931,7 @@ findFiles = findFilesWith (\_ -> return True)
 -- with the given property (usually permissions) and returns a list of
 -- paths where the given file exists and has the property.
 --
--- /Since: 1.2.1.0/
+-- @since 1.2.1.0
 findFilesWith :: (FilePath -> IO Bool) -> [FilePath] -> String -> IO [FilePath]
 findFilesWith _ [] _ = return []
 findFilesWith f (d:ds) fileName = do
@@ -1152,7 +1152,7 @@ openFileHandle path mode = Win32.createFile path mode share Nothing
 -- resolution only if this package is compiled against @unix-2.6.0.0@ or later
 -- and the underlying filesystem supports them.
 --
--- /Since: 1.2.3.0/
+-- @since 1.2.3.0
 --
 getAccessTime :: FilePath -> IO UTCTime
 getAccessTime = modifyIOError (`ioeSetLocation` "getAccessTime") .
@@ -1221,7 +1221,7 @@ getFileTime isMtime path = modifyIOError (`ioeSetFileName` path) $
 --   would not be able to set timestamps with sub-second resolution.  In this
 --   case, there would also be loss of precision in the modification time.
 --
--- /Since: 1.2.3.0/
+-- @since 1.2.3.0
 --
 setAccessTime :: FilePath -> UTCTime -> IO ()
 setAccessTime path =
@@ -1249,7 +1249,7 @@ setAccessTime path =
 --   would not be able to set timestamps with sub-second resolution.  In this
 --   case, there would also be loss of precision in the access time.
 --
--- /Since: 1.2.3.0/
+-- @since 1.2.3.0
 --
 setModificationTime :: FilePath -> UTCTime -> IO ()
 setModificationTime path =
@@ -1375,7 +1375,7 @@ getHomeDirectory = modifyIOError (`ioeSetLocation` "getHomeDirectory") get
 --
 --   Note: On Windows, 'XdgData' and 'XdgConfig' map to the same directory.
 --
---   /Since: 1.2.3.0/
+--   @since 1.2.3.0
 data XdgDirectory
   = XdgData
     -- ^ For data files (e.g. images).
@@ -1416,7 +1416,7 @@ data XdgDirectory
 --   Note: The directory may not actually exist, in which case you would need
 --   to create it with file mode @700@ (i.e. only accessible by the owner).
 --
---   /Since: 1.2.3.0/
+--   @since 1.2.3.0
 getXdgDirectory :: XdgDirectory         -- ^ which special directory
                 -> FilePath             -- ^ a relative path that is appended
                                         --   to the path; if empty, the base
