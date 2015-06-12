@@ -12,10 +12,10 @@ import Control.Concurrent.MVar (newEmptyMVar, putMVar, readMVar)
 import Control.Exception (SomeException, bracket_, catch,
                           mask, onException, try)
 import Control.Monad (Monad(..), unless, when)
-import System.Directory (createDirectory, getCurrentDirectory, makeAbsolute,
-                         removeDirectoryRecursive, setCurrentDirectory)
+import System.Directory (createDirectory, makeAbsolute,
+                         removeDirectoryRecursive, withCurrentDirectory)
 import System.Exit (exitFailure)
-import System.FilePath (FilePath, (</>), normalise)
+import System.FilePath (FilePath, normalise)
 import System.IO (IO, hFlush, hPutStrLn, putStrLn, stderr, stdout)
 import System.IO.Error (IOError, isDoesNotExistError,
                         ioError, tryIOError, userError)
@@ -124,12 +124,6 @@ expectIOErrorType t file line context which action = do
             | otherwise -> Left  ["got wrong exception: ", show e]
     Right _             -> Left  ["did not throw an exception"]
 
-withWorkingDirectory :: FilePath -> IO a -> IO a
-withWorkingDirectory dir action = do
-  cur  <- getCurrentDirectory
-  bracket_ (setCurrentDirectory (cur </> dir))
-           (setCurrentDirectory  cur) action
-
 withNewDirectory :: FilePath -> IO a -> IO a
 withNewDirectory dir action = do
   dir' <- makeAbsolute dir
@@ -146,7 +140,7 @@ isolateWorkingDirectory dir action = do
     unless (isDoesNotExistError e) $
       ioError e
   withNewDirectory dir' $
-    withWorkingDirectory dir' $
+    withCurrentDirectory dir' $
       action
 
 run :: TestEnv -> String -> (TestEnv -> IO ()) -> IO ()
