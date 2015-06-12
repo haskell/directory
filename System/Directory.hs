@@ -24,8 +24,8 @@ module System.Directory
     , removeDirectory
     , removeDirectoryRecursive
     , renameDirectory
-
     , getDirectoryContents
+    -- ** Current working directory
     , getCurrentDirectory
     , setCurrentDirectory
     , withCurrentDirectory
@@ -1015,36 +1015,33 @@ getDirectoryContents path =
 #endif /* __GLASGOW_HASKELL__ */
 
 
-{- |If the operating system has a notion of current directories,
-'getCurrentDirectory' returns an absolute path to the
-current directory of the calling process.
-
-The operation may fail with:
-
-* 'HardwareFault'
-A physical I\/O error has occurred.
-@[EIO]@
-
-* 'isDoesNotExistError' \/ 'NoSuchThing'
-There is no path referring to the current directory.
-@[EPERM, ENOENT, ESTALE...]@
-
-* 'isPermissionError' \/ 'PermissionDenied'
-The process has insufficient privileges to perform the operation.
-@[EACCES]@
-
-* 'ResourceExhausted'
-Insufficient resources are available to perform the operation.
-
-* 'UnsupportedOperation'
-The operating system has no notion of current directory.
-
-Note that in a concurrent program, the current directory is global
-state shared between all threads of the process.  When using
-filesystem operations from multiple threads, it is therefore highly
-recommended to use absolute rather than relative `FilePath`s.
-
--}
+-- | Obtain the current working directory as an absolute path.
+--
+-- In a multithreaded program, the current working directory is a global state
+-- shared among all threads of the process.  Therefore, when performing
+-- filesystem operations from multiple threads, it is highly recommended to
+-- use absolute rather than relative paths (see: 'makeAbsolute').
+--
+-- The operation may fail with:
+--
+-- * 'HardwareFault'
+-- A physical I\/O error has occurred.
+-- @[EIO]@
+--
+-- * 'isDoesNotExistError' or 'NoSuchThing'
+-- There is no path referring to the working directory.
+-- @[EPERM, ENOENT, ESTALE...]@
+--
+-- * 'isPermissionError' or 'PermissionDenied'
+-- The process has insufficient privileges to perform the operation.
+-- @[EACCES]@
+--
+-- * 'ResourceExhausted'
+-- Insufficient resources are available to perform the operation.
+--
+-- * 'UnsupportedOperation'
+-- The operating system has no notion of current working directory.
+--
 #ifdef __GLASGOW_HASKELL__
 getCurrentDirectory :: IO FilePath
 getCurrentDirectory = do
@@ -1054,64 +1051,63 @@ getCurrentDirectory = do
   Posix.getWorkingDirectory
 #endif
 
-{- |If the operating system has a notion of current directories,
-@'setCurrentDirectory' dir@ changes the current
-directory of the calling process to /dir/.
-
-The operation may fail with:
-
-* 'HardwareFault'
-A physical I\/O error has occurred.
-@[EIO]@
-
-* 'InvalidArgument'
-The operand is not a valid directory name.
-@[ENAMETOOLONG, ELOOP]@
-
-* 'isDoesNotExistError' \/ 'NoSuchThing'
-The directory does not exist.
-@[ENOENT, ENOTDIR]@
-
-* 'isPermissionError' \/ 'PermissionDenied'
-The process has insufficient privileges to perform the operation.
-@[EACCES]@
-
-* 'UnsupportedOperation'
-The operating system has no notion of current directory, or the
-current directory cannot be dynamically changed.
-
-* 'InappropriateType'
-The path refers to an existing non-directory object.
-@[ENOTDIR]@
-
-Note that in a concurrent program, the current directory is global
-state shared between all threads of the process.  When using
-filesystem operations from multiple threads, it is therefore highly
-recommended to use absolute rather than relative `FilePath`s.
-
--}
-
+-- | Change the working directory to the given path.
+--
+-- In a multithreaded program, the current working directory is a global state
+-- shared among all threads of the process.  Therefore, when performing
+-- filesystem operations from multiple threads, it is highly recommended to
+-- use absolute rather than relative paths (see: 'makeAbsolute').
+--
+-- The operation may fail with:
+--
+-- * 'HardwareFault'
+-- A physical I\/O error has occurred.
+-- @[EIO]@
+--
+-- * 'InvalidArgument'
+-- The operand is not a valid directory name.
+-- @[ENAMETOOLONG, ELOOP]@
+--
+-- * 'isDoesNotExistError' or 'NoSuchThing'
+-- The directory does not exist.
+-- @[ENOENT, ENOTDIR]@
+--
+-- * 'isPermissionError' or 'PermissionDenied'
+-- The process has insufficient privileges to perform the operation.
+-- @[EACCES]@
+--
+-- * 'UnsupportedOperation'
+-- The operating system has no notion of current working directory, or the
+-- working directory cannot be dynamically changed.
+--
+-- * 'InappropriateType'
+-- The path refers to an existing non-directory object.
+-- @[ENOTDIR]@
+--
 setCurrentDirectory :: FilePath -> IO ()
-setCurrentDirectory path =
+setCurrentDirectory =
 #ifdef mingw32_HOST_OS
-  Win32.setCurrentDirectory path
+  Win32.setCurrentDirectory
 #else
-  Posix.changeWorkingDirectory path
+  Posix.changeWorkingDirectory
 #endif
 
--- | Run a given 'IO' action inside the specified directory while
--- preserving the directory we were in at the start.
+-- | Run an 'IO' action with the given working directory and restore the
+-- original working directory afterwards, even if the given action fails due
+-- to an exception.
 --
--- This function can fail with the same exceptions that
--- 'getCurrentDirectory' and 'setCurrentDirectory' can.
+-- The operation may fail with the same exceptions as 'getCurrentDirectory'
+-- and 'setCurrentDirectory'.
 --
 -- @since 1.2.3.0
-withCurrentDirectory :: FilePath -- ^ The path of the directory to execute in
-                     -> IO a -- ^ The action to execute
+--
+withCurrentDirectory :: FilePath  -- ^ Directory to execute in
+                     -> IO a      -- ^ Action to be executed
                      -> IO a
 withCurrentDirectory dir action =
-  bracket getCurrentDirectory setCurrentDirectory $ \_ ->
-    setCurrentDirectory dir >> action
+  bracket getCurrentDirectory setCurrentDirectory $ \ _ -> do
+    setCurrentDirectory dir
+    action
 
 {- |The operation 'doesDirectoryExist' returns 'True' if the argument file
 exists and is either a directory or a symbolic link to a directory,
