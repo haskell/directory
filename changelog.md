@@ -21,6 +21,8 @@ Changelog for the [`directory`][1] package
 
   * Deprecate use of `HsDirectory.h` and `HsDirectoryConfig.h`
 
+  * Implement `withCurrentDirectory`
+
 ## 1.2.2.1 (Apr 2015)
 
   * Fix dependency problem on NixOS when building with tests

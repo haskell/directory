@@ -16,6 +16,7 @@ import qualified GetPermissions001
 import qualified RemoveDirectoryRecursive001
 import qualified RenameFile001
 import qualified T8482
+import qualified WithCurrentDirectory
 
 main :: IO ()
 main = T.testMain $ \ _t -> do
@@ -35,3 +36,4 @@ main = T.testMain $ \ _t -> do
   T.isolatedRun _t "RemoveDirectoryRecursive001" RemoveDirectoryRecursive001.main
   T.isolatedRun _t "RenameFile001" RenameFile001.main
   T.isolatedRun _t "T8482" T8482.main
+  T.isolatedRun _t "WithCurrentDirectory" WithCurrentDirectory.main

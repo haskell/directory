@@ -28,6 +28,7 @@ module System.Directory
     , getDirectoryContents
     , getCurrentDirectory
     , setCurrentDirectory
+    , withCurrentDirectory
 
     -- * Pre-defined directories
     , getHomeDirectory
@@ -1097,6 +1098,20 @@ setCurrentDirectory path =
 #else
   Posix.changeWorkingDirectory path
 #endif
+
+-- | Run a given 'IO' action inside the specified directory while
+-- preserving the directory we were in at the start.
+--
+-- This function can fail with the same exceptions that
+-- 'getCurrentDirectory' and 'setCurrentDirectory' can.
+--
+-- @since 1.2.3.0
+withCurrentDirectory :: FilePath -- ^ The path of the directory to execute in
+                     -> IO a -- ^ The action to execute
+                     -> IO a
+withCurrentDirectory dir action =
+  bracket getCurrentDirectory setCurrentDirectory $ \_ ->
+    setCurrentDirectory dir >> action
 
 {- |The operation 'doesDirectoryExist' returns 'True' if the argument file
 exists and is either a directory or a symbolic link to a directory,
