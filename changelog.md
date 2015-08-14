@@ -1,7 +1,7 @@
 Changelog for the [`directory`][1] package
 ==========================================
 
-## 1.2.3.1
+## 1.2.3.1 (August 2015)
 
   * Restore support for Safe Haskell with base < 4.8
     ([#30](https://github.com/haskell/directory/issues/30))
