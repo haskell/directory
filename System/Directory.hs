@@ -1,5 +1,10 @@
 {-# LANGUAGE CPP, NondecreasingIndentation #-}
 
+#if !(MIN_VERSION_base(4,8,0))
+-- In base-4.8.0 the Foreign module became Safe
+{-# LANGUAGE Trustworthy #-}
+#endif
+
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  System.Directory

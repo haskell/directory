@@ -1,6 +1,11 @@
 Changelog for the [`directory`][1] package
 ==========================================
 
+## 1.2.3.1
+
+  * Restore support for Safe Haskell with base < 4.8
+    ([#30](https://github.com/haskell/directory/issues/30))
+
 ## 1.2.3.0 (July 2015)
 
   * Add support for XDG Base Directory Specification
