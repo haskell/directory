@@ -1,7 +1,7 @@
 #include <HsDirectoryConfig.h>
 
 module System.Directory.Internal
-  ( module System.Directory.Internal
+  ( module System.Directory.Internal.Config
 
 #ifdef HAVE_UTIMENSAT
   , module System.Directory.Internal.C_utimensat
@@ -13,7 +13,8 @@ module System.Directory.Internal
   , module System.Directory.Internal.Posix
 #endif
 
-) where
+  ) where
+import System.Directory.Internal.Config
 
 #ifdef HAVE_UTIMENSAT
 import System.Directory.Internal.C_utimensat
@@ -24,8 +25,3 @@ import System.Directory.Internal.Windows
 #else
 import System.Directory.Internal.Posix
 #endif
-
--- | Filename extension for executable files (including the dot if any)
---   (usually @\"\"@ on POSIX systems and @\".exe\"@ on Windows or OS\/2).
-exeExtension :: String
-exeExtension = (#const_str EXE_EXTENSION)

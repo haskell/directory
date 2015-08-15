@@ -1,6 +1,13 @@
 Changelog for the [`directory`][1] package
 ==========================================
 
+## 1.2.3.2 (August 2015)
+
+  * Work around lack of `#const_str` when cross-compiling
+    ([haskell-cafe](F7D))
+
+[F7D]: https://mail.haskell.org/pipermail/haskell-cafe/2015-August/120892.html
+
 ## 1.2.3.1 (August 2015)
 
   * Restore support for Safe Haskell with base < 4.8
