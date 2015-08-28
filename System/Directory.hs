@@ -53,6 +53,7 @@ module System.Directory
     , makeRelativeToCurrentDirectory
     , findExecutable
     , findExecutables
+    , findExecutablesInDirectories
     , findFile
     , findFiles
     , findFilesWith
@@ -913,11 +914,17 @@ findExecutables binary = do
     return $ maybeToList file
 #else
     path <- getEnv "PATH"
-    findFilesWith isExecutable (splitSearchPath path) (binary <.> exeExtension)
+    findExecutablesInDirectories (splitSearchPath path) binary
+#endif
+
+-- | Given a file name, searches for the file on the given paths and returns a
+-- list of all occurences that are executable.
+findExecutablesInDirectories :: [FilePath] -> String -> IO [FilePath]
+findExecutablesInDirectories path binary =
+    findFilesWith isExecutable path (binary <.> exeExtension)
   where isExecutable file = do
             perms <- getPermissions file
             return $ executable perms
-#endif
 
 -- | Search through the given set of directories for the given file.
 -- Used by 'findExecutable' on non-windows platforms.
