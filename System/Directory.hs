@@ -57,6 +57,7 @@ module System.Directory
     , findFile
     , findFiles
     , findFilesWith
+    , exeExtension
 
     -- * Existence tests
     , doesFileExist
@@ -906,6 +907,10 @@ findExecutable fileName = do
 -- | Given a file name, searches for the file and returns a list of all
 -- occurences that are executable.
 --
+-- On Windows, this only returns the first ocurrence, if any.  It uses the
+-- @SearchPath@ from the Win32 API, so the caveats noted in 'findExecutable'
+-- apply here as well.
+--
 -- @since 1.2.2.0
 findExecutables :: String -> IO [FilePath]
 findExecutables binary = do
@@ -919,6 +924,8 @@ findExecutables binary = do
 
 -- | Given a file name, searches for the file on the given paths and returns a
 -- list of all occurences that are executable.
+--
+-- @since 1.2.4.0
 findExecutablesInDirectories :: [FilePath] -> String -> IO [FilePath]
 findExecutablesInDirectories path binary =
     findFilesWith isExecutable path (binary <.> exeExtension)
@@ -927,7 +934,6 @@ findExecutablesInDirectories path binary =
             return $ executable perms
 
 -- | Search through the given set of directories for the given file.
--- Used by 'findExecutable' on non-windows platforms.
 findFile :: [FilePath] -> String -> IO (Maybe FilePath)
 findFile path fileName = do
     files <- findFiles path fileName
