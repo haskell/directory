@@ -5,11 +5,23 @@ AC_CONFIG_SRCDIR([include/HsDirectory.h])
 
 AC_CONFIG_HEADERS([include/HsDirectoryConfig.h])
 
-AC_ARG_WITH([cc],
-            [C compiler],
-            [CC=$withval])
-# inherit the C compiler from Cabal
+# Autoconf chokes on spaces, but we may receive a path from Cabal containing
+# spaces.  In that case, we just ignore Cabal's suggestion.
+set_with_gcc() {
+    case $withval in
+        *" "*)
+            AC_MSG_WARN([--with-gcc ignored due to presence of spaces]);;
+        *)
+            CC=$withval
+    esac
+}
+
+# inherit the C compiler from Cabal but allow it to be overridden by --with-cc
+# because Cabal puts its own flags at the end
 AC_ARG_WITH([gcc],
+            [C compiler],
+            [set_with_gcc])
+AC_ARG_WITH([cc],
             [C compiler],
             [CC=$withval])
 # avoid warnings when run via Cabal
