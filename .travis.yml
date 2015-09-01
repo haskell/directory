@@ -61,10 +61,10 @@ before_script:
 
 script:
  - autoreconf -i
- - cabal configure -v2 --enable-tests
+ - cabal configure -v2 --enable-tests --ghc-options=-threaded
  - cabal build
  - cabal check
  - cabal sdist
- - cabal test --show-details=$streaming --test-option="+RTS -N2"
+ - cabal test --show-details=$streaming --test-option=+RTS --test-option=-N2
  - eval "$def_cabal_install_run_tests" &&
    cabal_install_run_tests --force-reinstalls dist/*-*.tar.gz
