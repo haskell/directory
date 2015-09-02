@@ -3,10 +3,14 @@ module Util where
 import Prelude (Eq(..), Num(..), Ord(..), RealFrac(..), Show(..),
                 Bool(..), Double, Either(..), Int, Integer, Maybe(..), String,
                 ($), (.), otherwise)
+import Data.Char (toLower)
+import Data.Functor ((<$>))
 import Data.IORef (IORef, newIORef, readIORef, writeIORef)
-import Data.List (elem, intercalate)
+import Data.List (drop, elem, intercalate, lookup, reverse, span)
+import Data.Maybe (fromMaybe)
 import Data.Monoid ((<>))
 import Data.Time.Clock (NominalDiffTime, UTCTime, diffUTCTime)
+import Control.Arrow (second)
 import Control.Concurrent (forkIO, killThread)
 import Control.Concurrent.MVar (newEmptyMVar, putMVar, readMVar)
 import Control.Exception (SomeException, bracket_, catch,
@@ -14,12 +18,14 @@ import Control.Exception (SomeException, bracket_, catch,
 import Control.Monad (Monad(..), unless, when)
 import System.Directory (createDirectory, makeAbsolute,
                          removeDirectoryRecursive, withCurrentDirectory)
+import System.Environment (getArgs)
 import System.Exit (exitFailure)
 import System.FilePath (FilePath, normalise)
 import System.IO (IO, hFlush, hPutStrLn, putStrLn, stderr, stdout)
 import System.IO.Error (IOError, isDoesNotExistError,
                         ioError, tryIOError, userError)
 import System.Timeout (timeout)
+import Text.Read (Read, reads)
 
 modifyIORef' :: IORef a -> (a -> a) -> IO ()
 modifyIORef' r f = do
@@ -45,35 +51,32 @@ data TestEnv =
   { testCounter  :: IORef Int
   , testSilent   :: Bool
   , testKeepDirs :: Bool
+  , testArgs     :: [(String, String)]
   }
 
-defaultTestEnv :: IORef Int -> TestEnv
-defaultTestEnv counter =
-  TestEnv
-  { testCounter  = counter
-  , testSilent   = False
-  , testKeepDirs = False
-  }
-
-showSuccess :: TestEnv -> [String] -> IO ()
-showSuccess TestEnv{testSilent = True}  _   = return ()
-showSuccess TestEnv{testSilent = False} msg = do
+printInfo :: TestEnv -> [String] -> IO ()
+printInfo TestEnv{testSilent = True}  _   = return ()
+printInfo TestEnv{testSilent = False} msg = do
   putStrLn (intercalate ": " msg)
   hFlush stdout
 
-showFailure :: TestEnv -> [String] -> IO ()
-showFailure TestEnv{testCounter = n} msg = do
-  modifyIORef' n (+ 1)
+printErr :: [String] -> IO ()
+printErr msg = do
   hPutStrLn stderr ("*** " <> intercalate ": " msg)
   hFlush stderr
 
+printFailure :: TestEnv -> [String] -> IO ()
+printFailure TestEnv{testCounter = n} msg = do
+  modifyIORef' n (+ 1)
+  printErr msg
+
 check :: TestEnv -> Bool -> [String] -> [String] -> [String] -> IO ()
-check t True  prefix msg _   = showSuccess t (prefix <> msg)
-check t False prefix _   msg = showFailure t (prefix <> msg)
+check t True  prefix msg _   = printInfo t (prefix <> msg)
+check t False prefix _   msg = printFailure t (prefix <> msg)
 
 checkEither :: TestEnv -> [String] -> Either [String] [String] -> IO ()
-checkEither t prefix (Right msg) = showSuccess t (prefix <> msg)
-checkEither t prefix (Left  msg) = showFailure t (prefix <> msg)
+checkEither t prefix (Right msg) = printInfo t (prefix <> msg)
+checkEither t prefix (Left  msg) = printFailure t (prefix <> msg)
 
 showContext :: Show a => String -> Integer -> a -> String
 showContext file line context =
@@ -81,6 +84,10 @@ showContext file line context =
   case show context of
     "()" -> ""
     s    -> ":" <> s
+
+inform :: TestEnv -> String -> Integer -> String -> IO ()
+inform t file line msg =
+  printInfo t [showContext file line (), msg]
 
 expect :: Show a => TestEnv -> String -> Integer -> a -> Bool -> IO ()
 expect t file line context x =
@@ -124,14 +131,15 @@ expectIOErrorType t file line context which action = do
             | otherwise -> Left  ["got wrong exception: ", show e]
     Right _             -> Left  ["did not throw an exception"]
 
-withNewDirectory :: FilePath -> IO a -> IO a
-withNewDirectory dir action = do
+withNewDirectory :: Bool -> FilePath -> IO a -> IO a
+withNewDirectory keep dir action = do
   dir' <- makeAbsolute dir
-  bracket_ (createDirectory          dir')
-           (removeDirectoryRecursive dir') action
+  bracket_ (createDirectory dir') (cleanup dir') action
+  where cleanup dir' | keep      = return ()
+                     | otherwise = removeDirectoryRecursive dir'
 
-isolateWorkingDirectory :: FilePath -> IO a -> IO a
-isolateWorkingDirectory dir action = do
+isolateWorkingDirectory :: Bool -> FilePath -> IO a -> IO a
+isolateWorkingDirectory keep dir action = do
   when (normalise dir `elem` [".", "./"]) $
     ioError (userError ("isolateWorkingDirectory cannot be used " <>
                         "with current directory"))
@@ -139,7 +147,7 @@ isolateWorkingDirectory dir action = do
   removeDirectoryRecursive dir' `catch` \ e ->
     unless (isDoesNotExistError e) $
       ioError e
-  withNewDirectory dir' $
+  withNewDirectory keep dir' $
     withCurrentDirectory dir' $
       action
 
@@ -151,13 +159,46 @@ run t name action = do
     Right () -> return ()
 
 isolatedRun :: TestEnv -> String -> (TestEnv -> IO ()) -> IO ()
-isolatedRun t name action = do
-  run t name (isolateWorkingDirectory ("test-" <> name <> ".tmp") . action)
+isolatedRun t@TestEnv{testKeepDirs = keep} name =
+  run t name .
+  (isolateWorkingDirectory keep ("dist/test-" <> name <> ".tmp") .)
+
+tryRead :: Read a => String -> Maybe a
+tryRead s =
+  case reads s of
+    [(x, "")] -> Just x
+    _         -> Nothing
+
+getArg :: (String -> Maybe a) -> TestEnv -> String -> String -> a -> a
+getArg parse TestEnv{testArgs = args} testname name defaultValue =
+  fromMaybe defaultValue (lookup (prefix <> name) args >>= parse)
+  where prefix | testname == "" = ""
+               | otherwise      = testname <> "."
+
+readArg :: Read a => TestEnv -> String -> String -> a -> a
+readArg = getArg tryRead
+
+readBool :: String -> Maybe Bool
+readBool s = Just $
+  case toLower <$> s of
+    'y' : _ -> True
+    't' : _ -> True
+    _       -> False
+
+parseArgs :: [String] -> [(String, String)]
+parseArgs = reverse . (second (drop 1) . span (/= '=') <$>)
 
 testMain :: (TestEnv -> IO ()) -> IO ()
 testMain action = do
+  args <- parseArgs <$> getArgs
   counter <- newIORef 0
-  action (defaultTestEnv counter)
+  let t = TestEnv
+          { testCounter  = counter
+          , testSilent   = getArg readBool t "" "silent" False
+          , testKeepDirs = getArg readBool t "" "keep-dirs" False
+          , testArgs     = args
+          }
+  action t
   n <- readIORef (counter)
   unless (n == 0) $ do
     putStrLn ("[" <> show n <> " failures]")

@@ -5,8 +5,8 @@ import System.Directory
 import Control.Concurrent (forkIO, newEmptyMVar, putMVar, takeMVar)
 import qualified Control.Exception as E
 import Control.Monad (replicateM_)
+import Data.Monoid ((<>))
 import System.FilePath ((</>), addTrailingPathSeparator)
-import System.IO (hFlush, stdout)
 import System.IO.Error(isAlreadyExistsError, isDoesNotExistError,
                        isPermissionError)
 #ifndef mingw32_HOST_OS
@@ -30,12 +30,11 @@ main _t = do
 
   createDirectoryIfMissing True  (addTrailingPathSeparator testdir_a)
 
-  putStrLn "testing for race conditions ..."
-  hFlush stdout
+  T(inform) "testing for race conditions ..."
   raceCheck1
+  T(inform) "testing for race conditions ..."
   raceCheck2
-  putStrLn "done."
-  hFlush stdout
+  T(inform) "done."
   cleanup
 
   writeFile testdir testdir
@@ -52,31 +51,36 @@ main _t = do
 
   where
 
-    testdir = "createDirectoryIfMissing001.d"
+    testname = "CreateDirectoryIfMissing001"
+
+    testdir = testname <> ".d"
     testdir_a = testdir </> "a"
+
+    numRepeats = T.readArg _t testname "num-repeats" 10000
+    numThreads = T.readArg _t testname "num-threads" 4
 
     -- Look for race conditions (bug #2808 on GHC Trac).  This fails with
     -- +RTS -N2 and directory 1.0.0.2.
     raceCheck1 = do
       m <- newEmptyMVar
       _ <- forkIO $ do
-        replicateM_ 10000 create
+        replicateM_ numRepeats create
         putMVar m ()
       _ <- forkIO $ do
-        replicateM_ 10000 cleanup
+        replicateM_ numRepeats cleanup
         putMVar m ()
       replicateM_ 2 (takeMVar m)
 
     -- This test fails on Windows (see bug #2924 on GHC Trac):
     raceCheck2 = do
       m <- newEmptyMVar
-      replicateM_ 4 $
+      replicateM_ numThreads $
         forkIO $ do
-          replicateM_ 10000 $ do
+          replicateM_ numRepeats $ do
             create
             cleanup
           putMVar m ()
-      replicateM_ 4 (takeMVar m)
+      replicateM_ numThreads (takeMVar m)
 
     -- createDirectoryIfMissing is allowed to fail with isDoesNotExistError if
     -- another process/thread removes one of the directories during the process
