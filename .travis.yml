@@ -37,18 +37,6 @@ before_script:
      else streaming=streaming
      fi
      export streaming
- - | # skip cabal test on HEAD due to this bug:
-     # https://github.com/haskell/cabal/issues/1938
-     # this is fine as the test will be run during installation anyway
-     if [ "$CABALVER" = head ]
-     then def_cabal_test='cabal_test() {
-          echo "warning: cabal test skipped due to Cabal bug #1938"
-     }'
-     else def_cabal_test='cabal_test() {
-          cabal test "$@"
-     }'
-     fi
-     export def_cabal_test
  - | # check if '--run-tests' is supported (didn't exist until 1.20);
      # tests must be run prior to install as packages may be broken by install
      if cabal 2>&1 install --run-tests __dummy |
@@ -77,7 +65,6 @@ script:
  - cabal build
  - cabal check
  - cabal sdist
- - eval "$def_cabal_test" &&
-   cabal_test --show-details=$streaming --test-option="+RTS -N2"
+ - cabal test --show-details=$streaming --test-option="+RTS -N2"
  - eval "$def_cabal_install_run_tests" &&
    cabal_install_run_tests --force-reinstalls dist/*-*.tar.gz
