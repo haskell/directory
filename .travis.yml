@@ -30,15 +30,17 @@ install:
  - ghc --version
 
 before_script:
- - | # check if 'streaming' is supported (didn't exist until 1.20)
+   # check if 'streaming' is supported (didn't exist until 1.20)
+ - |
      if cabal 2>&1 test --show-details=streaming __dummy |
         grep >/dev/null 2>&1 "cabal: --show-details flag expects"
      then streaming=always
      else streaming=streaming
      fi
      export streaming
- - | # check if '--run-tests' is supported (didn't exist until 1.20);
-     # tests must be run prior to install as packages may be broken by install
+   # check if '--run-tests' is supported (didn't exist until 1.20);
+   # tests must be run prior to install as packages may be broken by install
+ - |
      if cabal 2>&1 install --run-tests __dummy |
         grep >/dev/null 2>&1 "cabal: unrecognized option"
      then def_cabal_install_run_tests='cabal_install_run_tests() {
@@ -65,6 +67,8 @@ script:
  - cabal build
  - cabal check
  - cabal sdist
- - cabal test --show-details=$streaming --test-option=+RTS --test-option=-N2
+ - cabal test --show-details=$streaming
+     --test-option=CreateDirectoryIfMissing001.num-repeats=100000
+     --test-option=+RTS --test-option=-N2
  - eval "$def_cabal_install_run_tests" &&
    cabal_install_run_tests --force-reinstalls dist/*-*.tar.gz
