@@ -90,7 +90,7 @@ main _t = do
     -- (see bug #2924 on GHC Trac)
     create =
       createDirectoryIfMissing True testdir_a `E.catch` \ e ->
-      if isDoesNotExistError e || isPermissionError e
+      if isDoesNotExistError e || isPermissionError e || isInappropriateTypeError e
       then return ()
       else ioError e
 
@@ -102,7 +102,10 @@ main _t = do
 #ifdef mingw32_HOST_OS
     isNotADirectoryError = isAlreadyExistsError
 #else
-    isNotADirectoryError e = case ioeGetErrorType e of
-      InappropriateType -> True
-      _                 -> False
+    isNotADirectoryError = isInappropriateTypeError
 #endif
+
+    isInappropriateTypeError = isInappropriateTypeErrorType . ioeGetErrorType
+
+    isInappropriateTypeErrorType InappropriateType = True
+    isInappropriateTypeErrorType _                 = False
