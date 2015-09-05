@@ -25,7 +25,7 @@ c_PATH_MAX | c_PATH_MAX' > toInteger maxValue = Nothing
 c_PATH_MAX = Nothing
 #endif
 
-foreign import ccall unsafe "realpath" c_realpath
+foreign import ccall "realpath" c_realpath
   :: CString -> CString -> IO CString
 
 withRealpath :: CString -> (CString -> IO a) -> IO a
