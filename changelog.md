@@ -3,15 +3,13 @@ Changelog for the [`directory`][1] package
 
 ## 1.2.4.0 (September 2015)
 
+  * Work around lack of `#const_str` when cross-compiling
+    ([haskell-cafe](F7D))
+
   * Add `findExecutablesInDirectories`
     ([#33](https://github.com/haskell/directory/pull/33))
 
   * Add `exeExtension`
-
-## 1.2.3.2 (August 2015)
-
-  * Work around lack of `#const_str` when cross-compiling
-    ([haskell-cafe](F7D))
 
 [F7D]: https://mail.haskell.org/pipermail/haskell-cafe/2015-August/120892.html
 
