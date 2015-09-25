@@ -30,6 +30,7 @@ module System.Directory
     , removeDirectoryRecursive
     , renameDirectory
     , getDirectoryContents
+    , getDirectoryContentsA
     -- ** Current working directory
     , getCurrentDirectory
     , setCurrentDirectory
@@ -1029,6 +1030,15 @@ getDirectoryContents path =
           else return (filename:acc)
                  -- no need to reverse, ordering is undefined
 #endif /* mingw32 */
+
+{- | A version of 'getDirectoryContents' which returns /almost all/
+entries, ignoring the current and parent directories, @.@ and @..@.
+
+-}
+getDirectoryContentsA :: FilePath -> IO [FilePath]
+getDirectoryContentsA path =
+  (filter f) <$> (getDirectoryContents path)
+  where f filename = filename /= "." && filename /= ".."
 
 #endif /* __GLASGOW_HASKELL__ */
 
