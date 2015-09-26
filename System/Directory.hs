@@ -572,8 +572,8 @@ removePathRecursive path =
 removeContentsRecursive :: FilePath -> IO ()
 removeContentsRecursive path =
   (`ioeSetLocation` "removeContentsRecursive") `modifyIOError` do
-    cont <- getDirectoryContents path
-    mapM_ removePathRecursive [path </> x | x <- cont, x /= "." && x /= ".."]
+    cont <- getDirectoryContentsA path
+    mapM_ removePathRecursive [path </> x | x <- cont]
     removeDirectory path
 
 #if __GLASGOW_HASKELL__
