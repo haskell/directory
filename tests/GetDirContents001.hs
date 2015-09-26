@@ -10,13 +10,10 @@ import System.FilePath  ((</>))
 main :: TestEnv -> IO ()
 main _t = do
   createDirectory dir
-  T(expectEq) () specials . sort =<< getDirectoryContents dir
   T(expectEq) () [] . sort =<< getDirectoryContentsA dir
   names <- for [1 .. 100 :: Int] $ \ i -> do
     let name = 'f' : show i
     writeFile (dir </> name) ""
     return name
-  T(expectEq) () (sort (specials <> names)) . sort =<< getDirectoryContents dir
-  T(expectEq) () (sort (names)) . sort =<< getDirectoryContentsA dir
+  T(expectEq) () (sort names) . sort =<< getDirectoryContentsA dir
   where dir      = "dir"
-        specials = [".", ".."]

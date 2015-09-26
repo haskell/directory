@@ -41,10 +41,10 @@ copyPathRecursive source dest =
     dirExists <- doesDirectoryExist source
     if dirExists
       then do
-        contents <- getDirectoryContents source
+        contents <- getDirectoryContentsA source
         createDirectory dest
         mapM_ (uncurry copyPathRecursive)
-          [(source </> x, dest </> x) | x <- contents, x /= "." && x /= ".."]
+          [(source </> x, dest </> x) | x <- contents]
       else copyFile source dest
 
 modifyPermissions :: FilePath -> (Permissions -> Permissions) -> IO ()
