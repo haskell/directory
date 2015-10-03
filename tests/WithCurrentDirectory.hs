@@ -1,7 +1,6 @@
 {-# LANGUAGE CPP #-}
 module WithCurrentDirectory where
 #include "util.inl"
-import Data.Monoid ((<>))
 import Data.List (sort)
 import System.Directory
 import System.FilePath ((</>))
