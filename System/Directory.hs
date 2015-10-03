@@ -177,8 +177,8 @@ win32_fILE_SHARE_DELETE   = 0x00000004
 A directory contains a series of entries, each of which is a named
 reference to a file system object (file, directory etc.).  Some
 entries may be hidden, inaccessible, or have some administrative
-function (e.g. `.' or `..' under POSIX
-<http://www.opengroup.org/onlinepubs/009695399/>), but in
+function (e.g. @.@ or @..@ under
+<http://www.opengroup.org/onlinepubs/009695399 POSIX>), but in
 this standard all such entries are considered to form part of the
 directory contents. Entries in sub-directories are not, however,
 considered to form part of the directory contents.
@@ -965,7 +965,7 @@ findFilesWith f (d:ds) fileName = do
 
 #ifdef __GLASGOW_HASKELL__
 {- |@'getDirectoryContents' dir@ returns a list of /all/ entries
-in /dir/.
+in /dir/, including @.@ and @..@ (even on Windows).
 
 The operation may fail with:
 
