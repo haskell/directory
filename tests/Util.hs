@@ -16,7 +16,7 @@ import Control.Concurrent.MVar (newEmptyMVar, putMVar, readMVar)
 import Control.Exception (SomeException, bracket_, catch,
                           mask, onException, try)
 import Control.Monad (Monad(..), unless, when)
-import System.Directory (createDirectory, makeAbsolute,
+import System.Directory (createDirectoryIfMissing, makeAbsolute,
                          removeDirectoryRecursive, withCurrentDirectory)
 import System.Environment (getArgs)
 import System.Exit (exitFailure)
@@ -134,7 +134,7 @@ expectIOErrorType t file line context which action = do
 withNewDirectory :: Bool -> FilePath -> IO a -> IO a
 withNewDirectory keep dir action = do
   dir' <- makeAbsolute dir
-  bracket_ (createDirectory dir') (cleanup dir') action
+  bracket_ (createDirectoryIfMissing True dir') (cleanup dir') action
   where cleanup dir' | keep      = return ()
                      | otherwise = removeDirectoryRecursive dir'
 
