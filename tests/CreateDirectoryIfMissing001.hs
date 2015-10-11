@@ -6,13 +6,10 @@ import Control.Concurrent (forkIO, newEmptyMVar, putMVar, takeMVar)
 import qualified Control.Exception as E
 import Control.Monad (replicateM_)
 import Data.Monoid ((<>))
-import System.FilePath ((</>), addTrailingPathSeparator)
-import System.IO.Error(isAlreadyExistsError, isDoesNotExistError,
-                       isPermissionError)
-#ifndef mingw32_HOST_OS
 import GHC.IO.Exception (IOErrorType(InappropriateType))
-import System.IO.Error(ioeGetErrorType)
-#endif
+import System.FilePath ((</>), addTrailingPathSeparator)
+import System.IO.Error (ioeGetErrorType, isAlreadyExistsError,
+                        isDoesNotExistError, isPermissionError)
 
 main :: TestEnv -> IO ()
 main _t = do
