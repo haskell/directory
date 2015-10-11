@@ -9,13 +9,13 @@ main :: TestEnv -> IO ()
 main _t = do
   createDirectory dir
   -- Make sure we're starting empty
-  T(expectEq) () [] . sort =<< getDirectoryContentsA dir
+  T(expectEq) () [] . sort =<< listDirectory dir
   cwd <- getCurrentDirectory
   withCurrentDirectory dir (writeFile testfile contents)
   -- Are we still in original directory?
   T(expectEq) () cwd =<< getCurrentDirectory
   -- Did the test file get created?
-  T(expectEq) () [testfile] . sort =<< getDirectoryContentsA dir
+  T(expectEq) () [testfile] . sort =<< listDirectory dir
   -- Does the file contain what we expected to write?
   T(expectEq) () contents =<< readFile (dir </> testfile)
   where

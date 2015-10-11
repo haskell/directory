@@ -41,7 +41,7 @@ copyPathRecursive source dest =
     dirExists <- doesDirectoryExist source
     if dirExists
       then do
-        contents <- getDirectoryContentsA source
+        contents <- listDirectory source
         createDirectory dest
         mapM_ (uncurry copyPathRecursive)
           [(source </> x, dest </> x) | x <- contents]

@@ -29,7 +29,7 @@ module System.Directory
     , removeDirectory
     , removeDirectoryRecursive
     , renameDirectory
-    , getDirectoryContentsA
+    , listDirectory
     , getDirectoryContents
     -- ** Current working directory
     , getCurrentDirectory
@@ -572,7 +572,7 @@ removePathRecursive path =
 removeContentsRecursive :: FilePath -> IO ()
 removeContentsRecursive path =
   (`ioeSetLocation` "removeContentsRecursive") `modifyIOError` do
-    cont <- getDirectoryContentsA path
+    cont <- listDirectory path
     mapM_ removePathRecursive [path </> x | x <- cont]
     removeDirectory path
 
@@ -964,7 +964,7 @@ findFilesWith f (d:ds) fileName = do
         else findFilesWith f ds fileName
 
 #ifdef __GLASGOW_HASKELL__
--- | Similar to 'getDirectoryContentsA', but always includes the special entries (@.@
+-- | Similar to 'listDirectory', but always includes the special entries (@.@
 -- and @..@).  (This applies to Windows as well.)
 getDirectoryContents :: FilePath -> IO [FilePath]
 getDirectoryContents path =
@@ -1002,7 +1002,7 @@ getDirectoryContents path =
                  -- no need to reverse, ordering is undefined
 #endif /* mingw32 */
 
--- | @'getDirectoryContentsA' dir@ returns a list of /all/ entries in /dir/ without
+-- | @'listDirectory' dir@ returns a list of /all/ entries in /dir/ without
 -- the special entries (@.@ and @..@).
 --
 -- The operation may fail with:
@@ -1033,8 +1033,8 @@ getDirectoryContents path =
 --
 -- @since 1.2.5.0
 --
-getDirectoryContentsA :: FilePath -> IO [FilePath]
-getDirectoryContentsA path =
+listDirectory :: FilePath -> IO [FilePath]
+listDirectory path =
   (filter f) <$> (getDirectoryContents path)
   where f filename = filename /= "." && filename /= ".."
 

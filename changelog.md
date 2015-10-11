@@ -3,7 +3,8 @@ Changelog for the [`directory`][1] package
 
 ## 1.2.5.0 (October 2015)
 
-  * Add `getDirectoryContentsA`, which leaves out `.` and `..`
+  * Add `listDirectory`, which is similar to `getDirectoryContents` but leaves
+    out `.` and `..`
     ([#36](https://github.com/haskell/directory/pull/36))
 
 ## 1.2.4.0 (September 2015)

@@ -9,9 +9,9 @@ main :: TestEnv -> IO ()
 main _t = do
   createDirectory dir
   writeFile (dir </> from) contents
-  T(expectEq) () [from] . sort =<< getDirectoryContentsA dir
+  T(expectEq) () [from] . sort =<< listDirectory dir
   copyFile (dir </> from) (dir </> to)
-  T(expectEq) () [from, to] . sort =<< getDirectoryContentsA dir
+  T(expectEq) () [from, to] . sort =<< listDirectory dir
   T(expectEq) () contents =<< readFile (dir </> to)
   where
     contents = "This is the data\n"
