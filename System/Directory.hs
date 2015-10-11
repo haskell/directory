@@ -29,8 +29,8 @@ module System.Directory
     , removeDirectory
     , removeDirectoryRecursive
     , renameDirectory
-    , getDirectoryContents
     , getDirectoryContentsA
+    , getDirectoryContents
     -- ** Current working directory
     , getCurrentDirectory
     , setCurrentDirectory
@@ -964,37 +964,8 @@ findFilesWith f (d:ds) fileName = do
         else findFilesWith f ds fileName
 
 #ifdef __GLASGOW_HASKELL__
-{- |@'getDirectoryContents' dir@ returns a list of /all/ entries
-in /dir/, including @.@ and @..@ (even on Windows).
-
-The operation may fail with:
-
-* 'HardwareFault'
-A physical I\/O error has occurred.
-@[EIO]@
-
-* 'InvalidArgument'
-The operand is not a valid directory name.
-@[ENAMETOOLONG, ELOOP]@
-
-* 'isDoesNotExistError' \/ 'NoSuchThing'
-The directory does not exist.
-@[ENOENT, ENOTDIR]@
-
-* 'isPermissionError' \/ 'PermissionDenied'
-The process has insufficient privileges to perform the operation.
-@[EACCES]@
-
-* 'ResourceExhausted'
-Insufficient resources are available to perform the operation.
-@[EMFILE, ENFILE]@
-
-* 'InappropriateType'
-The path refers to an existing non-directory object.
-@[ENOTDIR]@
-
--}
-
+-- | Similar to 'getDirectoryContentsA', but always includes the special entries (@.@
+-- and @..@).  (This applies to Windows as well.)
 getDirectoryContents :: FilePath -> IO [FilePath]
 getDirectoryContents path =
   modifyIOError ((`ioeSetFileName` path) .
@@ -1031,10 +1002,37 @@ getDirectoryContents path =
                  -- no need to reverse, ordering is undefined
 #endif /* mingw32 */
 
-{- | A version of 'getDirectoryContents' which returns /almost all/
-entries, ignoring the current and parent directories, @.@ and @..@.
-
--}
+-- | @'getDirectoryContentsA' dir@ returns a list of /all/ entries in /dir/ without
+-- the special entries (@.@ and @..@).
+--
+-- The operation may fail with:
+--
+-- * 'HardwareFault'
+--   A physical I\/O error has occurred.
+--   @[EIO]@
+--
+-- * 'InvalidArgument'
+--   The operand is not a valid directory name.
+--   @[ENAMETOOLONG, ELOOP]@
+--
+-- * 'isDoesNotExistError' \/ 'NoSuchThing'
+--   The directory does not exist.
+--   @[ENOENT, ENOTDIR]@
+--
+-- * 'isPermissionError' \/ 'PermissionDenied'
+--   The process has insufficient privileges to perform the operation.
+--   @[EACCES]@
+--
+-- * 'ResourceExhausted'
+--   Insufficient resources are available to perform the operation.
+--   @[EMFILE, ENFILE]@
+--
+-- * 'InappropriateType'
+--   The path refers to an existing non-directory object.
+--   @[ENOTDIR]@
+--
+-- @since 1.2.5.0
+--
 getDirectoryContentsA :: FilePath -> IO [FilePath]
 getDirectoryContentsA path =
   (filter f) <$> (getDirectoryContents path)
