@@ -1,14 +1,18 @@
-`directory` [![Hackage][1]][2] [![Build Status][3]][4]
+`directory`
 ===========
 
-Documentation can be found on [Hackage][2].
+[![Hackage][hi]][hl]
+[![Build status][bi]][bl]
+[![Windows build status][wi]][wl]
+
+Documentation can be found on [Hackage][hl].
 
 Building from Git repository
 ----------------------------
 
 When building this package directly from the Git repository, one must run
 `autoreconf -i` to generate the `configure` script needed by `cabal
-configure`.  This requires [Autoconf][5] to be installed.
+configure`.  This requires [Autoconf][ac] to be installed.
 
     autoreconf -i
     cabal install
@@ -16,8 +20,10 @@ configure`.  This requires [Autoconf][5] to be installed.
 There is no need to run the `configure` script manually however, as `cabal
 configure` does that automatically.
 
-[1]: https://img.shields.io/hackage/v/directory.svg
-[2]: https://hackage.haskell.org/package/directory
-[3]: https://travis-ci.org/haskell/directory.svg?branch=master
-[4]: https://travis-ci.org/haskell/directory
-[5]: https://gnu.org/software/autoconf
+[hi]: https://img.shields.io/hackage/v/directory.svg
+[hl]: https://hackage.haskell.org/package/directory
+[bi]: https://travis-ci.org/haskell/directory.svg?branch=master
+[bl]: https://travis-ci.org/haskell/directory
+[wi]: https://ci.appveyor.com/api/projects/status/github/haskell/directory
+[wl]: https://ci.appveyor.com/project/Rufflewind/directory
+[ac]: https://gnu.org/software/autoconf

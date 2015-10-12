@@ -1,0 +1,12 @@
+#!/bin/sh
+set -eu
+n=$1
+shift
+i=0
+while [ $i -lt $n ]
+do
+    if "$@"
+    then break
+    fi
+    i=`expr "$i" + 1`
+done

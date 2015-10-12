@@ -1,0 +1,28 @@
+version: "{build}-{branch}"
+skip_tags: true
+shallow_clone: true
+environment:
+  global:
+    # use a short path prefix to avoid running into path-length limitations
+    STACK_ROOT: C:\sr
+    STACK_VER: 1.0.4
+install:
+  - set PATH=C:\msys64\usr\bin;%PATH%
+    # might have to retry due to reliability issues with SourceForge
+  - sh tools/retry 32 pacman -S --needed --noconfirm autoconf automake tar
+  - curl -fsLS -o stack.zip https://github.com/commercialhaskell/stack/releases/download/v%STACK_VER%/stack-%STACK_VER%-windows-x86_64.zip
+  - 7z x stack.zip stack.exe
+    # silence it because it's far too verbose
+  - stack --skip-msys setup >NUL
+  - stack --version
+  - stack ghc -- --version
+build_script:
+  - stack init
+  - stack exec -- sh -c "autoreconf -fi"
+test_script:
+  - stack test
+        --ghc-options -rtsopts
+        --ghc-options -threaded
+        --test-arguments
+        "CreateDirectoryIfMissing001.num-repeats=100000 +RTS -N2"
+  - stack sdist
