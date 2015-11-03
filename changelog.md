@@ -34,6 +34,8 @@ Changelog for the [`directory`][1] package
 
   * Implement `getAccessTime` and `setAccessTime`
 
+  * Set the filename in IO errors from the file time functions
+
   * Fix `canonicalizePath` so that it always returns a reasonable result even
     if the path is inaccessible and will not throw exceptions unless the
     current directory cannot be obtained
