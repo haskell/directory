@@ -30,7 +30,7 @@ instance Storable CTimeSpec where
       nsec <- #{peek struct timespec, tv_nsec} p
       return (CTimeSpec sec nsec)
 
-c_AT_FDCWD :: Integral a => a
+c_AT_FDCWD :: CInt
 c_AT_FDCWD = (#const AT_FDCWD)
 
 utimeOmit :: CTimeSpec
