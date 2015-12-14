@@ -16,14 +16,11 @@ set_with_gcc() {
     esac
 }
 
-# inherit the C compiler from Cabal but allow it to be overridden by --with-cc
-# because Cabal puts its own flags at the end
+# Legacy support for setting the C compiler with Cabal<1.24
+# Newer versions use Autoconf's native `CC=...` facility
 AC_ARG_WITH([gcc],
             [C compiler],
             [set_with_gcc])
-AC_ARG_WITH([cc],
-            [C compiler],
-            [CC=$withval])
 # avoid warnings when run via Cabal
 AC_ARG_WITH([compiler],
             [GHC compiler],
