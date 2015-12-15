@@ -1,11 +1,14 @@
 Changelog for the [`directory`][1] package
 ==========================================
 
-## 1.2.5.0 (October 2015)
+## 1.2.5.0 (December 2015)
 
-  * Add `listDirectory`, which is similar to `getDirectoryContents` but leaves
-    out `.` and `..`
+  * Add `listDirectory`, which is similar to `getDirectoryContents`
+    but omits `.` and `..`
     ([#36](https://github.com/haskell/directory/pull/36))
+
+  * Remove support for `--with-cc=` in `configure`; use the `CC=` flag instead
+    ([ghc:D1608](https://phabricator.haskell.org/D1608))
 
 ## 1.2.4.0 (September 2015)
 
