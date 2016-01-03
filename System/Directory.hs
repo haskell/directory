@@ -1070,11 +1070,17 @@ listDirectory path =
 --
 #ifdef __GLASGOW_HASKELL__
 getCurrentDirectory :: IO FilePath
-getCurrentDirectory = do
+getCurrentDirectory =
+  modifyIOError (`ioeSetLocation` "getCurrentDirectory") $
+  specializeErrorString
+    "Current working directory no longer exists"
+    isDoesNotExistError
+    getCwd
+  where
 #ifdef mingw32_HOST_OS
-  Win32.getCurrentDirectory
+    getCwd = Win32.getCurrentDirectory
 #else
-  Posix.getWorkingDirectory
+    getCwd = Posix.getWorkingDirectory
 #endif
 
 -- | Change the working directory to the given path.
@@ -1498,6 +1504,13 @@ tryIOErrorType check action = do
     Left  err -> if check err then return (Left err) else ioError err
     Right val -> return (Right val)
 #endif
+
+specializeErrorString :: String -> (IOError -> Bool) -> IO a -> IO a
+specializeErrorString str errType action = do
+  mx <- tryIOErrorType errType action
+  case mx of
+    Left  e -> ioError (ioeSetErrorString e str)
+    Right x -> return x
 
 -- | Obtain the path to a special directory for storing user-specific
 --   application data (traditional Unix location).  Except for backward
