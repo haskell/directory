@@ -2,13 +2,16 @@
 module CanonicalizePath where
 #include "util.inl"
 import System.Directory
-import System.FilePath ((</>), normalise)
+import System.FilePath ((</>), hasTrailingPathSeparator, normalise)
 
 main :: TestEnv -> IO ()
 main _t = do
+  dot' <- canonicalizePath "./"
   dot <- canonicalizePath "."
   nul <- canonicalizePath ""
   T(expectEq) () dot nul
+  T(expect) dot (not (hasTrailingPathSeparator dot))
+  T(expect) dot' (hasTrailingPathSeparator dot')
 
   writeFile "bar" ""
   bar <- canonicalizePath "bar"

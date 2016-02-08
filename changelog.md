@@ -1,6 +1,16 @@
 Changelog for the [`directory`][1] package
 ==========================================
 
+## 1.2.5.1 (February 2015)
+
+  * Fix the behavior of trailing path separators in `canonicalizePath` as well
+    as `makeAbsolute` when applied to the current directory; they should now
+    match the behavior of `canonicalizePath` prior to 1.2.3.0 (when the bug
+    was introduced)
+    ([#42](https://github.com/haskell/directory/issues/42))
+
+  * Set the location in IO errors from `makeAbsolute`.
+
 ## 1.2.5.0 (December 2015)
 
   * Add `listDirectory`, which is similar to `getDirectoryContents`

@@ -828,13 +828,13 @@ canonicalizePath = \ path ->
   modifyIOError ((`ioeSetLocation` "canonicalizePath") .
                  (`ioeSetFileName` path)) $
   -- normalise does more stuff, like upper-casing the drive letter
-  normalise <$> (transform =<< makeAbsolute path)
+  normalise <$> (transform =<< prependCurrentDirectory path)
   where
 #if defined(mingw32_HOST_OS)
     transform path = Win32.getFullPathName path
                      `catchIOError` \ _ -> return path
 #else
-    transform path = copySlash path <$> do
+    transform path = matchTrailingSeparator path <$> do
       encoding <- getFileSystemEncoding
       realpathPrefix encoding (reverse (zip prefixes suffixes)) path
       where segments = splitPath path
@@ -856,25 +856,40 @@ canonicalizePath = \ path ->
 
     doesPathExist path = (Posix.getFileStatus path >> return True)
                          `catchIOError` \ _ -> return False
-
-    -- make sure trailing slash is preserved
-    copySlash path | hasTrailingPathSeparator path = addTrailingPathSeparator
-                   | otherwise                     = id
 #endif
 
--- | Make a path absolute by prepending the current directory (if it isn't
--- already absolute) and applying 'normalise' to the result.
+-- | Convert a (possibly) relative path into an absolute path.  This is nearly
+-- equivalent to prepending the current directory (if the path isn't already
+-- absolute) and then applying 'normalise' to the result.  The trailing path
+-- separator, if any, is preserved during the process.
 --
 -- If the path is already absolute, the operation never fails.  Otherwise, the
 -- operation may fail with the same exceptions as 'getCurrentDirectory'.
 --
 -- @since 1.2.2.0
 makeAbsolute :: FilePath -> IO FilePath
-makeAbsolute = (normalise <$>) . absolutize
-  where absolutize path -- avoid the call to `getCurrentDirectory` if we can
-          | isRelative path = (</> path) . addTrailingPathSeparator <$>
-                              getCurrentDirectory
-          | otherwise       = return path
+makeAbsolute path =
+  modifyIOError ((`ioeSetLocation` "makeAbsolute") .
+                 (`ioeSetFileName` path)) $
+  matchTrailingSeparator path . normalise <$> prependCurrentDirectory path
+
+prependCurrentDirectory :: FilePath -> IO FilePath
+prependCurrentDirectory path =
+  modifyIOError ((`ioeSetLocation` "prependCurrentDirectory") .
+                 (`ioeSetFileName` path)) $
+  case path of
+    "" -> -- avoid trailing path separator
+      prependCurrentDirectory "."
+    _     -- avoid the call to `getCurrentDirectory` if we can
+      | isRelative path ->
+          (</> path) . addTrailingPathSeparator <$> getCurrentDirectory
+      | otherwise ->
+          return path
+
+matchTrailingSeparator :: FilePath -> FilePath -> FilePath
+matchTrailingSeparator path
+  | hasTrailingPathSeparator path = addTrailingPathSeparator
+  | otherwise                     = dropTrailingPathSeparator
 
 -- | 'makeRelative' the current directory.
 makeRelativeToCurrentDirectory :: FilePath -> IO FilePath
