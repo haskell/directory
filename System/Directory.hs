@@ -1509,6 +1509,7 @@ lookupEnv name = do
   case env of
     Left  _     -> return Nothing
     Right value -> return (Just value)
+#endif
 
 -- | Similar to 'try' but only catches a specify kind of 'IOError' as
 --   specified by the predicate.
@@ -1518,7 +1519,6 @@ tryIOErrorType check action = do
   case result of
     Left  err -> if check err then return (Left err) else ioError err
     Right val -> return (Right val)
-#endif
 
 specializeErrorString :: String -> (IOError -> Bool) -> IO a -> IO a
 specializeErrorString str errType action = do
