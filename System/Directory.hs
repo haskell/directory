@@ -795,28 +795,27 @@ copyFile fromFPath toFPath =
 
 -- | Make a path absolute and remove as many indirections from it as possible.
 -- Indirections include the two special directories @.@ and @..@, as well as
--- any symbolic links.  The input path need not point to an existing file or
--- directory.
+-- any Unix symbolic links.  The input path does not have to point to an
+-- existing file or directory.
 --
--- __Note__: if you require only an absolute path, use 'makeAbsolute' instead.
--- Most programs need not care about whether a path contains symbolic links.
+-- __Note__: if you only need an absolute path, use 'makeAbsolute' instead.
+-- Most programs should not worry about whether a path contains symbolic links.
 --
--- Due to the fact that symbolic links and @..@ are dependent on the state of
--- the existing filesystem, the function can only make a conservative,
--- best-effort attempt.  Nevertheless, if the input path points to an existing
--- file or directory, then the output path shall also point to the same file
--- or directory.
+-- Since symbolic links and the special parent directory (@..@) are dependent
+-- on the state of the existing filesystem, the function can only make a
+-- conservative attempt by removing symbolic links and @..@ from the longest
+-- prefix of the path that still points to an existing file or directory.  If
+-- the input path points to an existing file or directory, then the output
+-- path shall also point to the same file or directory, provided that the
+-- relevant parts of the filesystem have not changed in the meantime (the
+-- function is not atomic).
 --
--- Formally, symbolic links and @..@ are removed from the longest prefix of
--- the path that still points to an existing file.  The function is not
--- atomic, therefore concurrent changes in the filesystem may lead to
--- incorrect results.
+-- Despite the name, the function does not guarantee canonicity of the
+-- returned path due to the presence of hard links, mount points, etc.
 --
--- (Despite the name, the function does not guarantee canonicity of the
--- returned path due to the presence of hard links, mount points, etc.)
---
--- Similar to 'normalise', an empty path is equivalent to the current
--- directory.
+-- Similar to 'normalise', passing an empty path is equivalent to passing the
+-- current directory.  The function preserves the presence or absence of the
+-- trailing path separator unless the path refers to the root directory @/@.
 --
 -- /Known bug(s)/: on Windows, the function does not resolve symbolic links.
 --
@@ -858,10 +857,11 @@ canonicalizePath = \ path ->
                          `catchIOError` \ _ -> return False
 #endif
 
--- | Convert a (possibly) relative path into an absolute path.  This is nearly
--- equivalent to prepending the current directory (if the path isn't already
--- absolute) and then applying 'normalise' to the result.  The trailing path
--- separator, if any, is preserved during the process.
+-- | Convert a path into an absolute path.  If the given path is relative, the
+-- current directory is prepended and then the combined result is
+-- 'normalise'd.  If the path is already absolute, the path is simply
+-- 'normalise'd.  The function preserves the presence or absence of the
+-- trailing path separator unless the path refers to the root directory @/@.
 --
 -- If the path is already absolute, the operation never fails.  Otherwise, the
 -- operation may fail with the same exceptions as 'getCurrentDirectory'.
@@ -873,6 +873,15 @@ makeAbsolute path =
                  (`ioeSetFileName` path)) $
   matchTrailingSeparator path . normalise <$> prependCurrentDirectory path
 
+-- | Convert a path into an absolute path.  If the given path is relative, the
+-- current directory is prepended.  If the path is already absolute, the path
+-- is returned unchanged.  The function preserves the presence or absence of
+-- the trailing path separator.
+--
+-- If the path is already absolute, the operation never fails.  Otherwise, the
+-- operation may fail with the same exceptions as 'getCurrentDirectory'.
+--
+-- (internal API)
 prependCurrentDirectory :: FilePath -> IO FilePath
 prependCurrentDirectory path =
   modifyIOError ((`ioeSetLocation` "prependCurrentDirectory") .
@@ -886,12 +895,19 @@ prependCurrentDirectory path =
       | otherwise ->
           return path
 
+-- | Add or remove the trailing path separator in the second path so as to
+-- match its presence in the first path.
+--
+-- (internal API)
 matchTrailingSeparator :: FilePath -> FilePath -> FilePath
 matchTrailingSeparator path
   | hasTrailingPathSeparator path = addTrailingPathSeparator
   | otherwise                     = dropTrailingPathSeparator
 
--- | 'makeRelative' the current directory.
+-- | Construct a path relative to the current directory, similar to
+-- 'makeRelative'.
+--
+-- The operation may fail with the same exceptions as 'getCurrentDirectory'.
 makeRelativeToCurrentDirectory :: FilePath -> IO FilePath
 makeRelativeToCurrentDirectory x = do
     cur <- getCurrentDirectory
@@ -981,6 +997,8 @@ findFilesWith f (d:ds) fileName = do
 #ifdef __GLASGOW_HASKELL__
 -- | Similar to 'listDirectory', but always includes the special entries (@.@
 -- and @..@).  (This applies to Windows as well.)
+--
+-- The operation may fail with the same exceptions as 'listDirectory'.
 getDirectoryContents :: FilePath -> IO [FilePath]
 getDirectoryContents path =
   modifyIOError ((`ioeSetFileName` path) .
@@ -1528,10 +1546,8 @@ specializeErrorString str errType action = do
     Right x -> return x
 
 -- | Obtain the path to a special directory for storing user-specific
---   application data (traditional Unix location).  Except for backward
---   compatibility reasons, newer applications may prefer the the
---   XDG-conformant location provided by 'getXdgDirectory', which offers a
---   more fine-grained hierarchy as well as greater flexibility for the user
+--   application data (traditional Unix location).  Newer applications may
+--   prefer the the XDG-conformant location provided by 'getXdgDirectory'
 --   (<https://github.com/haskell/directory/issues/6#issuecomment-96521020 migration guide>).
 --
 --   The argument is usually the name of the application.  Since it will be
