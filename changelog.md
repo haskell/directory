@@ -3,6 +3,10 @@ Changelog for the [`directory`][1] package
 
 ## 1.2.5.1 (February 2015)
 
+  * Improve error message of `getCurrentDirectory` when the current working
+    directory no longer exists
+    ([#39](https://github.com/haskell/directory/issues/39))
+
   * Fix the behavior of trailing path separators in `canonicalizePath` as well
     as `makeAbsolute` when applied to the current directory; they should now
     match the behavior of `canonicalizePath` prior to 1.2.3.0 (when the bug
