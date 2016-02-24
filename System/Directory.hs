@@ -57,6 +57,7 @@ module System.Directory
     , findExecutablesInDirectories
     , findFile
     , findFiles
+    , findFileWith
     , findFilesWith
     , exeExtension
 
@@ -97,7 +98,7 @@ import Control.Monad ( when, unless )
 import Data.Functor ((<$>))
 #endif
 import Data.Maybe
-  ( listToMaybe
+  ( catMaybes
 #ifdef mingw32_HOST_OS
   , maybeToList
 #endif
@@ -932,9 +933,13 @@ makeRelativeToCurrentDirectory x = do
 -- details.
 --
 findExecutable :: String -> IO (Maybe FilePath)
-findExecutable fileName = do
-   files <- findExecutables fileName
-   return $ listToMaybe files
+findExecutable binary = do
+#if defined(mingw32_HOST_OS)
+    Win32.searchPath Nothing binary exeExtension
+#else
+    path <- getPath
+    findFileWith isExecutable path (binary <.> exeExtension)
+#endif
 
 -- | Given a file name, searches for the file and returns a list of all
 -- occurences that are executable.
@@ -947,11 +952,19 @@ findExecutable fileName = do
 findExecutables :: String -> IO [FilePath]
 findExecutables binary = do
 #if defined(mingw32_HOST_OS)
-    file <- Win32.searchPath Nothing binary exeExtension
+    file <- findExecutable binary
     return $ maybeToList file
 #else
+    path <- getPath
+    findExecutablesInDirectories path binary
+#endif
+
+#ifndef mingw32_HOST_OS
+-- | Get the contents of the @PATH@ environment variable.
+getPath :: IO [FilePath]
+getPath = do
     path <- getEnv "PATH"
-    findExecutablesInDirectories (splitSearchPath path) binary
+    return (splitSearchPath path)
 #endif
 
 -- | Given a file name, searches for the file on the given paths and returns a
@@ -961,15 +974,16 @@ findExecutables binary = do
 findExecutablesInDirectories :: [FilePath] -> String -> IO [FilePath]
 findExecutablesInDirectories path binary =
     findFilesWith isExecutable path (binary <.> exeExtension)
-  where isExecutable file = do
-            perms <- getPermissions file
-            return $ executable perms
+
+-- | Test whether a file is executable.
+isExecutable :: FilePath -> IO Bool
+isExecutable file = do
+    perms <- getPermissions file
+    return (executable perms)
 
 -- | Search through the given set of directories for the given file.
 findFile :: [FilePath] -> String -> IO (Maybe FilePath)
-findFile path fileName = do
-    files <- findFiles path fileName
-    return $ listToMaybe files
+findFile = findFileWith (\_ -> return True)
 
 -- | Search through the given set of directories for the given file and
 -- returns a list of paths where the given file exists.
@@ -979,20 +993,47 @@ findFiles :: [FilePath] -> String -> IO [FilePath]
 findFiles = findFilesWith (\_ -> return True)
 
 -- | Search through the given set of directories for the given file and
+-- with the given property (usually permissions) and returns the file path
+-- where the given file exists and has the property.
+--
+-- @since 1.2.6.0
+findFileWith :: (FilePath -> IO Bool) -> [FilePath] -> String -> IO (Maybe FilePath)
+findFileWith f ds name = asumMaybeT (map (findFileWithIn f name) ds)
+
+-- | 'Data.Foldable.asum' for 'Control.Monad.Trans.Maybe.MaybeT', essentially.
+--
+-- Returns the first 'Just' in the list or 'Nothing' if there aren't any.
+asumMaybeT :: Monad m => [m (Maybe a)] -> m (Maybe a)
+asumMaybeT = foldr attempt (return Nothing)
+  where
+    attempt mmx mx' = do
+        mx <- mmx
+        case mx of
+            Nothing -> mx'
+            Just _  -> return mx
+
+-- | Search through the given set of directories for the given file and
 -- with the given property (usually permissions) and returns a list of
 -- paths where the given file exists and has the property.
 --
 -- @since 1.2.1.0
 findFilesWith :: (FilePath -> IO Bool) -> [FilePath] -> String -> IO [FilePath]
-findFilesWith _ [] _ = return []
-findFilesWith f (d:ds) fileName = do
-    let file = d </> fileName
-    exist <- doesFileExist file
-    b <- if exist then f file else return False
-    if b then do
-               files <- findFilesWith f ds fileName
-               return $ file : files
-        else findFilesWith f ds fileName
+findFilesWith f ds name = do
+    mfiles <- mapM (findFileWithIn f name) ds
+    return (catMaybes mfiles)
+
+-- | Like 'findFileWith', but searches only a single directory.
+findFileWithIn :: (FilePath -> IO Bool) -> String -> FilePath -> IO (Maybe FilePath)
+findFileWithIn f name d = do
+    let path = d </> name
+    exist <- doesFileExist path
+    if exist
+        then do
+            ok <- f path
+            if ok
+                then return (Just path)
+                else return Nothing
+        else return Nothing
 
 #ifdef __GLASGOW_HASKELL__
 -- | Similar to 'listDirectory', but always includes the special entries (@.@
