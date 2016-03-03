@@ -1,6 +1,14 @@
 Changelog for the [`directory`][1] package
 ==========================================
 
+## 1.2.6.0 (April 2015)
+
+  * Make `findExecutable`, `findExecutables`, `findExecutablesInDirectories`,
+    `findFile`, and `findFilesWith` lazier
+    ([#43](https://github.com/haskell/directory/issues/43))
+
+  * Add `findFileWith`
+
 ## 1.2.5.1 (February 2015)
 
   * Improve error message of `getCurrentDirectory` when the current working
