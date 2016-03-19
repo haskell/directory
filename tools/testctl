@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import os, re, sys
+import glob, os, re, sys
 
 USAGE = """
 Usage:
@@ -41,7 +41,33 @@ MAIN_IMPORT_TEMPLATE = "import qualified {name}\n"
 MAIN_RUN_TEMPLATE = '  T.isolatedRun _t "{name}" {name}.main\n'
 BLACKLIST = "^(Main|.*Util.*)$"
 
+CABAL_FILE = glob.glob("*.cabal")[0]
+CABAL_SECTION_PATTERN = """(?s)
+( *)-- test-modules-begin
+.*?-- test-modules-end
+"""
+CABAL_SECTION_TEMPLATE = """
+{0}-- test-modules-begin
+{1}{0}-- test-modules-end
+"""
+
 program = os.path.basename(sys.argv[0])
+
+def rename(src, dest):
+    '''Rename a file (allows overwrites on Windows).'''
+    import os
+    if os.name == "nt":
+        import ctypes, ctypes.wintypes
+        MoveFileExW = ctypes.windll.kernel32.MoveFileExW
+        MoveFileExW.restype = ctypes.wintypes.BOOL
+        MOVEFILE_REPLACE_EXISTING = ctypes.wintypes.DWORD(0x1)
+        success = MoveFileExW(ctypes.wintypes.LPCWSTR(src),
+                              ctypes.wintypes.LPCWSTR(dest),
+                              MOVEFILE_REPLACE_EXISTING)
+        if not success:
+            raise ctypes.WinError()
+    else:
+        os.rename(src, dest)
 
 def usage():
     sys.stderr.write(USAGE.format(program=program))
@@ -80,6 +106,17 @@ def update():
             runs="".join(MAIN_RUN_TEMPLATE.format(name=name)
                          for name in tests),
         ).encode("utf8"))
+    with open(CABAL_FILE, "rb") as file:
+        cabal_file = file.read().decode("utf8")
+    with open(CABAL_FILE + ".tmp", "wb") as file:
+        indent, = re.search(CABAL_SECTION_PATTERN, cabal_file).groups()
+        repl = CABAL_SECTION_TEMPLATE.format(
+            indent,
+            "".join("{0}{1}\n".format(indent, name) for name in tests)
+        )
+        file.write(re.sub(CABAL_SECTION_PATTERN, repl, cabal_file)
+                   .encode("utf8"))
+    rename(CABAL_FILE + ".tmp", CABAL_FILE)
 
 if len(sys.argv) < 2:
     usage()

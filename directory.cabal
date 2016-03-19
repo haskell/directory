@@ -81,3 +81,27 @@ test-suite test
         build-depends: Win32
     else
         build-depends: unix
+    other-modules:
+        TestUtils
+        Util
+        -- test-modules-begin
+        CanonicalizePath
+        CopyFile001
+        CopyFile002
+        CreateDirectory001
+        CreateDirectoryIfMissing001
+        CurrentDirectory001
+        Directory001
+        DoesDirectoryExist001
+        FileTime
+        FindFile001
+        GetDirContents001
+        GetDirContents002
+        GetHomeDirectory001
+        GetPermissions001
+        RemoveDirectoryRecursive001
+        RenameFile001
+        Safe
+        T8482
+        WithCurrentDirectory
+        -- test-modules-end
