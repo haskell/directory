@@ -46,19 +46,19 @@ before_script:
      if cabal 2>&1 install --run-tests __dummy |
         grep >/dev/null 2>&1 "cabal: unrecognized option"
      then def_cabal_install_run_tests='cabal_install_run_tests() {
-          tgz=$1
-          shift
-          tmp=cabal-install-run-tests.tmp
-          mkdir -p "$tmp"
-          ( cd "$tmp" && tar xzf - ) <"$tgz"
+          tgz=$1 &&
+          shift &&
+          tmp=cabal-install-run-tests.tmp &&
+          mkdir -p "$tmp" &&
+          ( cd "$tmp" && tar xzf - ) <"$tgz" &&
           ( cd "$tmp"/* &&
             cabal configure --enable-tests &&
             cabal build &&
-            cabal test )
+            cabal test ) &&
           cabal install "$@" "$tgz"
      }'
      else def_cabal_install_run_tests='cabal_install_run_tests() {
-          cabal install --run-tests "$@" "$1"
+          cabal install --run-tests "$@"
      }'
      fi
      export def_cabal_install_run_tests
@@ -73,4 +73,4 @@ script:
      --test-option=CreateDirectoryIfMissing001.num-repeats=100000
      --test-option=+RTS --test-option=-N2
  - eval "$def_cabal_install_run_tests" &&
-   cabal_install_run_tests --force-reinstalls dist/*-*.tar.gz
+   cabal_install_run_tests dist/*-*.tar.gz --force-reinstalls
