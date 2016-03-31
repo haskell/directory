@@ -11,10 +11,10 @@ Building from Git repository
 ----------------------------
 
 When building this package directly from the Git repository, one must run
-`autoreconf -i` to generate the `configure` script needed by `cabal
+`autoreconf -fi` to generate the `configure` script needed by `cabal
 configure`.  This requires [Autoconf][ac] to be installed.
 
-    autoreconf -i
+    autoreconf -fi
     cabal install
 
 There is no need to run the `configure` script manually however, as `cabal
