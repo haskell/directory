@@ -17,6 +17,8 @@ Changelog for the [`directory`][1] package
 
   * Add `isSymbolicLink`
 
+  * Drop support for Hugs.
+
 ## 1.2.5.1 (February 2015)
 
   * Improve error message of `getCurrentDirectory` when the current working

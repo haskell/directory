@@ -125,10 +125,6 @@ import System.IO.Error
   , modifyIOError
   , tryIOError )
 
-#ifdef __HUGS__
-import Hugs.Directory
-#endif /* __HUGS__ */
-
 import Foreign
 
 {-# CFILES cbits/directory.c #-}
@@ -141,8 +137,6 @@ import Data.Time.Clock.POSIX
   , POSIXTime
 #endif
   )
-
-#ifdef __GLASGOW_HASKELL__
 
 import GHC.IO.Exception ( IOErrorType(InappropriateType) )
 
@@ -163,8 +157,6 @@ import qualified System.Posix as Posix
 import Foreign.C (throwErrnoPathIfMinus1_)
 import System.Posix.Internals ( withFilePath )
 #endif
-
-#endif /* __GLASGOW_HASKELL__ */
 
 import System.Directory.Internal
 
@@ -255,8 +247,6 @@ The operation may fail with:
 * 'isDoesNotExistError' if the file or directory does not exist.
 
 -}
-
-#ifdef __GLASGOW_HASKELL__
 
 getPermissions :: FilePath -> IO Permissions
 getPermissions name = do
@@ -416,14 +406,6 @@ createDirectory path = do
   Posix.createDirectory path 0o777
 #endif
 
-#else /* !__GLASGOW_HASKELL__ */
-
-copyPermissions :: FilePath -> FilePath -> IO ()
-copyPermissions fromFPath toFPath
-  = getPermissions fromFPath >>= setPermissions toFPath
-
-#endif
-
 -- | @'createDirectoryIfMissing' parents dir@ creates a new directory
 -- @dir@ if it doesn\'t exist. If the first argument is 'True'
 -- the function will also create all parent directories if they are missing.
@@ -474,8 +456,6 @@ createDirectoryIfMissing create_parents path0
 #else
         isDir = (Posix.isDirectory <$> Posix.getFileStatus dir)
 #endif
-
-#if __GLASGOW_HASKELL__
 
 -- | * @'NotDirectory'@:   not a directory.
 --   * @'Directory'@:      a true directory (not a symbolic link).
@@ -555,8 +535,6 @@ removeDirectory path =
   Posix.removeDirectory path
 #endif
 
-#endif
-
 -- | @'removeDirectoryRecursive' dir@ removes an existing directory /dir/
 -- together with its contents and subdirectories. Within this directory,
 -- symbolic links are removed without affecting their targets.
@@ -597,7 +575,6 @@ removeContentsRecursive path =
     mapM_ removePathRecursive [path </> x | x <- cont]
     removeDirectory path
 
-#if __GLASGOW_HASKELL__
 {- |'removeFile' /file/ removes the directory entry for an existing file
 /file/, where /file/ is not itself a directory. The
 implementation may specify additional constraints which must be
@@ -782,8 +759,6 @@ renameFile opath npath = (`ioeSetLocation` "renameFile") `modifyIOError` do
              NotDirectory  -> return ()
          errIsDir path = ioError . (`ioeSetErrorString` "is a directory") $
                          mkIOError InappropriateType "" Nothing (Just path)
-
-#endif /* __GLASGOW_HASKELL__ */
 
 -- | Copy a file with its permissions.  If the destination file already exists,
 -- it is replaced atomically.  Neither path may refer to an existing
@@ -1183,7 +1158,6 @@ findFileWithIn f name d = do
                 else return Nothing
         else return Nothing
 
-#ifdef __GLASGOW_HASKELL__
 -- | Similar to 'listDirectory', but always includes the special entries (@.@
 -- and @..@).  (This applies to Windows as well.)
 --
@@ -1260,9 +1234,6 @@ listDirectory path =
   (filter f) <$> (getDirectoryContents path)
   where f filename = filename /= "." && filename /= ".."
 
-#endif /* __GLASGOW_HASKELL__ */
-
-
 -- | Obtain the current working directory as an absolute path.
 --
 -- In a multithreaded program, the current working directory is a global state
@@ -1290,7 +1261,6 @@ listDirectory path =
 -- * 'UnsupportedOperation'
 -- The operating system has no notion of current working directory.
 --
-#ifdef __GLASGOW_HASKELL__
 getCurrentDirectory :: IO FilePath
 getCurrentDirectory =
   modifyIOError (`ioeSetLocation` "getCurrentDirectory") $
@@ -1602,8 +1572,6 @@ posixToWindowsTime :: POSIXTime -> Win32.FILETIME
 posixToWindowsTime t = Win32.FILETIME $
   truncate (t * 10000000 + windowsPosixEpochDifference)
 #endif
-
-#endif /* __GLASGOW_HASKELL__ */
 
 #ifdef mingw32_HOST_OS
 withFileStatus :: String -> FilePath -> (Ptr CStat -> IO a) -> IO a
