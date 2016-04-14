@@ -100,6 +100,7 @@ test-suite test
         GetDirContents002
         GetHomeDirectory001
         GetPermissions001
+        IsSymbolicLink
         RemoveDirectoryRecursive001
         RenameFile001
         Safe

@@ -66,6 +66,9 @@ module System.Directory
     , doesFileExist
     , doesDirectoryExist
 
+    -- * Symbolic links
+    , isSymbolicLink
+
     -- * Permissions
 
     -- $permissions
@@ -487,12 +490,15 @@ getDirectoryType :: FilePath -> IO DirectoryType
 getDirectoryType path =
   (`ioeSetLocation` "getDirectoryType") `modifyIOError` do
 #ifdef mingw32_HOST_OS
-    classify <$> Win32.getFileAttributes path
-    where fILE_ATTRIBUTE_REPARSE_POINT = 0x400
-          classify attr
-            | attr .&. Win32.fILE_ATTRIBUTE_DIRECTORY == 0 = NotDirectory
-            | attr .&. fILE_ATTRIBUTE_REPARSE_POINT   == 0 = Directory
-            | otherwise                                    = DirectoryLink
+    isDir <- withFileStatus "getDirectoryType" name isDirectory
+    if isDir
+      then do
+        isLink <- isSymbolicLink path
+        if isLink
+          then return DirectoryLink
+          else return Directory
+      else do
+        return NotDirectory
 #else
     stat <- Posix.getSymbolicLinkStatus path
     return $ if Posix.isDirectory stat
@@ -1385,6 +1391,22 @@ doesFileExist name =
        return (not (Posix.isDirectory stat)))
 #endif
    `catchIOError` \ _ -> return False
+
+-- | Check whether the path refers to a symbolic link.  On Windows, this tests
+-- for @FILE_ATTRIBUTE_REPARSE_POINT@.
+--
+-- @since 1.2.6.0
+isSymbolicLink :: FilePath -> IO Bool
+isSymbolicLink path =
+  (`ioeSetLocation` "getDirectoryType") `modifyIOError` do
+#ifdef mingw32_HOST_OS
+    isReparsePoint <$> Win32.getFileAttributes path
+  where
+    fILE_ATTRIBUTE_REPARSE_POINT = 0x400
+    isReparsePoint attr = attr .&. fILE_ATTRIBUTE_REPARSE_POINT /= 0
+#else
+    Posix.isSymbolicLink <$> Posix.getSymbolicLinkStatus path
+#endif
 
 #ifdef mingw32_HOST_OS
 -- | Open the handle of an existing file or directory.
