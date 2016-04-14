@@ -9,6 +9,9 @@ Changelog for the [`directory`][1] package
 
   * Add `findFileWith`
 
+  * Add `copyFileWithAttrs`, which copies additional metadata
+    ([#40](https://github.com/haskell/directory/issues/40))
+
 ## 1.2.5.1 (February 2015)
 
   * Improve error message of `getCurrentDirectory` when the current working

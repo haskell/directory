@@ -48,6 +48,7 @@ module System.Directory
     , removeFile
     , renameFile
     , copyFile
+    , copyFileWithMetadata
 
     , canonicalizePath
     , makeAbsolute
@@ -92,7 +93,7 @@ module System.Directory
     , setModificationTime
 
    ) where
-import Control.Exception ( bracket, bracketOnError )
+import Control.Exception (bracket, mask, onException)
 import Control.Monad ( when, unless )
 #ifdef mingw32_HOST_OS
 import Data.Function (on)
@@ -355,8 +356,13 @@ copyPermissions source dest = do
     throwErrnoIfMinus1_ "copyPermissions" $ c_wchmod p_dest mode
 #else
   stat <- Posix.getFileStatus source
-  let mode = Posix.fileMode stat
-  Posix.setFileMode dest mode
+  copyPermissionsFromStatus stat dest
+#endif
+
+#ifndef mingw32_HOST_OS
+copyPermissionsFromStatus :: Posix.FileStatus -> FilePath -> IO ()
+copyPermissionsFromStatus st dst = do
+  Posix.setFileMode dst (Posix.fileMode st)
 #endif
 
 -----------------------------------------------------------------------------
@@ -767,34 +773,162 @@ renameFile opath npath = (`ioeSetLocation` "renameFile") `modifyIOError` do
 
 #endif /* __GLASGOW_HASKELL__ */
 
-{- |@'copyFile' old new@ copies the existing file from /old/ to /new/.
-If the /new/ file already exists, it is atomically replaced by the /old/ file.
-Neither path may refer to an existing directory.  The permissions of /old/ are
-copied to /new/, if possible.
--}
-
-copyFile :: FilePath -> FilePath -> IO ()
+-- | Copy a file with its permissions.  If the destination file already exists,
+-- it is replaced atomically.  Neither path may refer to an existing
+-- directory.  No exceptions are thrown if the permissions could not be
+-- copied.
+copyFile :: FilePath                    -- ^ Source filename
+         -> FilePath                    -- ^ Destination filename
+         -> IO ()
 copyFile fromFPath toFPath =
-    copy `catchIOError` (\ exc -> ioError (ioeSetLocation exc "copyFile"))
-    where copy = bracket (openBinaryFile fromFPath ReadMode) hClose $ \hFrom ->
-                 bracketOnError openTmp cleanTmp $ \(tmpFPath, hTmp) ->
-                 do allocaBytes bufferSize $ copyContents hFrom hTmp
-                    hClose hTmp
-                    ignoreIOExceptions $ copyPermissions fromFPath tmpFPath
-                    renameFile tmpFPath toFPath
-          openTmp = openBinaryTempFile (takeDirectory toFPath) ".copyFile.tmp"
-          cleanTmp (tmpFPath, hTmp)
-              = do ignoreIOExceptions $ hClose hTmp
-                   ignoreIOExceptions $ removeFile tmpFPath
-          bufferSize = 1024
+  (`ioeSetLocation` "copyFile") `modifyIOError` do
+    atomicCopyFileContents fromFPath toFPath
+      (ignoreIOExceptions . copyPermissions fromFPath)
 
-          copyContents hFrom hTo buffer = do
-                  count <- hGetBuf hFrom buffer bufferSize
-                  when (count > 0) $ do
-                          hPutBuf hTo buffer count
-                          copyContents hFrom hTo buffer
+#ifndef mingw32_HOST_OS
+-- | Truncate the destination file and then copy the contents of the source
+-- file to the destination file.  If the destination file already exists, its
+-- attributes shall remain unchanged.  Otherwise, its attributes are reset to
+-- the defaults.
+copyFileContents :: FilePath            -- ^ Source filename
+                 -> FilePath            -- ^ Destination filename
+                 -> IO ()
+copyFileContents fromFPath toFPath =
+  (`ioeSetLocation` "copyFileContents") `modifyIOError` do
+    withBinaryFile toFPath WriteMode $ \ hTo ->
+      copyFileToHandle fromFPath hTo
+#endif
 
-          ignoreIOExceptions io = io `catchIOError` (\_ -> return ())
+-- | Copy the contents of a source file to a destination file, replacing the
+-- destination file atomically via 'withReplacementFile', resetting the
+-- attributes of the destination file to the defaults.
+atomicCopyFileContents :: FilePath            -- ^ Source filename
+                       -> FilePath            -- ^ Destination filename
+                       -> (FilePath -> IO ()) -- ^ Post-action
+                       -> IO ()
+atomicCopyFileContents fromFPath toFPath postAction =
+  (`ioeSetLocation` "atomicCopyFileContents") `modifyIOError` do
+    withReplacementFile toFPath postAction $ \ hTo -> do
+      copyFileToHandle fromFPath hTo
+
+-- | A helper function useful for replacing files in an atomic manner.  The
+-- function creates a temporary file in the directory of the destination file,
+-- opens it, performs the main action with its handle, closes it, performs the
+-- post-action with its path, and finally replaces the destination file with
+-- the temporary file.  If an error occurs during any step of this process,
+-- the temporary file is removed and the destination file remains untouched.
+withReplacementFile :: FilePath            -- ^ Destination file
+                    -> (FilePath -> IO ()) -- ^ Post-action
+                    -> (Handle -> IO a)    -- ^ Main action
+                    -> IO a
+withReplacementFile path postAction action =
+  (`ioeSetLocation` "withReplacementFile") `modifyIOError` do
+    mask $ \ restore -> do
+      (tmpFPath, hTmp) <- openBinaryTempFile (takeDirectory path)
+                                             ".copyFile.tmp"
+      (`onException` ignoreIOExceptions (removeFile tmpFPath)) $ do
+        r <- (`onException` ignoreIOExceptions (hClose hTmp)) $ do
+          restore (action hTmp)
+        hClose hTmp
+        restore (postAction tmpFPath)
+        renameFile tmpFPath path
+        return r
+
+-- | Attempt to perform the given action, silencing any IO exception thrown by
+-- it.
+ignoreIOExceptions :: IO () -> IO ()
+ignoreIOExceptions io = io `catchIOError` (\_ -> return ())
+
+-- | Copy all data from a file to a handle.
+copyFileToHandle :: FilePath            -- ^ Source file
+                 -> Handle              -- ^ Destination handle
+                 -> IO ()
+copyFileToHandle fromFPath hTo =
+  (`ioeSetLocation` "copyFileToHandle") `modifyIOError` do
+    withBinaryFile fromFPath ReadMode $ \ hFrom ->
+      copyHandleData hFrom hTo
+
+-- | Copy data from one handle to another until end of file.
+copyHandleData :: Handle                -- ^ Source handle
+               -> Handle                -- ^ Destination handle
+               -> IO ()
+copyHandleData hFrom hTo =
+  (`ioeSetLocation` "copyData") `modifyIOError` do
+    allocaBytes bufferSize go
+  where
+    bufferSize = 1024
+    go buffer = do
+      count <- hGetBuf hFrom buffer bufferSize
+      when (count > 0) $ do
+        hPutBuf hTo buffer count
+        go buffer
+
+-- | Copy a file with its associated metadata.  If the destination file
+-- already exists, it is overwritten.  There is no guarantee of atomicity in
+-- the replacement of the destination file.  Neither path may refer to an
+-- existing directory.  If the source and/or destination are symbolic links,
+-- the copy is performed on the targets of the links.
+--
+-- On Windows, it behaves like the Win32 function
+-- <https://msdn.microsoft.com/en-us/library/windows/desktop/aa363851.aspx CopyFile>,
+-- which copies various kinds of metadata including file attributes and
+-- security resource properties.
+--
+-- On Unix-like systems, permissions, access time, and modification time are
+-- preserved.  If possible, the owner and group are also preserved.  Note that
+-- the very act of copying can change the access time of the source file,
+-- hence the access times of the two files may differ after the operation
+-- completes.
+--
+-- @since 1.2.6.0
+copyFileWithMetadata :: FilePath        -- ^ Source file
+                     -> FilePath        -- ^ Destination file
+                     -> IO ()
+copyFileWithMetadata src dst =
+  (`ioeSetLocation` "copyFileWithMetadata") `modifyIOError` doCopy
+  where
+#ifdef mingw32_HOST_OS
+    doCopy = Win32.copyFile src dst False
+#else
+    doCopy = do
+      st <- Posix.getFileStatus src
+      copyFileContents src dst
+      copyMetadataFromStatus st dst
+#endif
+
+#ifndef mingw32_HOST_OS
+copyMetadataFromStatus :: Posix.FileStatus -> FilePath -> IO ()
+copyMetadataFromStatus st dst = do
+  tryCopyOwnerAndGroupFromStatus st dst
+  copyPermissionsFromStatus st dst
+  copyFileTimesFromStatus st dst
+#endif
+
+#ifndef mingw32_HOST_OS
+tryCopyOwnerAndGroupFromStatus :: Posix.FileStatus -> FilePath -> IO ()
+tryCopyOwnerAndGroupFromStatus st dst = do
+  ignoreIOExceptions (copyOwnerFromStatus st dst)
+  ignoreIOExceptions (copyGroupFromStatus st dst)
+#endif
+
+#ifndef mingw32_HOST_OS
+copyOwnerFromStatus :: Posix.FileStatus -> FilePath -> IO ()
+copyOwnerFromStatus st dst = do
+  Posix.setOwnerAndGroup dst (Posix.fileOwner st) (-1)
+#endif
+
+#ifndef mingw32_HOST_OS
+copyGroupFromStatus :: Posix.FileStatus -> FilePath -> IO ()
+copyGroupFromStatus st dst = do
+  Posix.setOwnerAndGroup dst (-1) (Posix.fileGroup st)
+#endif
+
+#ifndef mingw32_HOST_OS
+copyFileTimesFromStatus :: Posix.FileStatus -> FilePath -> IO ()
+copyFileTimesFromStatus st dst = do
+  let (atime, mtime) = fileTimesFromStatus st
+  setFileTimes dst (Just atime, Just mtime)
+#endif
 
 -- | Make a path absolute and remove as many indirections from it as possible.
 -- Indirections include the two special directories @.@ and @..@, as well as
