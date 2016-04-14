@@ -553,15 +553,21 @@ removeDirectory path =
 
 -- | @'removeDirectoryRecursive' dir@ removes an existing directory /dir/
 -- together with its contents and subdirectories. Within this directory,
--- symbolic links are removed without affecting their the targets.
+-- symbolic links are removed without affecting their targets.
+--
+-- On Windows, the operation fails if /dir/ is a directory symbolic link.
 removeDirectoryRecursive :: FilePath -> IO ()
 removeDirectoryRecursive path =
   (`ioeSetLocation` "removeDirectoryRecursive") `modifyIOError` do
     dirType <- getDirectoryType path
     case dirType of
-      Directory -> removeContentsRecursive path
-      _         -> ioError . (`ioeSetErrorString` "not a directory") $
-                   mkIOError InappropriateType "" Nothing (Just path)
+      Directory ->
+        removeContentsRecursive path
+      DirectoryLink ->
+        ioError (err `ioeSetErrorString` "is a directory symbolic link")
+      NotDirectory ->
+        ioError (err `ioeSetErrorString` "not a directory")
+  where err = mkIOError InappropriateType "" Nothing (Just path)
 
 -- | @'removePathRecursive' path@ removes an existing file or directory at
 -- /path/ together with its contents and subdirectories. Symbolic links are

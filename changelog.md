@@ -12,6 +12,9 @@ Changelog for the [`directory`][1] package
   * Add `copyFileWithAttrs`, which copies additional metadata
     ([#40](https://github.com/haskell/directory/issues/40))
 
+  * Improve error message of `removeDirectoryRecursive` when used on a
+    directory symbolic link on Windows.
+
 ## 1.2.5.1 (February 2015)
 
   * Improve error message of `getCurrentDirectory` when the current working
