@@ -2,8 +2,9 @@
 module Util where
 import Prelude (Eq(..), Num(..), Ord(..), RealFrac(..), Show(..),
                 Bool(..), Double, Either(..), Int, Integer, Maybe(..), String,
-                ($), (.), otherwise)
+                ($), (.), not, otherwise)
 import Data.Char (toLower)
+import Data.Foldable (traverse_)
 import Data.Functor ((<$>))
 import Data.IORef (IORef, newIORef, readIORef, writeIORef)
 import Data.List (drop, elem, intercalate, lookup, reverse, span)
@@ -16,11 +17,14 @@ import Control.Concurrent.MVar (newEmptyMVar, putMVar, readMVar)
 import Control.Exception (SomeException, bracket_, catch,
                           mask, onException, try)
 import Control.Monad (Monad(..), unless, when)
-import System.Directory (createDirectoryIfMissing, makeAbsolute,
-                         removeDirectoryRecursive, withCurrentDirectory)
+import System.Directory (createDirectoryIfMissing, emptyPermissions,
+                         doesDirectoryExist, isSymbolicLink, listDirectory,
+                         makeAbsolute, removeDirectoryRecursive, readable,
+                         searchable, setPermissions, withCurrentDirectory,
+                         writable)
 import System.Environment (getArgs)
 import System.Exit (exitFailure)
-import System.FilePath (FilePath, normalise)
+import System.FilePath (FilePath, (</>), normalise)
 import System.IO (IO, hFlush, hPutStrLn, putStrLn, stderr, stdout)
 import System.IO.Error (IOError, isDoesNotExistError,
                         ioError, tryIOError, userError)
@@ -131,6 +135,20 @@ expectIOErrorType t file line context which action = do
             | otherwise -> Left  ["got wrong exception: ", show e]
     Right _             -> Left  ["did not throw an exception"]
 
+-- | Traverse the directory tree in preorder.
+preprocessPathRecursive :: (FilePath -> IO ()) -> FilePath -> IO ()
+preprocessPathRecursive f path = do
+  dirExists <- doesDirectoryExist path
+  if dirExists
+    then do
+      isLink <- isSymbolicLink path
+      f path
+      when (not isLink) $ do
+        names <- listDirectory path
+        traverse_ (preprocessPathRecursive f) ((path </>) <$> names)
+    else do
+      f path
+
 withNewDirectory :: Bool -> FilePath -> IO a -> IO a
 withNewDirectory keep dir action = do
   dir' <- makeAbsolute dir
@@ -144,6 +162,13 @@ isolateWorkingDirectory keep dir action = do
     ioError (userError ("isolateWorkingDirectory cannot be used " <>
                         "with current directory"))
   dir' <- makeAbsolute dir
+  (`preprocessPathRecursive` dir') $ \ f -> do
+    setPermissions f emptyPermissions{ readable = True
+                                     , searchable = True
+                                     , writable = True }
+      `catch` \ e ->
+        unless (isDoesNotExistError e) $
+          ioError e
   removeDirectoryRecursive dir' `catch` \ e ->
     unless (isDoesNotExistError e) $
       ioError e

@@ -490,7 +490,7 @@ getDirectoryType :: FilePath -> IO DirectoryType
 getDirectoryType path =
   (`ioeSetLocation` "getDirectoryType") `modifyIOError` do
 #ifdef mingw32_HOST_OS
-    isDir <- withFileStatus "getDirectoryType" name isDirectory
+    isDir <- withFileStatus "getDirectoryType" path isDirectory
     if isDir
       then do
         isLink <- isSymbolicLink path
