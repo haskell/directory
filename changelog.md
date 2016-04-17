@@ -1,9 +1,14 @@
 Changelog for the [`directory`][1] package
 ==========================================
 
-## 1.2.6.0 (April 2015)
+## 1.2.6.1 (April 2015)
 
   * Bundled with GHC 8.0.1
+
+  * Fix mistake in file time functions when `utimensat` is not available
+    ([#47](https://github.com/haskell/directory/pull/47))
+
+## 1.2.6.0 (April 2015)
 
   * Make `findExecutable`, `findExecutables`, `findExecutablesInDirectories`,
     `findFile`, and `findFilesWith` lazier
