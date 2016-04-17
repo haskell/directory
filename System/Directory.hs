@@ -109,6 +109,9 @@ import Data.Maybe
 #ifdef mingw32_HOST_OS
   , maybeToList
 #endif
+#if !defined(mingw32_HOST_OS) && ! defined(HAVE_UTIMENSAT)
+  , fromMaybe
+#endif
   )
 
 import System.FilePath
@@ -133,9 +136,7 @@ import Data.Time ( UTCTime )
 import Data.Time.Clock.POSIX
   ( posixSecondsToUTCTime
   , utcTimeToPOSIXSeconds
-#ifdef mingw32_HOST_OS
   , POSIXTime
-#endif
   )
 
 import GHC.IO.Exception ( IOErrorType(InappropriateType) )
@@ -1524,6 +1525,8 @@ setFileTimes path (atime, mtime) =
     setTimes (utcTimeToPOSIXSeconds <$> atime, utcTimeToPOSIXSeconds <$> mtime)
   where
     path' = normalise path              -- handle empty paths
+
+    setTimes :: (Maybe POSIXTime, Maybe POSIXTime) -> IO ()
 #ifdef mingw32_HOST_OS
     setTimes (atime', mtime') =
       bracket (openFileHandle path' Win32.gENERIC_WRITE)
@@ -1540,16 +1543,18 @@ setFileTimes path (atime, mtime) =
       throwErrnoPathIfMinus1_ "" path' $
         c_utimensat c_AT_FDCWD path'' times 0
 #else
-    setTimes (Just atime', Just mtime') = setFileTimes path' atime' mtime'
+    setTimes (Just atime', Just mtime') = setFileTimes' path' atime' mtime'
     setTimes (atime', mtime') = do
       (atimeOld, mtimeOld) <- fileTimesFromStatus <$> Posix.getFileStatus path'
-      setFileTimes path'
-        (fromMaybe atimeOld atime')
-        (fromMaybe mtimeOld mtime')
+      setFileTimes' path'
+        (fromMaybe (utcTimeToPOSIXSeconds atimeOld) atime')
+        (fromMaybe (utcTimeToPOSIXSeconds mtimeOld) mtime')
+
+    setFileTimes' :: FilePath -> POSIXTime -> POSIXTime -> IO ()
 # if MIN_VERSION_unix(2, 7, 0)
-    setFileTimes = Posix.setFileTimesHiRes
+    setFileTimes' = Posix.setFileTimesHiRes
 #  else
-    setFileTimes pth atim mtime =
+    setFileTimes' pth atim mtime =
       Posix.setFileTimes pth
         (fromInteger (truncate atime))
         (fromInteger (truncate mtime))
