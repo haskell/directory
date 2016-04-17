@@ -1554,10 +1554,10 @@ setFileTimes path (atime, mtime) =
 # if MIN_VERSION_unix(2, 7, 0)
     setFileTimes' = Posix.setFileTimesHiRes
 #  else
-    setFileTimes' pth atim mtime =
+    setFileTimes' pth atime' mtime' =
       Posix.setFileTimes pth
-        (fromInteger (truncate atime))
-        (fromInteger (truncate mtime))
+        (fromInteger (truncate atime'))
+        (fromInteger (truncate mtime'))
 # endif
 #endif
 
