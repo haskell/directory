@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, NondecreasingIndentation #-}
+{-# LANGUAGE CPP #-}
 
 #if !(MIN_VERSION_base(4,8,0))
 -- In base-4.8.0 the Foreign module became Safe
@@ -250,10 +250,10 @@ The operation may fail with:
 -}
 
 getPermissions :: FilePath -> IO Permissions
-getPermissions name = do
+getPermissions name =
 #ifdef mingw32_HOST_OS
   -- issue #9: Windows doesn't like trailing path separators
-  withFilePath (dropTrailingPathSeparator name) $ \s -> do
+  withFilePath (dropTrailingPathSeparator name) $ \s ->
   -- stat() does a better job of guessing the permissions on Windows
   -- than access() does.  e.g. for execute permission, it looks at the
   -- filename extension :-)
@@ -276,6 +276,7 @@ getPermissions name = do
     }
    )
 #else
+  do
   read_ok  <- Posix.fileAccess name True  False False
   write_ok <- Posix.fileAccess name False True  False
   exec_ok  <- Posix.fileAccess name False False True
@@ -304,9 +305,9 @@ The operation may fail with:
 -}
 
 setPermissions :: FilePath -> Permissions -> IO ()
-setPermissions name (Permissions r w e s) = do
+setPermissions name (Permissions r w e s) =
 #ifdef mingw32_HOST_OS
-  allocaBytes sizeof_stat $ \ p_stat -> do
+  allocaBytes sizeof_stat $ \ p_stat ->
   withFilePath name $ \p_name -> do
     throwErrnoIfMinus1_ "setPermissions" $
       c_stat p_name p_stat
@@ -322,6 +323,7 @@ setPermissions name (Permissions r w e s) = do
    modifyBit False m b = m .&. (complement b)
    modifyBit True  m b = m .|. b
 #else
+  do
       stat <- Posix.getFileStatus name
       let mode = Posix.fileMode stat
       let mode1 = modifyBit r mode  Posix.ownerReadMode
@@ -340,15 +342,16 @@ foreign import ccall unsafe "_wchmod"
 #endif
 
 copyPermissions :: FilePath -> FilePath -> IO ()
-copyPermissions source dest = do
+copyPermissions source dest =
 #ifdef mingw32_HOST_OS
-  allocaBytes sizeof_stat $ \ p_stat -> do
-  withFilePath source $ \p_source -> do
+  allocaBytes sizeof_stat $ \ p_stat ->
+  withFilePath source $ \p_source ->
   withFilePath dest $ \p_dest -> do
     throwErrnoIfMinus1_ "copyPermissions" $ c_stat p_source p_stat
     mode <- st_mode p_stat
     throwErrnoIfMinus1_ "copyPermissions" $ c_wchmod p_dest mode
 #else
+  do
   stat <- Posix.getFileStatus source
   copyPermissionsFromStatus stat dest
 #endif
@@ -668,21 +671,20 @@ Either path refers to an existing non-directory object.
 -}
 
 renameDirectory :: FilePath -> FilePath -> IO ()
-renameDirectory opath npath = do
+renameDirectory opath npath =
    -- XXX this test isn't performed atomically with the following rename
 #ifdef mingw32_HOST_OS
    -- ToDo: use Win32 API
    withFileStatus "renameDirectory" opath $ \st -> do
    is_dir <- isDirectory st
 #else
+   do
    stat <- Posix.getFileStatus opath
    let is_dir = Posix.fileMode stat .&. Posix.directoryMode /= 0
 #endif
-   if (not is_dir)
-        then ioError (ioeSetErrorString
-                          (mkIOError InappropriateType "renameDirectory" Nothing (Just opath))
-                          "not a directory")
-        else do
+   when (not is_dir) $ do
+     ioError . (`ioeSetErrorString` "not a directory") $
+       (mkIOError InappropriateType "renameDirectory" Nothing (Just opath))
 #ifdef mingw32_HOST_OS
    Win32.moveFileEx opath npath Win32.mOVEFILE_REPLACE_EXISTING
 #else
