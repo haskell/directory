@@ -102,6 +102,7 @@ test-suite test
         GetPermissions001
         IsSymbolicLink
         RemoveDirectoryRecursive001
+        RenameDirectory
         RenameFile001
         Safe
         T8482
