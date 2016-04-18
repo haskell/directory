@@ -19,6 +19,7 @@
 --
 -----------------------------------------------------------------------------
 
+#include <HsDirectoryConfig.h>
 module System.Directory
    (
     -- $intro
@@ -153,7 +154,6 @@ import System.Environment ( getEnv )
 import qualified System.Posix as Posix
 #endif
 
-#include <HsDirectoryConfig.h>
 #ifdef HAVE_UTIMENSAT
 import Foreign.C (throwErrnoPathIfMinus1_)
 import System.Posix.Internals ( withFilePath )
