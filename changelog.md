@@ -1,6 +1,11 @@
 Changelog for the [`directory`][1] package
 ==========================================
 
+## 1.2.6.2 (April 2015)
+
+  * Fix typo in file time functions when `utimensat` is not available and
+    version of `unix` package is lower than 2.7.0.0
+
 ## 1.2.6.1 (April 2015)
 
   * Bundled with GHC 8.0.1
