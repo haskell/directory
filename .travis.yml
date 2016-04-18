@@ -1,76 +1,45 @@
-# we want to use our custom environment, but the Travis YAML validator
-# requires this field to be specified, so we'll just use 'c'
-language: c
-
-# use the new container-based infrastructure
+language: c                             # make the validator happy
 sudo: false
-
 matrix:
   include:
-   # we have to use CABALVER=1.16 for GHC<7.6 as well, as there's
-   # no package for earlier cabal versions in the PPA
-   - env: GHCVER=7.4.2 CABALVER=1.16
-     addons: {apt: {packages: [cabal-install-1.16,ghc-7.4.2], sources: [hvr-ghc]}}
-   - env: GHCVER=7.6.3 CABALVER=1.16
-     addons: {apt: {packages: [cabal-install-1.16,ghc-7.6.3], sources: [hvr-ghc]}}
-   - env: GHCVER=7.8.4 CABALVER=1.18
-     addons: {apt: {packages: [cabal-install-1.18,ghc-7.8.4], sources: [hvr-ghc]}}
-   - env: GHCVER=7.10.1 CABALVER=1.22
-     addons: {apt: {packages: [cabal-install-1.22,ghc-7.10.1], sources: [hvr-ghc]}}
-   - env: GHCVER=head CABALVER=head
-     addons: {apt: {packages: [cabal-install-head,ghc-head], sources: [hvr-ghc]}}
+  # CABALVER=1.16 is the earliest available in the PPA
+  - env: STACK="stack --resolver lts-5"
+    os: osx
+  - env: GHCVER=7.4.2 CABALVER=1.16 DISABLE_UTIMENSAT=t
+    addons:
+      apt:
+        packages: [ghc-7.4.2, cabal-install-1.16]
+        sources: [hvr-ghc]
+  - env: GHCVER=7.4.2 CABALVER=1.16
+    addons:
+      apt:
+        packages: [ghc-7.4.2, cabal-install-1.16]
+        sources: [hvr-ghc]
+  - env: GHCVER=7.6.3 CABALVER=1.16
+    addons:
+      apt:
+        packages: [ghc-7.6.3, cabal-install-1.16]
+        sources: [hvr-ghc]
+  - env: GHCVER=7.8.4 CABALVER=1.18
+    addons:
+      apt:
+        packages: [ghc-7.8.4, cabal-install-1.18]
+        sources: [hvr-ghc]
+  - env: GHCVER=7.10.1 CABALVER=1.22
+    addons:
+      apt:
+        packages: [ghc-7.10.1, cabal-install-1.22]
+        sources: [hvr-ghc]
+  - env: GHCVER=head CABALVER=head
+    addons:
+      apt:
+        packages: [ghc-head, cabal-install-head]
+        sources: [hvr-ghc]
   allow_failures:
-   - env: GHCVER=head CABALVER=head
-
+  - env: GHCVER=head CABALVER=head
 before_install:
- - export PATH=/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$PATH
- - cabal --version
-
+- export PATH=$PWD/_stack:/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$PATH
 install:
- - travis_retry cabal update
- - cabal install --enable-tests --only-dependencies
- - ghc --version
-
-before_script:
-   # check if 'streaming' is supported (didn't exist until 1.20)
- - |
-     if cabal 2>&1 test --show-details=streaming __dummy |
-        grep >/dev/null 2>&1 "cabal: --show-details flag expects"
-     then streaming=always
-     else streaming=streaming
-     fi
-     export streaming
-   # check if '--run-tests' is supported (didn't exist until 1.20);
-   # tests must be run prior to install as packages may be broken by install
- - |
-     if cabal 2>&1 install --run-tests __dummy |
-        grep >/dev/null 2>&1 "cabal: unrecognized option"
-     then def_cabal_install_run_tests='cabal_install_run_tests() {
-          tgz=$1 &&
-          shift &&
-          tmp=cabal-install-run-tests.tmp &&
-          mkdir -p "$tmp" &&
-          ( cd "$tmp" && tar xzf - ) <"$tgz" &&
-          ( cd "$tmp"/* &&
-            cabal configure --enable-tests &&
-            cabal build &&
-            cabal test ) &&
-          cabal install "$@" "$tgz"
-     }'
-     else def_cabal_install_run_tests='cabal_install_run_tests() {
-          cabal install --run-tests "$@"
-     }'
-     fi
-     export def_cabal_install_run_tests
-
+- tools/testscript prepare
 script:
- - autoreconf -i
- - cabal configure -v2 --enable-tests --ghc-options=-threaded
- - cabal build
- - cabal check
- - cabal sdist
- - cabal test --show-details=$streaming
-     --test-option=CreateDirectoryIfMissing001.num-repeats=100000
-     --test-option=+RTS --test-option=-N2
- - eval "$def_cabal_install_run_tests" &&
-   cabal_install_run_tests dist/*-*.tar.gz --force-reinstalls
+- tools/testscript build
