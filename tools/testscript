@@ -6,7 +6,7 @@ testflags="CreateDirectoryIfMissing001.num-repeats=100000 +RTS -N2"
 
 post_configure() {
     if [ "${DISABLE_UTIMENSAT+x}" ]; then
-        sed -i "s/#define HAVE_UTIMENSAT 1//" include/HsDirectoryConfig.h
+        sed -i "s/#define HAVE_UTIMENSAT 1//" HsDirectoryConfig.h
     fi
 }
 

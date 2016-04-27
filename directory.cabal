@@ -18,7 +18,7 @@ extra-tmp-files:
     autom4te.cache
     config.log
     config.status
-    include/HsDirectoryConfig.h
+    HsDirectoryConfig.h
 
 extra-source-files:
     changelog.md
@@ -26,7 +26,7 @@ extra-source-files:
     configure
     configure.ac
     directory.buildinfo
-    include/HsDirectoryConfig.h.in
+    HsDirectoryConfig.h.in
     tests/*.hs
     tests/util.inl
 
@@ -51,7 +51,7 @@ Library
 
     c-sources:
         cbits/directory.c
-    include-dirs: include
+    include-dirs: . include
     includes:
         HsDirectory.h
     install-includes:

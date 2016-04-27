@@ -5,8 +5,8 @@ config.log
 config.status
 configure
 dist/
-include/HsDirectoryConfig.h
-include/HsDirectoryConfig.h.in
+HsDirectoryConfig.h
+HsDirectoryConfig.h.in
 *~
 
 # In GHC build tree:
