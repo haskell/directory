@@ -1,11 +1,9 @@
+module System.Directory.Internal.Posix where
 #include <HsDirectoryConfig.h>
-
+#ifndef mingw32_HOST_OS
 #ifdef HAVE_LIMITS_H
 # include <limits.h>
 #endif
-
-module System.Directory.Internal.Posix where
-#ifndef mingw32_HOST_OS
 import Control.Monad ((>=>))
 import Control.Exception (bracket)
 import Foreign

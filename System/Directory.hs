@@ -161,18 +161,6 @@ import System.Posix.Internals ( withFilePath )
 
 import System.Directory.Internal
 
-#ifdef mingw32_HOST_OS
-win32_cSIDL_LOCAL_APPDATA :: Win32.CSIDL
-win32_fILE_SHARE_DELETE   :: Win32.ShareMode
-#if MIN_VERSION_Win32(2, 3, 1)
-win32_cSIDL_LOCAL_APPDATA = Win32.cSIDL_LOCAL_APPDATA -- only on HEAD atm
-win32_fILE_SHARE_DELETE   = Win32.fILE_SHARE_DELETE   -- added in 2.3.0.2
-#else
-win32_cSIDL_LOCAL_APPDATA = 0x001c
-win32_fILE_SHARE_DELETE   = 0x00000004
-#endif
-#endif
-
 {- $intro
 A directory contains a series of entries, each of which is a named
 reference to a file system object (file, directory etc.).  Some
@@ -334,11 +322,6 @@ setPermissions name (Permissions r w e s) =
    modifyBit :: Bool -> Posix.FileMode -> Posix.FileMode -> Posix.FileMode
    modifyBit False m b = m .&. (complement b)
    modifyBit True  m b = m .|. b
-#endif
-
-#ifdef mingw32_HOST_OS
-foreign import ccall unsafe "_wchmod"
-   c_wchmod :: CWString -> CMode -> IO CInt
 #endif
 
 copyPermissions :: FilePath -> FilePath -> IO ()
@@ -1375,8 +1358,7 @@ isSymbolicLink path =
 #ifdef mingw32_HOST_OS
     isReparsePoint <$> Win32.getFileAttributes path
   where
-    fILE_ATTRIBUTE_REPARSE_POINT = 0x400
-    isReparsePoint attr = attr .&. fILE_ATTRIBUTE_REPARSE_POINT /= 0
+    isReparsePoint attr = attr .&. win32_fILE_ATTRIBUTE_REPARSE_POINT /= 0
 #else
     Posix.isSymbolicLink <$> Posix.getSymbolicLinkStatus path
 #endif
