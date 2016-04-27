@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 #include <HsDirectoryConfig.h>
 
 module System.Directory.Internal
