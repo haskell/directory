@@ -1,5 +1,5 @@
 name:           directory
-version:        1.2.6.3
+version:        1.2.7.0
 -- NOTE: Don't forget to update ./changelog.md
 license:        BSD3
 license-file:   LICENSE
@@ -49,13 +49,7 @@ Library
         System.Directory.Internal.Posix
         System.Directory.Internal.Windows
 
-    c-sources:
-        cbits/directory.c
-    include-dirs: . include
-    includes:
-        HsDirectory.h
-    install-includes:
-        HsDirectory.h
+    include-dirs: .
 
     build-depends:
         base     >= 4.5 && < 4.10,

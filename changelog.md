@@ -1,6 +1,12 @@
 Changelog for the [`directory`][1] package
 ==========================================
 
+## 1.2.7.0 (June 2016)
+
+  * Remove deprecated C bits.  This means `HsDirectory.h` and its functions
+    are no longer available.
+    ([#50](https://github.com/haskell/directory/issues/50))
+
 ## 1.2.6.3 (May 2016)
 
   * Add missing import of `(<*>)` on Windows for `base` earlier than 4.8.0.0
