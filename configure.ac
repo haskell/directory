@@ -1,7 +1,7 @@
 AC_INIT([Haskell directory package], [1.0], [libraries@haskell.org], [directory])
 
 # Safety check: Ensure that we are in the correct source directory.
-AC_CONFIG_SRCDIR([include/HsDirectory.h])
+AC_CONFIG_SRCDIR([System/Directory.hs])
 
 AC_CONFIG_HEADERS([include/HsDirectoryConfig.h])
 
