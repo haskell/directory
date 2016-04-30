@@ -5,11 +5,12 @@ build: false
 environment:
   global:
     # use a short path prefix to avoid running into path-length limitations
-    STACK: stack --resolver lts-5 --skip-msys
     STACK_ROOT: C:\sr
   matrix:
   - DEPS:
+    STACK: stack --skip-msys --resolver lts-5
   - DEPS: Win32-2.3.0.1
+    STACK: stack --skip-msys --resolver lts-2
 cache:
 - "%STACK_ROOT%"
 install:
