@@ -1,6 +1,11 @@
 Changelog for the [`directory`][1] package
 ==========================================
 
+## 1.2.6.3 (April 2015)
+
+  * Add missing import of `(<*>)` on Windows for `base` earlier than 4.8.0.0
+    ([#53](https://github.com/haskell/directory/issues/53))
+
 ## 1.2.6.2 (April 2015)
 
   * Fix typo in file time functions when `utimensat` is not available and

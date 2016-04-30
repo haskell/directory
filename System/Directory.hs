@@ -100,6 +100,9 @@ module System.Directory
 import Control.Exception (bracket, mask, onException)
 import Control.Monad ( when, unless )
 #ifdef mingw32_HOST_OS
+#if !MIN_VERSION_base(4, 8, 0)
+import Control.Applicative ((<*>))
+#endif
 import Data.Function (on)
 #endif
 #if !MIN_VERSION_base(4, 8, 0)
