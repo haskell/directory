@@ -1,7 +1,7 @@
 Changelog for the [`directory`][1] package
 ==========================================
 
-## 1.2.6.3 (April 2015)
+## 1.2.6.3 (May 2015)
 
   * Add missing import of `(<*>)` on Windows for `base` earlier than 4.8.0.0
     ([#53](https://github.com/haskell/directory/issues/53))
