@@ -38,7 +38,7 @@ prepare() {
                 MSYS*)
                     url=https://www.stackage.org/stack/windows-x86_64
                     curl --retry 3 -fsLSo stack.zip "$url"
-                    7z x stack.zip stack.exe;;
+                    7z x -aoa stack.zip stack.exe;;
                 *)
                     printf >&2 "unknown uname: %s\n" "`uname`"
                     return 1;;
@@ -52,7 +52,7 @@ prepare() {
             url=https://hackage.haskell.org/package/${dep}/${dep}.tar.gz
             curl --retry 3 -fsLS "$url" | tar xzf -
         done
-        $stack init
+        $stack init && :
         $stack test --install-ghc --only-dependencies
         $stack list-dependencies
 
