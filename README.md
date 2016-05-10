@@ -25,5 +25,5 @@ configure` does that automatically.
 [bi]: https://travis-ci.org/haskell/directory.svg?branch=master
 [bl]: https://travis-ci.org/haskell/directory
 [wi]: https://ci.appveyor.com/api/projects/status/github/haskell/directory?svg=true
-[wl]: https://ci.appveyor.com/project/Rufflewind/directory
+[wl]: https://ci.appveyor.com/project/hvr/directory
 [ac]: https://gnu.org/software/autoconf
