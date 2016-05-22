@@ -1,24 +1,24 @@
 Changelog for the [`directory`][1] package
 ==========================================
 
-## 1.2.6.3 (May 2015)
+## 1.2.6.3 (May 2016)
 
   * Add missing import of `(<*>)` on Windows for `base` earlier than 4.8.0.0
     ([#53](https://github.com/haskell/directory/issues/53))
 
-## 1.2.6.2 (April 2015)
+## 1.2.6.2 (April 2016)
 
   * Fix typo in file time functions when `utimensat` is not available and
     version of `unix` package is lower than 2.7.0.0
 
-## 1.2.6.1 (April 2015)
+## 1.2.6.1 (April 2016)
 
   * Bundled with GHC 8.0.1
 
   * Fix mistake in file time functions when `utimensat` is not available
     ([#47](https://github.com/haskell/directory/pull/47))
 
-## 1.2.6.0 (April 2015)
+## 1.2.6.0 (April 2016)
 
   * Make `findExecutable`, `findExecutables`, `findExecutablesInDirectories`,
     `findFile`, and `findFilesWith` lazier
@@ -36,7 +36,7 @@ Changelog for the [`directory`][1] package
 
   * Drop support for Hugs.
 
-## 1.2.5.1 (February 2015)
+## 1.2.5.1 (February 2016)
 
   * Improve error message of `getCurrentDirectory` when the current working
     directory no longer exists
