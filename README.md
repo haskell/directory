@@ -24,6 +24,6 @@ configure` does that automatically.
 [hl]: https://hackage.haskell.org/package/directory
 [bi]: https://travis-ci.org/haskell/directory.svg?branch=master
 [bl]: https://travis-ci.org/haskell/directory
-[wi]: https://ci.appveyor.com/api/projects/status/github/haskell/directory?svg=true
+[wi]: https://ci.appveyor.com/api/projects/status/github/haskell/directory?branch=master&svg=true
 [wl]: https://ci.appveyor.com/project/hvr/directory
 [ac]: https://gnu.org/software/autoconf
