@@ -7,6 +7,9 @@ Changelog for the [`directory`][1] package
     are no longer available.
     ([#50](https://github.com/haskell/directory/issues/50))
 
+  * Add `doesPathExist`
+    ([#57](https://github.com/haskell/directory/issues/57))
+
 ## 1.2.6.3 (May 2016)
 
   * Add missing import of `(<*>)` on Windows for `base` earlier than 4.8.0.0

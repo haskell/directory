@@ -87,6 +87,7 @@ test-suite test
         CurrentDirectory001
         Directory001
         DoesDirectoryExist001
+        DoesPathExist
         FileTime
         FindFile001
         GetDirContents001

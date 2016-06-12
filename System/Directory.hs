@@ -64,6 +64,7 @@ module System.Directory
     , exeExtension
 
     -- * Existence tests
+    , doesPathExist
     , doesFileExist
     , doesDirectoryExist
 
@@ -965,9 +966,6 @@ canonicalizePath = \ path ->
     realpath encoding path =
       GHC.withCString encoding path
       (`withRealpath` GHC.peekCString encoding)
-
-    doesPathExist path = (Posix.getFileStatus path >> return True)
-                         `catchIOError` \ _ -> return False
 #endif
 
 -- | Convert a path into an absolute path.  If the given path is relative, the
@@ -1321,6 +1319,18 @@ withCurrentDirectory dir action =
   bracket getCurrentDirectory setCurrentDirectory $ \ _ -> do
     setCurrentDirectory dir
     action
+
+-- | Test whether the given path points to an existing filesystem object.  If
+-- the user lacks necessary permissions to search the parent directories, this
+-- function may return false even if the file does actually exist.
+doesPathExist :: FilePath -> IO Bool
+doesPathExist path =
+#ifdef mingw32_HOST_OS
+  (withFileStatus "" path $ \ _ -> return True)
+#else
+  (Posix.getFileStatus path >> return True)
+#endif
+  `catchIOError` \ _ -> return False
 
 {- |The operation 'doesDirectoryExist' returns 'True' if the argument file
 exists and is either a directory or a symbolic link to a directory,
