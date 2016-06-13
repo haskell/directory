@@ -7,7 +7,7 @@ Changelog for the [`directory`][1] package
     are no longer available.
     ([#50](https://github.com/haskell/directory/issues/50))
 
-  * Add `doesPathExist`
+  * Add `doesPathExist` and `getFileSize`
     ([#57](https://github.com/haskell/directory/issues/57))
 
 ## 1.2.6.3 (May 2016)

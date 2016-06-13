@@ -14,6 +14,7 @@ import qualified FileTime
 import qualified FindFile001
 import qualified GetDirContents001
 import qualified GetDirContents002
+import qualified GetFileSize
 import qualified GetHomeDirectory001
 import qualified GetPermissions001
 import qualified IsSymbolicLink
@@ -40,6 +41,7 @@ main = T.testMain $ \ _t -> do
   T.isolatedRun _t "FindFile001" FindFile001.main
   T.isolatedRun _t "GetDirContents001" GetDirContents001.main
   T.isolatedRun _t "GetDirContents002" GetDirContents002.main
+  T.isolatedRun _t "GetFileSize" GetFileSize.main
   T.isolatedRun _t "GetHomeDirectory001" GetHomeDirectory001.main
   T.isolatedRun _t "GetPermissions001" GetPermissions001.main
   T.isolatedRun _t "IsSymbolicLink" IsSymbolicLink.main

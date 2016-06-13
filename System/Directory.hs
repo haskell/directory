@@ -63,6 +63,8 @@ module System.Directory
     , findFilesWith
     , exeExtension
 
+    , getFileSize
+
     -- * Existence tests
     , doesPathExist
     , doesFileExist
@@ -1319,6 +1321,16 @@ withCurrentDirectory dir action =
   bracket getCurrentDirectory setCurrentDirectory $ \ _ -> do
     setCurrentDirectory dir
     action
+
+-- | Obtain the size of a file in bytes.
+getFileSize :: FilePath -> IO Integer
+getFileSize path =
+  (`ioeSetLocation` "getFileSize") `modifyIOError` do
+#ifdef mingw32_HOST_OS
+    fromIntegral <$> withFileStatus "" path st_size
+#else
+    fromIntegral . Posix.fileSize <$> Posix.getFileStatus path
+#endif
 
 -- | Test whether the given path points to an existing filesystem object.  If
 -- the user lacks necessary permissions to search the parent directories, this

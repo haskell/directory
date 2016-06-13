@@ -92,6 +92,7 @@ test-suite test
         FindFile001
         GetDirContents001
         GetDirContents002
+        GetFileSize
         GetHomeDirectory001
         GetPermissions001
         IsSymbolicLink
