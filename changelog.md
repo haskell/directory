@@ -10,6 +10,9 @@ Changelog for the [`directory`][1] package
   * Add `doesPathExist` and `getFileSize`
     ([#57](https://github.com/haskell/directory/issues/57))
 
+  * Add `renamePath`
+    ([#58](https://github.com/haskell/directory/issues/58))
+
 ## 1.2.6.3 (May 2016)
 
   * Add missing import of `(<*>)` on Windows for `base` earlier than 4.8.0.0

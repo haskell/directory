@@ -99,6 +99,7 @@ test-suite test
         RemoveDirectoryRecursive001
         RenameDirectory
         RenameFile001
+        RenamePath
         Safe
         T8482
         WithCurrentDirectory

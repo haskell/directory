@@ -48,6 +48,7 @@ module System.Directory
     -- * Actions on files
     , removeFile
     , renameFile
+    , renamePath
     , copyFile
     , copyFileWithMetadata
 
@@ -674,11 +675,7 @@ renameDirectory opath npath =
    when (not is_dir) $ do
      ioError . (`ioeSetErrorString` "not a directory") $
        (mkIOError InappropriateType "renameDirectory" Nothing (Just opath))
-#ifdef mingw32_HOST_OS
-   Win32.moveFileEx opath npath Win32.mOVEFILE_REPLACE_EXISTING
-#else
-   Posix.rename opath npath
-#endif
+   renamePath opath npath
 
 {- |@'renameFile' old new@ changes the name of an existing file system
 object from /old/ to /new/.  If the /new/ object already
@@ -728,11 +725,7 @@ renameFile :: FilePath -> FilePath -> IO ()
 renameFile opath npath = (`ioeSetLocation` "renameFile") `modifyIOError` do
    -- XXX the tests are not performed atomically with the rename
    checkNotDir opath
-#ifdef mingw32_HOST_OS
-   Win32.moveFileEx opath npath Win32.mOVEFILE_REPLACE_EXISTING
-#else
-   Posix.rename opath npath
-#endif
+   renamePath opath npath
      -- The underlying rename implementation can throw odd exceptions when the
      -- destination is a directory.  For example, Windows typically throws a
      -- permission error, while POSIX systems may throw a resource busy error
@@ -751,6 +744,57 @@ renameFile opath npath = (`ioeSetLocation` "renameFile") `modifyIOError` do
              NotDirectory  -> return ()
          errIsDir path = ioError . (`ioeSetErrorString` "is a directory") $
                          mkIOError InappropriateType "" Nothing (Just path)
+
+-- | Rename a file or directory.  If the destination path already exists, it
+-- is replaced atomically.  The destination path must not point to an existing
+-- directory.  A conformant implementation need not support renaming files in
+-- all situations (e.g. renaming across different physical devices), but the
+-- constraints must be documented.
+--
+-- The operation may fail with:
+--
+-- * 'HardwareFault'
+-- A physical I\/O error has occurred.
+-- @[EIO]@
+--
+-- * 'InvalidArgument'
+-- Either operand is not a valid file name.
+-- @[ENAMETOOLONG, ELOOP]@
+--
+-- * 'isDoesNotExistError' \/ 'NoSuchThing'
+-- The original file does not exist, or there is no path to the target.
+-- @[ENOENT, ENOTDIR]@
+--
+-- * 'isPermissionError' \/ 'PermissionDenied'
+-- The process has insufficient privileges to perform the operation.
+-- @[EROFS, EACCES, EPERM]@
+--
+-- * 'ResourceExhausted'
+-- Insufficient resources are available to perform the operation.
+-- @[EDQUOT, ENOSPC, ENOMEM, EMLINK]@
+--
+-- * 'UnsatisfiedConstraints'
+-- Implementation-dependent constraints are not satisfied.
+-- @[EBUSY]@
+--
+-- * 'UnsupportedOperation'
+-- The implementation does not support renaming in this situation.
+-- @[EXDEV]@
+--
+-- * 'InappropriateType'
+-- Either the destination path refers to an existing directory, or one of the
+-- parent segments in the destination path is not a directory.
+-- @[ENOTDIR, EISDIR, EINVAL, EEXIST, ENOTEMPTY]@
+--
+renamePath :: FilePath                  -- ^ Old path
+           -> FilePath                  -- ^ New path
+           -> IO ()
+renamePath opath npath = (`ioeSetLocation` "renamePath") `modifyIOError` do
+#ifdef mingw32_HOST_OS
+   Win32.moveFileEx opath npath Win32.mOVEFILE_REPLACE_EXISTING
+#else
+   Posix.rename opath npath
+#endif
 
 -- | Copy a file with its permissions.  If the destination file already exists,
 -- it is replaced atomically.  Neither path may refer to an existing
