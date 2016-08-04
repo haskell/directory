@@ -1,7 +1,7 @@
 Changelog for the [`directory`][1] package
 ==========================================
 
-## 1.2.7.0 (June 2016)
+## 1.2.7.0 (August 2016)
 
   * Remove deprecated C bits.  This means `HsDirectory.h` and its functions
     are no longer available.
@@ -12,6 +12,9 @@ Changelog for the [`directory`][1] package
 
   * Add `renamePath`
     ([#58](https://github.com/haskell/directory/issues/58))
+
+  * Add `removePathForcibly`
+    ([#59](https://github.com/haskell/directory/issues/59))
 
 ## 1.2.6.3 (May 2016)
 

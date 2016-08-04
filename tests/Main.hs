@@ -19,6 +19,7 @@ import qualified GetHomeDirectory001
 import qualified GetPermissions001
 import qualified IsSymbolicLink
 import qualified RemoveDirectoryRecursive001
+import qualified RemovePathForcibly
 import qualified RenameDirectory
 import qualified RenameFile001
 import qualified RenamePath
@@ -47,6 +48,7 @@ main = T.testMain $ \ _t -> do
   T.isolatedRun _t "GetPermissions001" GetPermissions001.main
   T.isolatedRun _t "IsSymbolicLink" IsSymbolicLink.main
   T.isolatedRun _t "RemoveDirectoryRecursive001" RemoveDirectoryRecursive001.main
+  T.isolatedRun _t "RemovePathForcibly" RemovePathForcibly.main
   T.isolatedRun _t "RenameDirectory" RenameDirectory.main
   T.isolatedRun _t "RenameFile001" RenameFile001.main
   T.isolatedRun _t "RenamePath" RenamePath.main

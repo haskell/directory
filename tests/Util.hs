@@ -14,20 +14,16 @@ import Data.Time.Clock (NominalDiffTime, UTCTime, diffUTCTime)
 import Control.Arrow (second)
 import Control.Concurrent (forkIO, killThread)
 import Control.Concurrent.MVar (newEmptyMVar, putMVar, readMVar)
-import Control.Exception (SomeException, bracket_, catch,
-                          mask, onException, try)
+import Control.Exception (SomeException, bracket_, mask, onException, try)
 import Control.Monad (Monad(..), unless, when)
-import System.Directory (createDirectoryIfMissing, emptyPermissions,
-                         doesDirectoryExist, isSymbolicLink, listDirectory,
-                         makeAbsolute, removeDirectoryRecursive, readable,
-                         searchable, setPermissions, withCurrentDirectory,
-                         writable)
+import System.Directory (createDirectoryIfMissing, doesDirectoryExist,
+                         isSymbolicLink, listDirectory, makeAbsolute,
+                         removePathForcibly, withCurrentDirectory)
 import System.Environment (getArgs)
 import System.Exit (exitFailure)
 import System.FilePath (FilePath, (</>), normalise)
 import System.IO (IO, hFlush, hPutStrLn, putStrLn, stderr, stdout)
-import System.IO.Error (IOError, isDoesNotExistError,
-                        ioError, tryIOError, userError)
+import System.IO.Error (IOError, ioError, tryIOError, userError)
 import System.Timeout (timeout)
 import Text.Read (Read, reads)
 
@@ -154,7 +150,7 @@ withNewDirectory keep dir action = do
   dir' <- makeAbsolute dir
   bracket_ (createDirectoryIfMissing True dir') (cleanup dir') action
   where cleanup dir' | keep      = return ()
-                     | otherwise = removeDirectoryRecursive dir'
+                     | otherwise = removePathForcibly dir'
 
 isolateWorkingDirectory :: Bool -> FilePath -> IO a -> IO a
 isolateWorkingDirectory keep dir action = do
@@ -162,16 +158,7 @@ isolateWorkingDirectory keep dir action = do
     ioError (userError ("isolateWorkingDirectory cannot be used " <>
                         "with current directory"))
   dir' <- makeAbsolute dir
-  (`preprocessPathRecursive` dir') $ \ f -> do
-    setPermissions f emptyPermissions{ readable = True
-                                     , searchable = True
-                                     , writable = True }
-      `catch` \ e ->
-        unless (isDoesNotExistError e) $
-          ioError e
-  removeDirectoryRecursive dir' `catch` \ e ->
-    unless (isDoesNotExistError e) $
-      ioError e
+  removePathForcibly dir'
   withNewDirectory keep dir' $
     withCurrentDirectory dir' $
       action

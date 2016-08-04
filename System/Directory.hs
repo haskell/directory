@@ -29,6 +29,7 @@ module System.Directory
     , createDirectoryIfMissing
     , removeDirectory
     , removeDirectoryRecursive
+    , removePathForcibly
     , renameDirectory
     , listDirectory
     , getDirectoryContents
@@ -568,6 +569,33 @@ removeContentsRecursive path =
     cont <- listDirectory path
     mapM_ removePathRecursive [path </> x | x <- cont]
     removeDirectory path
+
+-- | @'removePathForcibly@ removes a file or directory at /path/ together with
+-- its contents and subdirectories. Symbolic links are removed without
+-- affecting their the targets. If the path does not exist, nothing happens.
+--
+-- Unlike other removal functions, this function will also attempt to delete
+-- files marked as read-only or otherwise made unremovable due to permissions.
+-- As a result, if the removal is incomplete, the permissions or attributes on
+-- the remaining files may be altered.
+removePathForcibly :: FilePath -> IO ()
+removePathForcibly path =
+  (`ioeSetLocation` "removePathForcibly") `modifyIOError` do
+    makeRemovable path `catchIOError` \ _ -> return ()
+    dirType <- tryIOErrorType isDoesNotExistError (getDirectoryType path)
+    case dirType of
+      Left _              -> return ()
+      Right NotDirectory  -> removeFile path
+      Right DirectoryLink -> removeDirectory path
+      Right Directory     -> do
+        mapM_ (removePathForcibly . (path </>)) =<< listDirectory path
+        removeDirectory path
+  where
+    makeRemovable p = do
+      perms <- getPermissions p
+      setPermissions path perms{ readable = True
+                               , searchable = True
+                               , writable = True }
 
 {- |'removeFile' /file/ removes the directory entry for an existing file
 /file/, where /file/ is not itself a directory. The
