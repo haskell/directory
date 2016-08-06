@@ -23,12 +23,12 @@ Changelog for the [`directory`][1] package
 
 ## 1.2.6.2 (April 2016)
 
+  * Bundled with GHC 8.0.1
+
   * Fix typo in file time functions when `utimensat` is not available and
     version of `unix` package is lower than 2.7.0.0
 
 ## 1.2.6.1 (April 2016)
-
-  * Bundled with GHC 8.0.1
 
   * Fix mistake in file time functions when `utimensat` is not available
     ([#47](https://github.com/haskell/directory/pull/47))
