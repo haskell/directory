@@ -41,7 +41,7 @@ Changelog for the [`directory`][1] package
 
   * Add `findFileWith`
 
-  * Add `copyFileWithAttrs`, which copies additional metadata
+  * Add `copyFileWithMetadata`, which copies additional metadata
     ([#40](https://github.com/haskell/directory/issues/40))
 
   * Improve error message of `removeDirectoryRecursive` when used on a

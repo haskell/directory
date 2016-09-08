@@ -578,6 +578,8 @@ removeContentsRecursive path =
 -- files marked as read-only or otherwise made unremovable due to permissions.
 -- As a result, if the removal is incomplete, the permissions or attributes on
 -- the remaining files may be altered.
+--
+-- @since 1.2.7.0
 removePathForcibly :: FilePath -> IO ()
 removePathForcibly path =
   (`ioeSetLocation` "removePathForcibly") `modifyIOError` do
@@ -814,6 +816,7 @@ renameFile opath npath = (`ioeSetLocation` "renameFile") `modifyIOError` do
 -- parent segments in the destination path is not a directory.
 -- @[ENOTDIR, EISDIR, EINVAL, EEXIST, ENOTEMPTY]@
 --
+-- @since 1.2.7.0
 renamePath :: FilePath                  -- ^ Old path
            -> FilePath                  -- ^ New path
            -> IO ()
@@ -1395,6 +1398,8 @@ withCurrentDirectory dir action =
     action
 
 -- | Obtain the size of a file in bytes.
+--
+-- @since 1.2.7.0
 getFileSize :: FilePath -> IO Integer
 getFileSize path =
   (`ioeSetLocation` "getFileSize") `modifyIOError` do
@@ -1407,6 +1412,8 @@ getFileSize path =
 -- | Test whether the given path points to an existing filesystem object.  If
 -- the user lacks necessary permissions to search the parent directories, this
 -- function may return false even if the file does actually exist.
+--
+-- @since 1.2.7.0
 doesPathExist :: FilePath -> IO Bool
 doesPathExist path =
 #ifdef mingw32_HOST_OS
