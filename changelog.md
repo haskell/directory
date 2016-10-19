@@ -1,6 +1,12 @@
 Changelog for the [`directory`][1] package
 ==========================================
 
+## 1.2.7.1 (November 2016)
+
+  * Don't abort `removePathForcibly` if files or directories go missing.
+    In addition, keep going even if an exception occurs.
+    ([#60](https://github.com/haskell/directory/issues/60))
+
 ## 1.2.7.0 (August 2016)
 
   * Remove deprecated C bits.  This means `HsDirectory.h` and its functions

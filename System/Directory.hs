@@ -570,34 +570,67 @@ removeContentsRecursive path =
     mapM_ removePathRecursive [path </> x | x <- cont]
     removeDirectory path
 
--- | @'removePathForcibly@ removes a file or directory at /path/ together with
--- its contents and subdirectories. Symbolic links are removed without
--- affecting their the targets. If the path does not exist, nothing happens.
+-- | Removes a file or directory at /path/ together with its contents and
+-- subdirectories. Symbolic links are removed without affecting their
+-- targets. If the path does not exist, nothing happens.
 --
 -- Unlike other removal functions, this function will also attempt to delete
 -- files marked as read-only or otherwise made unremovable due to permissions.
 -- As a result, if the removal is incomplete, the permissions or attributes on
 -- the remaining files may be altered.
 --
+-- If an entry within the directory vanishes while @removePathForcibly@ is
+-- running, it is silently ignored.
+--
+-- If an exception occurs while removing an entry, @removePathForcibly@ will
+-- still try to remove as many entries as it can before failing with an
+-- exception.  The first exception that it encountered is re-thrown.
+--
 -- @since 1.2.7.0
 removePathForcibly :: FilePath -> IO ()
 removePathForcibly path =
   (`ioeSetLocation` "removePathForcibly") `modifyIOError` do
     makeRemovable path `catchIOError` \ _ -> return ()
-    dirType <- tryIOErrorType isDoesNotExistError (getDirectoryType path)
-    case dirType of
-      Left _              -> return ()
-      Right NotDirectory  -> removeFile path
-      Right DirectoryLink -> removeDirectory path
-      Right Directory     -> do
-        mapM_ (removePathForcibly . (path </>)) =<< listDirectory path
-        removeDirectory path
+    ignoreDoesNotExistError $ do
+      dirType <- getDirectoryType path
+      case dirType of
+        NotDirectory  -> removeFile path
+        DirectoryLink -> removeDirectory path
+        Directory     -> do
+          names <- listDirectory path
+          sequenceWithIOErrors_ $
+            [ removePathForcibly (path </> name) | name <- names ] ++
+            [ removeDirectory path ]
   where
+
+    ignoreDoesNotExistError :: IO () -> IO ()
+    ignoreDoesNotExistError action = do
+      _ <- tryIOErrorType isDoesNotExistError action
+      return ()
+
+    makeRemovable :: FilePath -> IO ()
     makeRemovable p = do
       perms <- getPermissions p
       setPermissions path perms{ readable = True
                                , searchable = True
                                , writable = True }
+
+sequenceWithIOErrors_ :: [IO ()] -> IO ()
+sequenceWithIOErrors_ actions = go (Right ()) actions
+  where
+
+    go :: Either IOError () -> [IO ()] -> IO ()
+    go (Left e)   []       = ioError e
+    go (Right ()) []       = return ()
+    go s          (m : ms) = s `seq` do
+      r <- tryIOError m
+      go (thenEither s r) ms
+
+    -- equivalent to (*>) for Either, defined here to retain compatibility
+    -- with base prior to 4.3
+    thenEither :: Either b a -> Either b a -> Either b a
+    thenEither x@(Left _) _ = x
+    thenEither _          y = y
 
 {- |'removeFile' /file/ removes the directory entry for an existing file
 /file/, where /file/ is not itself a directory. The
