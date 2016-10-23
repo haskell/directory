@@ -635,7 +635,7 @@ The operand refers to an existing directory.
 
 removeFile :: FilePath -> IO ()
 removeFile path =
-#if mingw32_HOST_OS
+#ifdef mingw32_HOST_OS
   Win32.deleteFile path
 #else
   Posix.removeLink path
