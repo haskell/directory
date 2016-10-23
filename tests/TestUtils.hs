@@ -52,7 +52,7 @@ modifyPermissions path modify = do
   permissions <- getPermissions path
   setPermissions path (modify permissions)
 
-#if mingw32_HOST_OS
+#ifdef mingw32_HOST_OS
 createSymbolicLink :: String -> String -> IO ()
 createSymbolicLink target link =
   (`ioeSetLocation` "createSymbolicLink") `modifyIOError` do
