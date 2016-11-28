@@ -30,6 +30,11 @@ matrix:
       apt:
         packages: [ghc-7.10.1, cabal-install-1.22]
         sources: [hvr-ghc]
+  - env: GHCVER=8.0.1 CABALVER=1.24
+    addons:
+      apt:
+        packages: [ghc-8.0.1, cabal-install-1.24]
+        sources: [hvr-ghc]
   - env: GHCVER=head CABALVER=head
     addons:
       apt:
