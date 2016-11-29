@@ -1,6 +1,11 @@
 Changelog for the [`directory`][1] package
 ==========================================
 
+## 1.3.0.0 (November 2016)
+
+  * Drop trailing slashes in `canonicalizePath`
+    ([#63](https://github.com/haskell/directory/issues/63))
+
 ## 1.2.7.1 (November 2016)
 
   * Don't abort `removePathForcibly` if files or directories go missing.

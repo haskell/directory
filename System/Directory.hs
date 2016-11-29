@@ -1038,26 +1038,31 @@ copyFileTimesFromStatus st dst = do
 -- returned path due to the presence of hard links, mount points, etc.
 --
 -- Similar to 'normalise', passing an empty path is equivalent to passing the
--- current directory.  The function preserves the presence or absence of the
--- trailing path separator unless the path refers to the root directory @/@.
+-- current directory.  The function drops trailing path separators where
+-- possible (via 'dropTrailingPathSeparator').
 --
--- /Known bug(s)/: on Windows, the function does not resolve symbolic links.
+-- /Known bug(s)/: on Windows, the function does not resolve symbolic links
+-- and the letter case of filenames is not canonicalized.
 --
 -- /Changes since 1.2.3.0:/ The function has been altered to be more robust
 -- and has the same exception behavior as 'makeAbsolute'.
+--
+-- /Changes since 1.3.0.0:/ The function no longer preserves the trailing path
+-- separator.
 --
 canonicalizePath :: FilePath -> IO FilePath
 canonicalizePath = \ path ->
   modifyIOError ((`ioeSetLocation` "canonicalizePath") .
                  (`ioeSetFileName` path)) $
   -- normalise does more stuff, like upper-casing the drive letter
-  normalise <$> (transform =<< prependCurrentDirectory path)
+  dropTrailingPathSeparator . normalise <$>
+    (transform =<< prependCurrentDirectory path)
   where
 #if defined(mingw32_HOST_OS)
     transform path = Win32.getFullPathName path
                      `catchIOError` \ _ -> return path
 #else
-    transform path = matchTrailingSeparator path <$> do
+    transform path = do
       encoding <- getFileSystemEncoding
       realpathPrefix encoding (reverse (zip prefixes suffixes)) path
       where segments = splitPath path
@@ -1088,6 +1093,7 @@ canonicalizePath = \ path ->
 -- operation may fail with the same exceptions as 'getCurrentDirectory'.
 --
 -- @since 1.2.2.0
+--
 makeAbsolute :: FilePath -> IO FilePath
 makeAbsolute path =
   modifyIOError ((`ioeSetLocation` "makeAbsolute") .
@@ -1107,14 +1113,9 @@ prependCurrentDirectory :: FilePath -> IO FilePath
 prependCurrentDirectory path =
   modifyIOError ((`ioeSetLocation` "prependCurrentDirectory") .
                  (`ioeSetFileName` path)) $
-  case path of
-    "" -> -- avoid trailing path separator
-      prependCurrentDirectory "."
-    _     -- avoid the call to `getCurrentDirectory` if we can
-      | isRelative path ->
-          (</> path) . addTrailingPathSeparator <$> getCurrentDirectory
-      | otherwise ->
-          return path
+  if isRelative path -- avoid the call to `getCurrentDirectory` if we can
+  then (</> path) <$> getCurrentDirectory
+  else return path
 
 -- | Add or remove the trailing path separator in the second path so as to
 -- match its presence in the first path.
