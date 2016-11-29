@@ -96,6 +96,7 @@ test-suite test
         GetHomeDirectory001
         GetPermissions001
         IsSymbolicLink
+        MakeAbsolute
         RemoveDirectoryRecursive001
         RemovePathForcibly
         RenameDirectory
