@@ -1,7 +1,8 @@
 {-# LANGUAGE CPP #-}
 module CanonicalizePath where
 #include "util.inl"
-import System.FilePath ((</>), dropTrailingPathSeparator, normalise)
+import System.FilePath ((</>), dropFileName, dropTrailingPathSeparator,
+                        normalise, takeFileName)
 import TestUtils
 
 main :: TestEnv -> IO ()
@@ -89,3 +90,51 @@ main _t = do
     -- createSymbolicLink "../foo/non-existent" "foo/qux"
     -- qux <- canonicalizePath "foo/qux"
     -- T(expectEq) () qux (dot </> "../foo/non-existent")
+
+  caseInsensitive <-
+    (False <$ createDirectory "FOO")
+      `catch` \ e ->
+        if isAlreadyExistsError e
+        then pure True
+        else throwIO e
+
+  -- if platform is case-insensitive, we expect case to be canonicalized too
+  when caseInsensitive $ do
+    foo7 <- canonicalizePath "FOO"
+    foo8 <- canonicalizePath "FOO/"
+    T(expectEq) () foo foo7
+    T(expectEq) () foo foo8
+
+    fooNon9 <- canonicalizePath "FOO/non-existent"
+    fooNon10 <- canonicalizePath "fOo/non-existent/"
+    fooNon11 <- canonicalizePath "foO/non-existent/."
+    fooNon12 <- canonicalizePath "FoO/non-existent/./"
+    fooNon13 <- canonicalizePath "./fOO/non-existent"
+    fooNon14 <- canonicalizePath "./FOo/non-existent/"
+    cfooNon15 <- canonicalizePath "./FOO/./NON-EXISTENT"
+    cfooNon16 <- canonicalizePath "./FOO/./NON-EXISTENT/"
+    T(expectEq) () fooNon fooNon9
+    T(expectEq) () fooNon fooNon10
+    T(expectEq) () fooNon fooNon11
+    T(expectEq) () fooNon fooNon12
+    T(expectEq) () fooNon fooNon13
+    T(expectEq) () fooNon fooNon14
+    T(expectEq) () fooNon (dropFileName cfooNon15 <>
+                           (toLower <$> takeFileName cfooNon15))
+    T(expectEq) () fooNon (dropFileName cfooNon16 <>
+                           (toLower <$> takeFileName cfooNon16))
+    T(expectNe) () fooNon cfooNon15
+    T(expectNe) () fooNon cfooNon16
+
+    setCurrentDirectory "foo"
+    foo9 <- canonicalizePath "../FOO"
+    foo10 <- canonicalizePath "../FOO/"
+    T(expectEq) () foo foo9
+    T(expectEq) () foo foo10
+
+    -- Make sure long file names can be canonicalized too
+    -- (i.e. GetLongPathName by itself won't work)
+    createDirectory "verylongdirectoryname"
+    vldn <- canonicalizePath "verylongdirectoryname"
+    vldn2 <- canonicalizePath "VERYLONGDIRECTORYNAME"
+    T(expectEq) () vldn vldn2

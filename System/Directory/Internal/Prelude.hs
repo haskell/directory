@@ -82,9 +82,12 @@ import Foreign
     , sizeOf
     )
   , alloca
+  , allocaArray
   , allocaBytes
+  , allocaBytesAligned
   , maybeWith
   , nullPtr
+  , plusPtr
   , with
   , withArray
   )
@@ -99,6 +102,7 @@ import Foreign.C
   , CWString
   , CWchar(..)
   , peekCString
+  , peekCWStringLen
   , throwErrnoIfMinus1Retry_
   , throwErrnoIfMinus1_
   , throwErrnoIfNull
@@ -106,7 +110,7 @@ import Foreign.C
   , withCString
   , withCWString
   )
-import GHC.IO.Exception (IOErrorType(InappropriateType))
+import GHC.IO.Exception (IOErrorType(InappropriateType, OtherError))
 import GHC.IO.Encoding (getFileSystemEncoding)
 import System.Environment (getArgs, getEnv)
 import System.Exit (exitFailure)

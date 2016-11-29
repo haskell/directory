@@ -971,6 +971,8 @@ copyFileTimesFromStatus st dst = do
 #endif
 
 -- | Make a path absolute and remove as many indirections from it as possible.
+-- Additionally, on Windows the letter case of the path is canonicalized.
+--
 -- Indirections include the two special directories @.@ and @..@, as well as
 -- any Unix symbolic links.  The input path does not have to point to an
 -- existing file or directory.
@@ -996,15 +998,14 @@ copyFileTimesFromStatus st dst = do
 --
 -- /Known bugs/: When the path contains an existing symbolic link, but the
 -- target of the link does not exist, then the path is not dereferenced (bug
--- #64).  On Windows, the function does not resolve symbolic links and the
--- letter case of filenames is not canonicalized.
+-- #64).  On Windows, the function does not resolve symbolic links.
 --
 -- /Changes since 1.2.3.0:/ The function has been altered to be more robust
 -- and has the same exception behavior as 'makeAbsolute'.
 --
 -- /Changes since 1.3.0.0:/ The function no longer preserves the trailing path
 -- separator.  File symbolic links that appear in the middle of a path are
--- properly dereferenced.
+-- properly dereferenced.  Case canonicalization is now performed on Windows.
 --
 canonicalizePath :: FilePath -> IO FilePath
 canonicalizePath = \ path ->
@@ -1014,30 +1015,34 @@ canonicalizePath = \ path ->
   dropTrailingPathSeparator . normalise <$>
     (transform =<< prependCurrentDirectory path)
   where
+
 #if defined(mingw32_HOST_OS)
-    transform path = Win32.getFullPathName path
-                     `catchIOError` \ _ -> return path
+    transform path =
+      attemptRealpath (win32_getLongPathName <=< win32_getShortPathName) =<<
+        (Win32.getFullPathName path `catchIOError` \ _ -> return path)
 #else
     transform path = do
       encoding <- getFileSystemEncoding
-      realpathPrefix encoding (reverse (zip prefixes suffixes)) path
+      let realpath path' =
+            GHC.withCString encoding path'
+              (`withRealpath` GHC.peekCString encoding)
+      attemptRealpath realpath path
+#endif
+
+    attemptRealpath realpath path =
+      realpathPrefix realpath (reverse (zip prefixes suffixes)) path
       where segments = splitDirectories path
             prefixes = scanl1 (</>) segments
             suffixes = tail (scanr (</>) "" segments)
 
     -- call realpath on the largest possible prefix
-    realpathPrefix encoding ((prefix, suffix) : rest) path = do
+    realpathPrefix realpath ((prefix, suffix) : rest) path = do
       exist <- doesPathExist prefix
       if exist -- never call realpath on an inaccessible path
-        then ((</> suffix) <$> realpath encoding prefix)
-             `catchIOError` \ _ -> realpathPrefix encoding rest path
-        else realpathPrefix encoding rest path
+        then ((</> suffix) <$> realpath prefix)
+             `catchIOError` \ _ -> realpathPrefix realpath rest path
+        else realpathPrefix realpath rest path
     realpathPrefix _ _ path = return path
-
-    realpath encoding path =
-      GHC.withCString encoding path
-      (`withRealpath` GHC.peekCString encoding)
-#endif
 
 -- | Convert a path into an absolute path.  If the given path is relative, the
 -- current directory is prepended and then the combined result is

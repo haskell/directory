@@ -1,6 +1,14 @@
+{-# LANGUAGE CPP #-}
 module System.Directory.Internal.Windows where
 #include <HsDirectoryConfig.h>
 #ifdef mingw32_HOST_OS
+##if defined i386_HOST_ARCH
+## define WINAPI stdcall
+##elif defined x86_64_HOST_ARCH
+## define WINAPI ccall
+##else
+## error unknown architecture
+##endif
 #include <shlobj.h>
 #include <windows.h>
 #ifdef HAVE_SYS_STAT_H
@@ -26,6 +34,56 @@ win32_fILE_SHARE_DELETE = Win32.fILE_SHARE_DELETE -- added in 2.3.0.2
 #else
 win32_fILE_SHARE_DELETE = (#const FILE_SHARE_DELETE)
 #endif
+
+win32_getLongPathName, win32_getShortPathName :: FilePath -> IO FilePath
+#if MIN_VERSION_Win32(2, 4, 0)
+win32_getLongPathName = Win32.getLongPathName
+win32_getShortPathName = Win32.getShortPathName
+#else
+win32_getLongPathName path =
+  modifyIOError ((`ioeSetLocation` "GetLongPathName") .
+                 (`ioeSetFileName` path)) $ do
+    withCWString path $ \ ptrPath -> do
+      getPathNameWith (c_GetLongPathName ptrPath)
+
+win32_getShortPathName path =
+  modifyIOError ((`ioeSetLocation` "GetShortPathName") .
+                 (`ioeSetFileName` path)) $ do
+    withCWString path $ \ ptrPath -> do
+      getPathNameWith (c_GetShortPathName ptrPath)
+
+foreign import WINAPI unsafe "windows.h GetLongPathNameW"
+  c_GetLongPathName
+    :: Ptr CWchar
+    -> Ptr CWchar
+    -> Win32.DWORD
+    -> IO Win32.DWORD
+
+foreign import WINAPI unsafe "windows.h GetShortPathNameW"
+  c_GetShortPathName
+    :: Ptr CWchar
+    -> Ptr CWchar
+    -> Win32.DWORD
+    -> IO Win32.DWORD
+#endif
+
+getPathNameWith :: (Ptr CWchar -> Win32.DWORD -> IO Win32.DWORD) -> IO FilePath
+getPathNameWith cFunc = do
+  let getPathNameWithLen len = do
+        allocaArray (fromIntegral len) $ \ ptrPathOut -> do
+          len' <- Win32.failIfZero "" (cFunc ptrPathOut len)
+          if len' <= len
+            then Right <$> peekCWStringLen (ptrPathOut, fromIntegral len')
+            else pure (Left len')
+  r <- getPathNameWithLen ((#const MAX_PATH) * (#size wchar_t))
+  case r of
+    Right s -> pure s
+    Left len -> do
+      r' <- getPathNameWithLen len
+      case r' of
+        Right s -> pure s
+        Left _ -> ioError (mkIOError OtherError "" Nothing Nothing
+                           `ioeSetErrorString` "path changed unexpectedly")
 
 foreign import ccall unsafe "_wchmod"
   c_wchmod :: CWString -> CMode -> IO CInt
