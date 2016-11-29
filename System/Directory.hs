@@ -970,42 +970,64 @@ copyFileTimesFromStatus st dst = do
   setFileTimes dst (Just atime, Just mtime)
 #endif
 
--- | Make a path absolute and remove as many indirections from it as possible.
--- Additionally, on Windows the letter case of the path is canonicalized.
+-- | Make a path absolute, 'normalise' the path, and remove as many
+-- indirections from it as possible.  Any trailing path separators are
+-- discarded via 'dropTrailingPathSeparator'.  Additionally, on Windows the
+-- letter case of the path is canonicalized.
+--
+-- __Note__: This function is a very big hammer.  If you only need an absolute
+-- path, 'makeAbsolute' is sufficient for removing dependence on the current
+-- working directory.
 --
 -- Indirections include the two special directories @.@ and @..@, as well as
--- any Unix symbolic links.  The input path does not have to point to an
--- existing file or directory.
+-- any symbolic links.  The input path need not point to an existing file or
+-- directory.  Canonicalization is performed on the longest prefix of the path
+-- that points to an existing file or directory.  The remaining portion of the
+-- path that does not point to an existing file or directory will still
+-- undergo 'normalise', but case canonicalization and indirection removal are
+-- skipped as they are impossible to do on a nonexistent path.
 --
--- __Note__: if you only need an absolute path, use 'makeAbsolute' instead.
--- Most programs should not worry about whether a path contains symbolic links.
+-- Most programs should not worry about the canonicity of a path.  In
+-- particular, despite the name, the function does not truly guarantee
+-- canonicity of the returned path due to the presence of hard links, mount
+-- points, etc.
 --
--- Since symbolic links and the special parent directory (@..@) are dependent
--- on the state of the existing filesystem, the function can only make a
--- conservative attempt by removing symbolic links and @..@ from the longest
--- prefix of the path that still points to an existing file or directory.  If
--- the input path points to an existing file or directory, then the output
--- path shall also point to the same file or directory, provided that the
--- relevant parts of the filesystem have not changed in the meantime (the
--- function is not atomic).
+-- If the path points to an existing file or directory, then the output path
+-- shall also point to the same file or directory, subject to the condition
+-- that the relevant parts of the file system do not change while the function
+-- is still running.  In other words, the function is definitively not atomic.
+-- The results can be utterly wrong if the portions of the path change while
+-- this function is running.
 --
--- Despite the name, the function does not guarantee canonicity of the
--- returned path due to the presence of hard links, mount points, etc.
+-- Since symbolic links (and, on non-Windows systems, parent directories @..@)
+-- are dependent on the state of the existing filesystem, the function can
+-- only make a conservative attempt by removing such indirections from the
+-- longest prefix of the path that still points to an existing file or
+-- directory.
+--
+-- Note that on Windows parent directories @..@ are always fully expanded
+-- before the symbolic links, as consistent with the rest of the Windows API
+-- (such as @GetFullPathName@).  In contrast, on POSIX systems parent
+-- directories @..@ are expanded alongside symbolic links from left to right.
+-- To put this more concretely: if @L@ is a symbolic link for @R/P@, then on
+-- Windows @L\\..@ refers to @.@, whereas on other operating systems @L/..@
+-- refers to @R@.
 --
 -- Similar to 'normalise', passing an empty path is equivalent to passing the
--- current directory.  The function drops trailing path separators where
--- possible (via 'dropTrailingPathSeparator').
+-- current directory.
 --
 -- /Known bugs/: When the path contains an existing symbolic link, but the
 -- target of the link does not exist, then the path is not dereferenced (bug
--- #64).  On Windows, the function does not resolve symbolic links.
+-- #64).  Symbolic link expansion is not performed on Windows XP or earlier
+-- due to the absence of @GetFinalPathNameByHandle@.
 --
 -- /Changes since 1.2.3.0:/ The function has been altered to be more robust
 -- and has the same exception behavior as 'makeAbsolute'.
 --
 -- /Changes since 1.3.0.0:/ The function no longer preserves the trailing path
 -- separator.  File symbolic links that appear in the middle of a path are
--- properly dereferenced.  Case canonicalization is now performed on Windows.
+-- properly dereferenced.  Case canonicalization and symbolic link expansion
+-- are now performed on Windows.
 --
 canonicalizePath :: FilePath -> IO FilePath
 canonicalizePath = \ path ->
@@ -1018,7 +1040,7 @@ canonicalizePath = \ path ->
 
 #if defined(mingw32_HOST_OS)
     transform path =
-      attemptRealpath (win32_getLongPathName <=< win32_getShortPathName) =<<
+      attemptRealpath getFinalPathName =<<
         (Win32.getFullPathName path `catchIOError` \ _ -> return path)
 #else
     transform path = do
@@ -1462,7 +1484,7 @@ pathIsSymbolicLink path =
     Posix.isSymbolicLink <$> Posix.getSymbolicLinkStatus path
 #endif
 
-{-# DEPRECATED isSymbolicLink "Use pathIsSymbolicLink instead" #-}
+{-# DEPRECATED isSymbolicLink "Use 'pathIsSymbolicLink' instead" #-}
 isSymbolicLink :: FilePath -> IO Bool
 isSymbolicLink = pathIsSymbolicLink
 

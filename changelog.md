@@ -15,6 +15,8 @@ Changelog for the [`directory`][1] package
 
   * On Windows, `canonicalizePath` now canonicalizes the letter case too
 
+  * On Windows, `canonicalizePath` now also dereferences symbolic links
+
 ## 1.2.7.1 (November 2016)
 
   * Don't abort `removePathForcibly` if files or directories go missing.

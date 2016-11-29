@@ -110,7 +110,13 @@ import Foreign.C
   , withCString
   , withCWString
   )
-import GHC.IO.Exception (IOErrorType(InappropriateType, OtherError))
+import GHC.IO.Exception
+  ( IOErrorType
+    ( InappropriateType
+    , OtherError
+    , UnsupportedOperation
+    )
+  )
 import GHC.IO.Encoding (getFileSystemEncoding)
 import System.Environment (getArgs, getEnv)
 import System.Exit (exitFailure)

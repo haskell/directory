@@ -55,9 +55,10 @@ createSymbolicLink target link =
   (`ioeSetLocation` "createSymbolicLink") `modifyIOError` do
     isDir <- (fromIntegral . fromEnum) `fmap`
              doesDirectoryExist (takeDirectory link </> target)
-    withCWString target $ \ target' ->
-      withCWString link $ \ link' -> do
-        status <- c_CreateSymbolicLink link' target' isDir
+    let target' = fixSlash <$> target
+    withCWString target' $ \ pTarget ->
+      withCWString link $ \ pLink -> do
+        status <- c_CreateSymbolicLink pLink pTarget isDir
         if status == 0
           then do
             errCode <- Win32.getLastError
@@ -68,6 +69,8 @@ createSymbolicLink target link =
           else return ()
   where c_ERROR_PRIVILEGE_NOT_HELD = 0x522
         permissionErrorMsg = "no permission to create symbolic links"
+        fixSlash '/' = '\\'
+        fixSlash c   = c
 #endif
 
 -- | Attempt to create a symbolic link.  On Windows, this falls back to

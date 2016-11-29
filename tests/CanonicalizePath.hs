@@ -4,6 +4,10 @@ module CanonicalizePath where
 import System.FilePath ((</>), dropFileName, dropTrailingPathSeparator,
                         normalise, takeFileName)
 import TestUtils
+#ifdef mingw32_HOST_OS
+import System.Directory.Internal (win32_getFinalPathNameByHandle)
+import qualified System.Win32 as Win32
+#endif
 
 main :: TestEnv -> IO ()
 main _t = do
@@ -66,8 +70,23 @@ main _t = do
 
   supportsSymbolicLinks <- do
 #ifdef mingw32_HOST_OS
-    -- FIXME: canonicalizePath doesn't yet support symlinks on Windows
-    pure False
+    hasSymbolicLinkPrivileges <-
+      (True <$ createSymbolicLink "_symlinktest_src" "_symlinktest_dst")
+        -- only test if symbolic links can be created
+        -- (usually disabled on Windows by group policy)
+        `catchIOError` \ e ->
+          if isPermissionError e
+          then pure False
+          else ioError e
+
+    supportsGetFinalPathNameByHandle <-
+      (True <$ win32_getFinalPathNameByHandle Win32.nullHANDLE 0)
+        `catchIOError` \ e ->
+          case ioeGetErrorType e of
+            UnsupportedOperation -> pure False
+            _ -> pure True
+
+    pure (hasSymbolicLinkPrivileges && supportsGetFinalPathNameByHandle)
 #else
     pure True
 #endif

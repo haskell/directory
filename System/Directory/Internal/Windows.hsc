@@ -16,6 +16,7 @@ module System.Directory.Internal.Windows where
 #endif
 import Prelude ()
 import System.Directory.Internal.Prelude
+import System.FilePath (isRelative, normalise, splitDirectories)
 import qualified System.Win32 as Win32
 
 win32_cSIDL_LOCAL_APPDATA :: Win32.CSIDL
@@ -66,6 +67,81 @@ foreign import WINAPI unsafe "windows.h GetShortPathNameW"
     -> Win32.DWORD
     -> IO Win32.DWORD
 #endif
+
+win32_getFinalPathNameByHandle :: Win32.HANDLE -> Win32.DWORD -> IO FilePath
+win32_getFinalPathNameByHandle _h _flags =
+  modifyIOError (`ioeSetLocation` "GetFinalPathNameByHandle") $ do
+#ifdef HAVE_GETFINALPATHNAMEBYHANDLEW
+    getPathNameWith $ \ ptr len -> do
+      c_GetFinalPathNameByHandle _h ptr len _flags
+
+foreign import WINAPI unsafe "windows.h GetFinalPathNameByHandleW"
+  c_GetFinalPathNameByHandle
+    :: Win32.HANDLE
+    -> Ptr CWchar
+    -> Win32.DWORD
+    -> Win32.DWORD
+    -> IO Win32.DWORD
+
+#else
+    throwIO (mkIOError UnsupportedOperation
+             "platform does not support GetFinalPathNameByHandle"
+             Nothing Nothing)
+#endif
+
+getFinalPathName :: FilePath -> IO FilePath
+getFinalPathName =
+  (fromExtendedLengthPath <$>) . rawGetFinalPathName . toExtendedLengthPath
+  where
+#ifdef HAVE_GETFINALPATHNAMEBYHANDLEW
+    rawGetFinalPathName path = do
+      let open = Win32.createFile path 0 shareMode Nothing
+                 Win32.oPEN_EXISTING Win32.fILE_FLAG_BACKUP_SEMANTICS Nothing
+      bracket open Win32.closeHandle $ \ h -> do
+        win32_getFinalPathNameByHandle h 0
+    shareMode =
+      win32_fILE_SHARE_DELETE .|.
+      Win32.fILE_SHARE_READ   .|.
+      Win32.fILE_SHARE_WRITE
+#else
+    rawGetFinalPathName = win32_getLongPathName <=< win32_getShortPathName
+#endif
+
+-- | Add the @"\\\\?\\"@ prefix if necessary or possible.
+-- The path remains unchanged if the prefix is not added.
+toExtendedLengthPath :: FilePath -> FilePath
+toExtendedLengthPath path
+  | isRelative path = path
+  | otherwise =
+      case normalise path of
+        -- note: as of filepath-1.4.1.0 normalise doesn't honor \\?\
+        -- https://github.com/haskell/filepath/issues/56
+        -- this means we cannot trust the result of normalise on
+        -- paths that start with \\?\
+        '\\' : '\\' : '?' : '\\' : _ -> path
+        '\\' : '\\' : '.' : '\\' : _ -> path
+        '\\' : subpath@('\\' : _) -> "\\\\?\\UNC" <> subpath
+        normalisedPath -> "\\\\?\\" <> normalisedPath
+
+-- | Strip the @"\\\\?\\"@ prefix if possible.
+-- The prefix is kept if the meaning of the path would otherwise change.
+fromExtendedLengthPath :: FilePath -> FilePath
+fromExtendedLengthPath ePath =
+  case ePath of
+    '\\' : '\\' : '?' : '\\' : path ->
+      case path of
+        'U' : 'N' : 'C' : subpath@('\\' : _) -> "\\" <> subpath
+        drive : ':' : subpath
+          -- if the path is not "regular", then the prefix is necessary
+          -- to ensure the path is interpreted literally
+          | isAlpha drive && isAscii drive && isPathRegular subpath -> path
+        _ -> ePath
+    _ -> ePath
+  where
+    isPathRegular path =
+      not ('/' `elem` path ||
+           "." `elem` splitDirectories path ||
+           ".." `elem` splitDirectories path)
 
 getPathNameWith :: (Ptr CWchar -> Win32.DWORD -> IO Win32.DWORD) -> IO FilePath
 getPathNameWith cFunc = do
