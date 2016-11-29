@@ -7,7 +7,7 @@ environment:
     # use a short path prefix to avoid running into path-length limitations
     STACK_ROOT: C:\sr
   matrix:
-  - DEPS:
+  - DEPS: Win32-2.4.0.0
     STACK: stack --skip-msys --resolver lts-7
   - DEPS:
     STACK: stack --skip-msys --resolver lts-5
