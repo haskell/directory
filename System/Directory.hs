@@ -73,7 +73,7 @@ module System.Directory
     , doesDirectoryExist
 
     -- * Symbolic links
-    , isSymbolicLink
+    , pathIsSymbolicLink
 
     -- * Permissions
 
@@ -100,6 +100,9 @@ module System.Directory
     , getModificationTime
     , setAccessTime
     , setModificationTime
+
+    -- * Deprecated
+    , isSymbolicLink
 
    ) where
 import Control.Exception (bracket, mask, onException)
@@ -468,7 +471,7 @@ getDirectoryType path =
     isDir <- withFileStatus "getDirectoryType" path isDirectory
     if isDir
       then do
-        isLink <- isSymbolicLink path
+        isLink <- pathIsSymbolicLink path
         if isLink
           then return DirectoryLink
           else return Directory
@@ -1489,9 +1492,9 @@ doesFileExist name =
 -- | Check whether the path refers to a symbolic link.  On Windows, this tests
 -- for @FILE_ATTRIBUTE_REPARSE_POINT@.
 --
--- @since 1.2.6.0
-isSymbolicLink :: FilePath -> IO Bool
-isSymbolicLink path =
+-- @since 1.3.0.0
+pathIsSymbolicLink :: FilePath -> IO Bool
+pathIsSymbolicLink path =
   (`ioeSetLocation` "getDirectoryType") `modifyIOError` do
 #ifdef mingw32_HOST_OS
     isReparsePoint <$> Win32.getFileAttributes path
@@ -1500,6 +1503,10 @@ isSymbolicLink path =
 #else
     Posix.isSymbolicLink <$> Posix.getSymbolicLinkStatus path
 #endif
+
+{-# DEPRECATED isSymbolicLink "Use pathIsSymbolicLink instead" #-}
+isSymbolicLink :: FilePath -> IO Bool
+isSymbolicLink = pathIsSymbolicLink
 
 #ifdef mingw32_HOST_OS
 -- | Open the handle of an existing file or directory.

@@ -17,7 +17,7 @@ import Control.Concurrent.MVar (newEmptyMVar, putMVar, readMVar)
 import Control.Exception (SomeException, bracket_, mask, onException, try)
 import Control.Monad (Monad(..), unless, when)
 import System.Directory (createDirectoryIfMissing, doesDirectoryExist,
-                         isSymbolicLink, listDirectory, makeAbsolute,
+                         pathIsSymbolicLink, listDirectory, makeAbsolute,
                          removePathForcibly, withCurrentDirectory)
 import System.Environment (getArgs)
 import System.Exit (exitFailure)
@@ -137,7 +137,7 @@ preprocessPathRecursive f path = do
   dirExists <- doesDirectoryExist path
   if dirExists
     then do
-      isLink <- isSymbolicLink path
+      isLink <- pathIsSymbolicLink path
       f path
       when (not isLink) $ do
         names <- listDirectory path

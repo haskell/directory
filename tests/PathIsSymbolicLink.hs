@@ -1,5 +1,5 @@
 {-# LANGUAGE CPP #-}
-module IsSymbolicLink where
+module PathIsSymbolicLink where
 #include "util.inl"
 import System.Directory
 import Control.Monad (when)
@@ -20,4 +20,4 @@ main _t = do
       else ioError e
 #endif
   when success $
-    T(expect) () =<< isSymbolicLink "y"
+    T(expect) () =<< pathIsSymbolicLink "y"
