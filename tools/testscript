@@ -12,14 +12,8 @@ before_build() {
     fi
 }
 
-after_cabal_configure() {
-    # this hook is only executed in the Cabal case
-    if [ "${DISABLE_UTIMENSAT+x}" ]; then
-        sed -i.bak "s/#define HAVE_UTIMENSAT 1//" HsDirectoryConfig.h
-    fi
-}
-
 prepare() {
+    eval "${PREBUILD-}"
     if [ "${STACK+x}" ]; then
 
         stack="$STACK --no-terminal"
@@ -115,12 +109,11 @@ build() {
 
         testflags=`printf " %s" "$testflags" | sed "s/ / --test-option=/g"`
         cabal configure -v2 --enable-tests --ghc-options="$ghcflags"
-        after_cabal_configure
         cabal build
+        cabal test --show-details="$streaming" $testflags
         cabal check
         cabal sdist
         cabal copy
-        cabal test --show-details="$streaming" $testflags
         cabal_install_run_tests dist/*-*.tar.gz --force-reinstalls
 
     fi
