@@ -144,6 +144,7 @@ import System.IO
 import System.IO.Error
   ( IOError
   , catchIOError
+  , illegalOperationErrorType
   , ioeGetErrorString
   , ioeGetErrorType
   , ioeGetLocation
@@ -152,6 +153,7 @@ import System.IO.Error
   , ioeSetLocation
   , isAlreadyExistsError
   , isDoesNotExistError
+  , isIllegalOperation
   , isPermissionError
   , mkIOError
   , modifyIOError

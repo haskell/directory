@@ -22,9 +22,12 @@ module System.Directory.Internal.Windows where
 #ifdef HAVE_SYS_STAT_H
 # include <sys/stat.h>
 #endif
+#include <System/Directory/Internal/utility.h>
+#include <System/Directory/Internal/windows.h>
 import Prelude ()
 import System.Directory.Internal.Prelude
 import System.FilePath (isRelative, normalise, splitDirectories)
+import qualified Data.List as List
 import qualified System.Win32 as Win32
 
 win32_cSIDL_LOCAL_APPDATA :: Win32.CSIDL
@@ -33,6 +36,9 @@ win32_cSIDL_LOCAL_APPDATA = Win32.cSIDL_LOCAL_APPDATA
 #else
 win32_cSIDL_LOCAL_APPDATA = (#const CSIDL_LOCAL_APPDATA)
 #endif
+
+win32_eRROR_INVALID_FUNCTION :: Win32.ErrCode
+win32_eRROR_INVALID_FUNCTION = 0x1
 
 win32_fILE_ATTRIBUTE_REPARSE_POINT :: Win32.FileAttributeOrFlag
 win32_fILE_ATTRIBUTE_REPARSE_POINT = (#const FILE_ATTRIBUTE_REPARSE_POINT)
@@ -114,6 +120,143 @@ getFinalPathName =
 #else
     rawGetFinalPathName = win32_getLongPathName <=< win32_getShortPathName
 #endif
+
+win32_fILE_FLAG_OPEN_REPARSE_POINT :: Win32.FileAttributeOrFlag
+win32_fILE_FLAG_OPEN_REPARSE_POINT = 0x00200000
+
+win32_fSCTL_GET_REPARSE_POINT :: Win32.DWORD
+win32_fSCTL_GET_REPARSE_POINT = 0x900a8
+
+win32_iO_REPARSE_TAG_MOUNT_POINT, win32_iO_REPARSE_TAG_SYMLINK :: CULong
+win32_iO_REPARSE_TAG_MOUNT_POINT = (#const IO_REPARSE_TAG_MOUNT_POINT)
+win32_iO_REPARSE_TAG_SYMLINK = (#const IO_REPARSE_TAG_SYMLINK)
+
+win32_mAXIMUM_REPARSE_DATA_BUFFER_SIZE :: Win32.DWORD
+win32_mAXIMUM_REPARSE_DATA_BUFFER_SIZE =
+  (#const MAXIMUM_REPARSE_DATA_BUFFER_SIZE)
+
+win32_sYMLINK_FLAG_RELATIVE :: CULong
+win32_sYMLINK_FLAG_RELATIVE = 0x00000001
+
+data Win32_REPARSE_DATA_BUFFER
+  = Win32_MOUNT_POINT_REPARSE_DATA_BUFFER String String
+    -- ^ substituteName printName
+  | Win32_SYMLINK_REPARSE_DATA_BUFFER String String Bool
+    -- ^ substituteName printName isRelative
+  | Win32_GENERIC_REPARSE_DATA_BUFFER
+
+win32_alloca_REPARSE_DATA_BUFFER
+  :: ((Ptr Win32_REPARSE_DATA_BUFFER, Int) -> IO a) -> IO a
+win32_alloca_REPARSE_DATA_BUFFER action =
+  allocaBytesAligned size align $ \ ptr ->
+    action (ptr, size)
+  where size = fromIntegral win32_mAXIMUM_REPARSE_DATA_BUFFER_SIZE
+        -- workaround (hsc2hs for GHC < 8.0 don't support #{alignment ...})
+        align = #{size char[alignof(HsDirectory_REPARSE_DATA_BUFFER)]}
+
+win32_peek_REPARSE_DATA_BUFFER
+  :: Ptr Win32_REPARSE_DATA_BUFFER -> IO Win32_REPARSE_DATA_BUFFER
+win32_peek_REPARSE_DATA_BUFFER p = do
+  tag <- #{peek HsDirectory_REPARSE_DATA_BUFFER, ReparseTag} p
+  case () of
+    _ | tag == win32_iO_REPARSE_TAG_MOUNT_POINT -> do
+          let buf = #{ptr HsDirectory_REPARSE_DATA_BUFFER,
+                          MountPointReparseBuffer.PathBuffer} p
+          sni <- #{peek HsDirectory_REPARSE_DATA_BUFFER,
+                        MountPointReparseBuffer.SubstituteNameOffset} p
+          sns <- #{peek HsDirectory_REPARSE_DATA_BUFFER,
+                        MountPointReparseBuffer.SubstituteNameLength} p
+          sn <- peekName buf sni sns
+          pni <- #{peek HsDirectory_REPARSE_DATA_BUFFER,
+                        MountPointReparseBuffer.PrintNameOffset} p
+          pns <- #{peek HsDirectory_REPARSE_DATA_BUFFER,
+                        MountPointReparseBuffer.PrintNameLength} p
+          pn <- peekName buf pni pns
+          pure (Win32_MOUNT_POINT_REPARSE_DATA_BUFFER sn pn)
+      | tag == win32_iO_REPARSE_TAG_SYMLINK -> do
+          let buf = #{ptr HsDirectory_REPARSE_DATA_BUFFER,
+                          SymbolicLinkReparseBuffer.PathBuffer} p
+          sni <- #{peek HsDirectory_REPARSE_DATA_BUFFER,
+                        SymbolicLinkReparseBuffer.SubstituteNameOffset} p
+          sns <- #{peek HsDirectory_REPARSE_DATA_BUFFER,
+                        SymbolicLinkReparseBuffer.SubstituteNameLength} p
+          sn <- peekName buf sni sns
+          pni <- #{peek HsDirectory_REPARSE_DATA_BUFFER,
+                        SymbolicLinkReparseBuffer.PrintNameOffset} p
+          pns <- #{peek HsDirectory_REPARSE_DATA_BUFFER,
+                        SymbolicLinkReparseBuffer.PrintNameLength} p
+          pn <- peekName buf pni pns
+          flags <- #{peek HsDirectory_REPARSE_DATA_BUFFER,
+                          SymbolicLinkReparseBuffer.Flags} p
+          pure (Win32_SYMLINK_REPARSE_DATA_BUFFER sn pn
+                (flags .&. win32_sYMLINK_FLAG_RELATIVE /= 0))
+      | otherwise -> pure Win32_GENERIC_REPARSE_DATA_BUFFER
+  where
+    peekName :: Ptr CWchar -> CUShort -> CUShort -> IO String
+    peekName buf offset size =
+      peekCWStringLen ( buf `plusPtr` fromIntegral offset
+                      , fromIntegral size `div` sizeOf (0 :: CWchar) )
+
+deviceIoControl
+  :: Win32.HANDLE
+  -> Win32.DWORD
+  -> (Ptr a, Int)
+  -> (Ptr b, Int)
+  -> Maybe Void
+  -> IO (Either Win32.ErrCode Int)
+deviceIoControl h code (inPtr, inSize) (outPtr, outSize) _ = do
+  with 0 $ \ lenPtr -> do
+    status <- c_DeviceIoControl h code inPtr (fromIntegral inSize) outPtr
+                                (fromIntegral outSize) lenPtr nullPtr
+    if not status
+      then do
+        Left <$> Win32.getLastError
+      else
+        Right . fromIntegral <$> peek lenPtr
+
+foreign import WINAPI unsafe "windows.h DeviceIoControl"
+  c_DeviceIoControl
+    :: Win32.HANDLE
+    -> Win32.DWORD
+    -> Ptr a
+    -> Win32.DWORD
+    -> Ptr b
+    -> Win32.DWORD
+    -> Ptr Win32.DWORD
+    -> Ptr Void
+    -> IO Win32.BOOL
+
+readSymbolicLink :: FilePath -> IO FilePath
+readSymbolicLink path = modifyIOError (`ioeSetFileName` path) $ do
+  let open = Win32.createFile (toExtendedLengthPath path)
+                               0 shareMode Nothing Win32.oPEN_EXISTING
+                               (Win32.fILE_FLAG_BACKUP_SEMANTICS .|.
+                               win32_fILE_FLAG_OPEN_REPARSE_POINT) Nothing
+  bracket open Win32.closeHandle $ \ h -> do
+    win32_alloca_REPARSE_DATA_BUFFER $ \ ptrAndSize@(ptr, _) -> do
+      result <- deviceIoControl h win32_fSCTL_GET_REPARSE_POINT
+                                (nullPtr, 0) ptrAndSize Nothing
+      case result of
+        Left e | e == win32_eRROR_INVALID_FUNCTION -> do
+                   let msg = "Incorrect function. The file system " <>
+                             "might not support symbolic links."
+                   throwIO (mkIOError illegalOperationErrorType
+                                      "DeviceIoControl" Nothing Nothing
+                            `ioeSetErrorString` msg)
+               | otherwise -> Win32.failWith "DeviceIoControl" e
+        Right _ -> return ()
+      rData <- win32_peek_REPARSE_DATA_BUFFER ptr
+      strip <$> case rData of
+        Win32_MOUNT_POINT_REPARSE_DATA_BUFFER sn _ -> pure sn
+        Win32_SYMLINK_REPARSE_DATA_BUFFER sn _ _ -> pure sn
+        _ -> throwIO (mkIOError InappropriateType
+                                "readSymbolicLink" Nothing Nothing)
+  where
+    shareMode =
+      win32_fILE_SHARE_DELETE .|.
+      Win32.fILE_SHARE_READ   .|.
+      Win32.fILE_SHARE_WRITE
+    strip sn = fromMaybe sn (List.stripPrefix "\\??\\" sn)
 
 -- | Add the @"\\\\?\\"@ prefix if necessary or possible.
 -- The path remains unchanged if the prefix is not added.
