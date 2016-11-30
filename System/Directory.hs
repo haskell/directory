@@ -416,7 +416,7 @@ data DirectoryType = NotDirectory
 -- | Obtain the type of a directory.
 getDirectoryType :: FilePath -> IO DirectoryType
 getDirectoryType path =
-  (`ioeSetLocation` "getDirectoryType") `modifyIOError` do
+  (`ioeAddLocation` "getDirectoryType") `modifyIOError` do
 #ifdef mingw32_HOST_OS
     isDir <- withFileStatus "getDirectoryType" path isDirectory
     if isDir
@@ -490,7 +490,7 @@ removeDirectory path =
 -- On Windows, the operation fails if /dir/ is a directory symbolic link.
 removeDirectoryRecursive :: FilePath -> IO ()
 removeDirectoryRecursive path =
-  (`ioeSetLocation` "removeDirectoryRecursive") `modifyIOError` do
+  (`ioeAddLocation` "removeDirectoryRecursive") `modifyIOError` do
     dirType <- getDirectoryType path
     case dirType of
       Directory ->
@@ -506,7 +506,7 @@ removeDirectoryRecursive path =
 -- removed without affecting their the targets.
 removePathRecursive :: FilePath -> IO ()
 removePathRecursive path =
-  (`ioeSetLocation` "removePathRecursive") `modifyIOError` do
+  (`ioeAddLocation` "removePathRecursive") `modifyIOError` do
     dirType <- getDirectoryType path
     case dirType of
       NotDirectory  -> removeFile path
@@ -518,7 +518,7 @@ removePathRecursive path =
 -- targets.
 removeContentsRecursive :: FilePath -> IO ()
 removeContentsRecursive path =
-  (`ioeSetLocation` "removeContentsRecursive") `modifyIOError` do
+  (`ioeAddLocation` "removeContentsRecursive") `modifyIOError` do
     cont <- listDirectory path
     mapM_ removePathRecursive [path </> x | x <- cont]
     removeDirectory path
@@ -542,7 +542,7 @@ removeContentsRecursive path =
 -- @since 1.2.7.0
 removePathForcibly :: FilePath -> IO ()
 removePathForcibly path =
-  (`ioeSetLocation` "removePathForcibly") `modifyIOError` do
+  (`ioeAddLocation` "removePathForcibly") `modifyIOError` do
     makeRemovable path `catchIOError` \ _ -> return ()
     ignoreDoesNotExistError $ do
       dirType <- getDirectoryType path
@@ -738,7 +738,7 @@ Either path refers to an existing directory.
 -}
 
 renameFile :: FilePath -> FilePath -> IO ()
-renameFile opath npath = (`ioeSetLocation` "renameFile") `modifyIOError` do
+renameFile opath npath = (`ioeAddLocation` "renameFile") `modifyIOError` do
    -- XXX the tests are not performed atomically with the rename
    checkNotDir opath
    renamePath opath npath
@@ -806,7 +806,7 @@ renameFile opath npath = (`ioeSetLocation` "renameFile") `modifyIOError` do
 renamePath :: FilePath                  -- ^ Old path
            -> FilePath                  -- ^ New path
            -> IO ()
-renamePath opath npath = (`ioeSetLocation` "renamePath") `modifyIOError` do
+renamePath opath npath = (`ioeAddLocation` "renamePath") `modifyIOError` do
 #ifdef mingw32_HOST_OS
    Win32.moveFileEx opath npath Win32.mOVEFILE_REPLACE_EXISTING
 #else
@@ -821,7 +821,7 @@ copyFile :: FilePath                    -- ^ Source filename
          -> FilePath                    -- ^ Destination filename
          -> IO ()
 copyFile fromFPath toFPath =
-  (`ioeSetLocation` "copyFile") `modifyIOError` do
+  (`ioeAddLocation` "copyFile") `modifyIOError` do
     atomicCopyFileContents fromFPath toFPath
       (ignoreIOExceptions . copyPermissions fromFPath)
 
@@ -834,7 +834,7 @@ copyFileContents :: FilePath            -- ^ Source filename
                  -> FilePath            -- ^ Destination filename
                  -> IO ()
 copyFileContents fromFPath toFPath =
-  (`ioeSetLocation` "copyFileContents") `modifyIOError` do
+  (`ioeAddLocation` "copyFileContents") `modifyIOError` do
     withBinaryFile toFPath WriteMode $ \ hTo ->
       copyFileToHandle fromFPath hTo
 #endif
@@ -847,7 +847,7 @@ atomicCopyFileContents :: FilePath            -- ^ Source filename
                        -> (FilePath -> IO ()) -- ^ Post-action
                        -> IO ()
 atomicCopyFileContents fromFPath toFPath postAction =
-  (`ioeSetLocation` "atomicCopyFileContents") `modifyIOError` do
+  (`ioeAddLocation` "atomicCopyFileContents") `modifyIOError` do
     withReplacementFile toFPath postAction $ \ hTo -> do
       copyFileToHandle fromFPath hTo
 
@@ -862,7 +862,7 @@ withReplacementFile :: FilePath            -- ^ Destination file
                     -> (Handle -> IO a)    -- ^ Main action
                     -> IO a
 withReplacementFile path postAction action =
-  (`ioeSetLocation` "withReplacementFile") `modifyIOError` do
+  (`ioeAddLocation` "withReplacementFile") `modifyIOError` do
     mask $ \ restore -> do
       (tmpFPath, hTmp) <- openBinaryTempFile (takeDirectory path)
                                              ".copyFile.tmp"
@@ -884,7 +884,7 @@ copyFileToHandle :: FilePath            -- ^ Source file
                  -> Handle              -- ^ Destination handle
                  -> IO ()
 copyFileToHandle fromFPath hTo =
-  (`ioeSetLocation` "copyFileToHandle") `modifyIOError` do
+  (`ioeAddLocation` "copyFileToHandle") `modifyIOError` do
     withBinaryFile fromFPath ReadMode $ \ hFrom ->
       copyHandleData hFrom hTo
 
@@ -893,7 +893,7 @@ copyHandleData :: Handle                -- ^ Source handle
                -> Handle                -- ^ Destination handle
                -> IO ()
 copyHandleData hFrom hTo =
-  (`ioeSetLocation` "copyData") `modifyIOError` do
+  (`ioeAddLocation` "copyData") `modifyIOError` do
     allocaBytes bufferSize go
   where
     bufferSize = 1024
@@ -925,7 +925,7 @@ copyFileWithMetadata :: FilePath        -- ^ Source file
                      -> FilePath        -- ^ Destination file
                      -> IO ()
 copyFileWithMetadata src dst =
-  (`ioeSetLocation` "copyFileWithMetadata") `modifyIOError` doCopy
+  (`ioeAddLocation` "copyFileWithMetadata") `modifyIOError` doCopy
   where
 #ifdef mingw32_HOST_OS
     doCopy = Win32.copyFile src dst False
@@ -1031,7 +1031,7 @@ copyFileTimesFromStatus st dst = do
 --
 canonicalizePath :: FilePath -> IO FilePath
 canonicalizePath = \ path ->
-  modifyIOError ((`ioeSetLocation` "canonicalizePath") .
+  modifyIOError ((`ioeAddLocation` "canonicalizePath") .
                  (`ioeSetFileName` path)) $
   -- normalise does more stuff, like upper-casing the drive letter
   dropTrailingPathSeparator . normalise <$>
@@ -1079,7 +1079,7 @@ canonicalizePath = \ path ->
 --
 makeAbsolute :: FilePath -> IO FilePath
 makeAbsolute path =
-  modifyIOError ((`ioeSetLocation` "makeAbsolute") .
+  modifyIOError ((`ioeAddLocation` "makeAbsolute") .
                  (`ioeSetFileName` path)) $
   matchTrailingSeparator path . normalise <$> prependCurrentDirectory path
 
@@ -1094,7 +1094,7 @@ makeAbsolute path =
 -- (internal API)
 prependCurrentDirectory :: FilePath -> IO FilePath
 prependCurrentDirectory path =
-  modifyIOError ((`ioeSetLocation` "prependCurrentDirectory") .
+  modifyIOError ((`ioeAddLocation` "prependCurrentDirectory") .
                  (`ioeSetFileName` path)) $
   if isRelative path -- avoid the call to `getCurrentDirectory` if we can
   then (</> path) <$> getCurrentDirectory
@@ -1246,7 +1246,7 @@ findFileWithIn f name d = do
 getDirectoryContents :: FilePath -> IO [FilePath]
 getDirectoryContents path =
   modifyIOError ((`ioeSetFileName` path) .
-                 (`ioeSetLocation` "getDirectoryContents")) $ do
+                 (`ioeAddLocation` "getDirectoryContents")) $ do
 #ifndef mingw32_HOST_OS
     bracket
       (Posix.openDirStream path)
@@ -1344,7 +1344,7 @@ listDirectory path =
 --
 getCurrentDirectory :: IO FilePath
 getCurrentDirectory =
-  modifyIOError (`ioeSetLocation` "getCurrentDirectory") $
+  modifyIOError (`ioeAddLocation` "getCurrentDirectory") $
   specializeErrorString
     "Current working directory no longer exists"
     isDoesNotExistError
@@ -1419,7 +1419,7 @@ withCurrentDirectory dir action =
 -- @since 1.2.7.0
 getFileSize :: FilePath -> IO Integer
 getFileSize path =
-  (`ioeSetLocation` "getFileSize") `modifyIOError` do
+  (`ioeAddLocation` "getFileSize") `modifyIOError` do
 #ifdef mingw32_HOST_OS
     fromIntegral <$> withFileStatus "" path st_size
 #else
@@ -1475,7 +1475,7 @@ doesFileExist name =
 -- @since 1.3.0.0
 pathIsSymbolicLink :: FilePath -> IO Bool
 pathIsSymbolicLink path =
-  (`ioeSetLocation` "getDirectoryType") `modifyIOError` do
+  (`ioeAddLocation` "getDirectoryType") `modifyIOError` do
 #ifdef mingw32_HOST_OS
     isReparsePoint <$> Win32.getFileAttributes path
   where
@@ -1516,7 +1516,7 @@ openFileHandle path mode = Win32.createFile path mode share Nothing
 -- @since 1.2.3.0
 --
 getAccessTime :: FilePath -> IO UTCTime
-getAccessTime = modifyIOError (`ioeSetLocation` "getAccessTime") .
+getAccessTime = modifyIOError (`ioeAddLocation` "getAccessTime") .
                 (fst <$>) . getFileTimes
 
 -- | Obtain the time at which the file or directory was last modified.
@@ -1533,12 +1533,12 @@ getAccessTime = modifyIOError (`ioeSetLocation` "getAccessTime") .
 -- and the underlying filesystem supports them.
 --
 getModificationTime :: FilePath -> IO UTCTime
-getModificationTime = modifyIOError (`ioeSetLocation` "getModificationTime") .
+getModificationTime = modifyIOError (`ioeAddLocation` "getModificationTime") .
                       (snd <$>) . getFileTimes
 
 getFileTimes :: FilePath -> IO (UTCTime, UTCTime)
 getFileTimes path =
-  modifyIOError (`ioeSetLocation` "getFileTimes") .
+  modifyIOError (`ioeAddLocation` "getFileTimes") .
   modifyIOError (`ioeSetFileName` path) $
     getTimes
   where
@@ -1595,7 +1595,7 @@ fileTimesFromStatus st =
 --
 setAccessTime :: FilePath -> UTCTime -> IO ()
 setAccessTime path atime =
-  modifyIOError (`ioeSetLocation` "setAccessTime") $
+  modifyIOError (`ioeAddLocation` "setAccessTime") $
     setFileTimes path (Just atime, Nothing)
 
 -- | Change the time at which the file or directory was last modified.
@@ -1623,13 +1623,13 @@ setAccessTime path atime =
 --
 setModificationTime :: FilePath -> UTCTime -> IO ()
 setModificationTime path mtime =
-  modifyIOError (`ioeSetLocation` "setModificationTime") $
+  modifyIOError (`ioeAddLocation` "setModificationTime") $
     setFileTimes path (Nothing, Just mtime)
 
 setFileTimes :: FilePath -> (Maybe UTCTime, Maybe UTCTime) -> IO ()
 setFileTimes _ (Nothing, Nothing) = return ()
 setFileTimes path (atime, mtime) =
-  modifyIOError (`ioeSetLocation` "setFileTimes") .
+  modifyIOError (`ioeAddLocation` "setFileTimes") .
   modifyIOError (`ioeSetFileName` path) $
     setTimes (utcTimeToPOSIXSeconds <$> atime, utcTimeToPOSIXSeconds <$> mtime)
   where
@@ -1727,7 +1727,7 @@ The home directory for the current user does not exist, or
 cannot be found.
 -}
 getHomeDirectory :: IO FilePath
-getHomeDirectory = modifyIOError (`ioeSetLocation` "getHomeDirectory") get
+getHomeDirectory = modifyIOError (`ioeAddLocation` "getHomeDirectory") get
   where
 #if defined(mingw32_HOST_OS)
     get = getFolderPath Win32.cSIDL_PROFILE `catchIOError` \ _ ->
@@ -1791,7 +1791,7 @@ getXdgDirectory :: XdgDirectory         -- ^ which special directory
                                         --   path is returned
                 -> IO FilePath
 getXdgDirectory xdgDir suffix =
-  modifyIOError (`ioeSetLocation` "getXdgDirectory") $
+  modifyIOError (`ioeAddLocation` "getXdgDirectory") $
   normalise . (</> suffix) <$>
   case xdgDir of
     XdgData   -> get False "XDG_DATA_HOME"   ".local/share"
@@ -1867,7 +1867,7 @@ getAppUserDataDirectory :: FilePath     -- ^ a relative path that is appended
                                         --   to the path
                         -> IO FilePath
 getAppUserDataDirectory appName = do
-  modifyIOError (`ioeSetLocation` "getAppUserDataDirectory") $ do
+  modifyIOError (`ioeAddLocation` "getAppUserDataDirectory") $ do
 #if defined(mingw32_HOST_OS)
     s <- Win32.sHGetFolderPath nullPtr Win32.cSIDL_APPDATA nullPtr 0
     return (s++'\\':appName)
@@ -1898,7 +1898,7 @@ cannot be found.
 -}
 getUserDocumentsDirectory :: IO FilePath
 getUserDocumentsDirectory = do
-  modifyIOError (`ioeSetLocation` "getUserDocumentsDirectory") $ do
+  modifyIOError (`ioeAddLocation` "getUserDocumentsDirectory") $ do
 #if defined(mingw32_HOST_OS)
     Win32.sHGetFolderPath nullPtr Win32.cSIDL_PERSONAL nullPtr 0
 #else
@@ -1939,3 +1939,10 @@ getTemporaryDirectory =
   getEnv "TMPDIR" `catchIOError` \ err ->
   if isDoesNotExistError err then return "/tmp" else ioError err
 #endif
+
+ioeAddLocation :: IOError -> String -> IOError
+ioeAddLocation e loc = do
+  ioeSetLocation e newLoc
+  where
+    newLoc = loc <> if null oldLoc then "" else ":" <> oldLoc
+    oldLoc = ioeGetLocation e
