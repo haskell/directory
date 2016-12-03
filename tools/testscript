@@ -31,8 +31,8 @@ prepare() {
                     mv */stack .;;
                 MSYS*)
                     url=https://www.stackage.org/stack/windows-x86_64
-                    curl --retry 3 -fsLSo stack.zip "$url"
-                    7z x -aoa stack.zip stack.exe;;
+                    curl --retry 3 -fsLS "$url" | tar xzf -
+                    mv */stack.exe .;;
                 *)
                     printf >&2 "unknown uname: %s\n" "`uname`"
                     return 1;;
