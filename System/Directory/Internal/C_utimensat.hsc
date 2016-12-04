@@ -10,6 +10,7 @@ module System.Directory.Internal.C_utimensat where
 #ifdef HAVE_SYS_STAT_H
 # include <sys/stat.h>
 #endif
+#include <System/Directory/Internal/utility.h>
 import Prelude ()
 import System.Directory.Internal.Prelude
 import Data.Time.Clock.POSIX (POSIXTime)
@@ -17,10 +18,11 @@ import Data.Time.Clock.POSIX (POSIXTime)
 data CTimeSpec = CTimeSpec EpochTime CLong
 
 instance Storable CTimeSpec where
-    sizeOf    _ = #size struct timespec
-    alignment _ = alignment (undefined :: CInt)
+    sizeOf    _ = #{size struct timespec}
+    -- workaround (hsc2hs for GHC < 8.0 doesn't support #{alignment ...})
+    alignment _ = #{size char[alignof(struct timespec)] }
     poke p (CTimeSpec sec nsec) = do
-      (#poke struct timespec, tv_sec ) p sec
+      (#poke struct timespec, tv_sec)  p sec
       (#poke struct timespec, tv_nsec) p nsec
     peek p = do
       sec  <- #{peek struct timespec, tv_sec } p

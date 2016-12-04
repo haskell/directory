@@ -21,12 +21,13 @@ extra-tmp-files:
     HsDirectoryConfig.h
 
 extra-source-files:
-    changelog.md
+    HsDirectoryConfig.h.in
     README.md
+    System/Directory/Internal/*.h
+    changelog.md
     configure
     configure.ac
     directory.buildinfo
-    HsDirectoryConfig.h.in
     tests/*.hs
     tests/util.inl
 
