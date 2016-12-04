@@ -5,18 +5,15 @@ module TestUtils
   , modifyPermissions
   , tryCreateSymbolicLink
   ) where
+import Prelude ()
+import System.Directory.Internal.Prelude
 import System.Directory
 import System.FilePath ((</>))
-import System.IO.Error (ioeSetLocation, modifyIOError)
 #ifdef mingw32_HOST_OS
-import Foreign (Ptr)
-import Foreign.C (CUChar(..), CULong(..), CWchar(..), withCWString)
 import System.FilePath (takeDirectory)
-import System.IO.Error (catchIOError, ioeSetErrorString, isPermissionError,
-                        mkIOError, permissionErrorType)
-import System.Win32.Types (failWith, getLastError)
+import qualified System.Win32 as Win32
 #else
-import System.Posix.Files (createSymbolicLink)
+import System.Posix (createSymbolicLink)
 #endif
 
 #ifdef mingw32_HOST_OS
@@ -63,11 +60,11 @@ createSymbolicLink target link =
         status <- c_CreateSymbolicLink link' target' isDir
         if status == 0
           then do
-            errCode <- getLastError
+            errCode <- Win32.getLastError
             if errCode == c_ERROR_PRIVILEGE_NOT_HELD
               then ioError . (`ioeSetErrorString` permissionErrorMsg) $
                    mkIOError permissionErrorType "" Nothing (Just link)
-              else failWith "createSymbolicLink" errCode
+              else Win32.failWith "createSymbolicLink" errCode
           else return ()
   where c_ERROR_PRIVILEGE_NOT_HELD = 0x522
         permissionErrorMsg = "no permission to create symbolic links"

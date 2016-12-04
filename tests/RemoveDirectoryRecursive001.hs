@@ -1,10 +1,8 @@
 {-# LANGUAGE CPP #-}
 module RemoveDirectoryRecursive001 where
 #include "util.inl"
-import System.Directory
-import Data.List (sort)
 import System.FilePath ((</>), normalise)
-import System.IO.Error (catchIOError)
+import qualified Data.List as List
 import TestUtils
 
 main :: TestEnv -> IO ()
@@ -36,15 +34,15 @@ main _t = do
   ------------------------------------------------------------
   -- tests
 
-  T(expectEq) () [".", "..", "a", "b", "c", "d"] . sort =<<
+  T(expectEq) () [".", "..", "a", "b", "c", "d"] . List.sort =<<
     getDirectoryContents  tmpD
-  T(expectEq) () [".", "..", "t", "x", "y", "z"] . sort =<<
+  T(expectEq) () [".", "..", "t", "x", "y", "z"] . List.sort =<<
     getDirectoryContents (tmp "a")
-  T(expectEq) () [".", "..", "g"] . sort =<<
+  T(expectEq) () [".", "..", "g"] . List.sort =<<
     getDirectoryContents (tmp "b")
-  T(expectEq) () [".", "..", "h"] . sort =<<
+  T(expectEq) () [".", "..", "h"] . List.sort =<<
     getDirectoryContents (tmp "c")
-  T(expectEq) () [".", "..", "t", "x", "y", "z"] . sort =<<
+  T(expectEq) () [".", "..", "t", "x", "y", "z"] . List.sort =<<
     getDirectoryContents (tmp "d")
 
   removeDirectoryRecursive (tmp "d")
@@ -53,13 +51,13 @@ main _t = do
     `catchIOError` \ _ -> removeDirectory (tmp "d")
 #endif
 
-  T(expectEq) () [".", "..", "a", "b", "c"] . sort =<<
+  T(expectEq) () [".", "..", "a", "b", "c"] . List.sort =<<
     getDirectoryContents  tmpD
-  T(expectEq) () [".", "..", "t", "x", "y", "z"] . sort =<<
+  T(expectEq) () [".", "..", "t", "x", "y", "z"] . List.sort =<<
     getDirectoryContents (tmp "a")
-  T(expectEq) () [".", "..", "g"] . sort =<<
+  T(expectEq) () [".", "..", "g"] . List.sort =<<
     getDirectoryContents (tmp "b")
-  T(expectEq) () [".", "..", "h"] . sort =<<
+  T(expectEq) () [".", "..", "h"] . List.sort =<<
     getDirectoryContents (tmp "c")
 
   removeDirectoryRecursive (tmp "c")
@@ -67,23 +65,23 @@ main _t = do
       modifyPermissions (tmp "c") (\ p -> p { writable = True })
       removeDirectoryRecursive (tmp "c")
 
-  T(expectEq) () [".", "..", "a", "b"] . sort =<<
+  T(expectEq) () [".", "..", "a", "b"] . List.sort =<<
     getDirectoryContents  tmpD
-  T(expectEq) () [".", "..", "t", "x", "y", "z"] . sort =<<
+  T(expectEq) () [".", "..", "t", "x", "y", "z"] . List.sort =<<
    getDirectoryContents (tmp "a")
-  T(expectEq) () [".", "..", "g"] . sort =<<
+  T(expectEq) () [".", "..", "g"] . List.sort =<<
     getDirectoryContents (tmp "b")
 
   removeDirectoryRecursive (tmp "b")
 
-  T(expectEq) () [".", "..", "a"] . sort =<<
+  T(expectEq) () [".", "..", "a"] . List.sort =<<
     getDirectoryContents  tmpD
-  T(expectEq) () [".", "..", "t", "x", "y", "z"] . sort =<<
+  T(expectEq) () [".", "..", "t", "x", "y", "z"] . List.sort =<<
     getDirectoryContents (tmp "a")
 
   removeDirectoryRecursive (tmp "a")
 
-  T(expectEq) () [".", ".."] . sort =<<
+  T(expectEq) () [".", ".."] . List.sort =<<
     getDirectoryContents  tmpD
 
   where testName = "removeDirectoryRecursive001"

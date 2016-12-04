@@ -105,72 +105,22 @@ module System.Directory
     , isSymbolicLink
 
    ) where
-import Control.Exception (bracket, mask, onException)
-import Control.Monad ( when, unless )
-#ifdef mingw32_HOST_OS
-#if !MIN_VERSION_base(4, 8, 0)
-import Control.Applicative ((<*>))
-#endif
-import Data.Function (on)
-#endif
-#if !MIN_VERSION_base(4, 8, 0)
-import Data.Functor ((<$>))
-#endif
-import Data.Maybe
-  ( catMaybes
-#ifdef mingw32_HOST_OS
-  , maybeToList
-#endif
-#if !defined(mingw32_HOST_OS) && ! defined(HAVE_UTIMENSAT)
-  , fromMaybe
-#endif
-  )
-
+import Prelude ()
+import System.Directory.Internal
+import System.Directory.Internal.Prelude
 import System.FilePath
-import System.IO
-import System.IO.Error
-  ( catchIOError
-  , ioeSetErrorString
-  , ioeSetFileName
-  , ioeSetLocation
-  , isAlreadyExistsError
-  , isDoesNotExistError
-  , isPermissionError
-  , mkIOError
-  , modifyIOError
-  , tryIOError )
-
-import Foreign
-
-{-# CFILES cbits/directory.c #-}
-
-import Data.Time ( UTCTime )
+import Data.Time (UTCTime)
 import Data.Time.Clock.POSIX
   ( posixSecondsToUTCTime
   , utcTimeToPOSIXSeconds
   , POSIXTime
   )
-
-import GHC.IO.Exception ( IOErrorType(InappropriateType) )
-
 #ifdef mingw32_HOST_OS
-import Foreign.C
-import System.Posix.Types
-import System.Posix.Internals
 import qualified System.Win32 as Win32
 #else
-import GHC.IO.Encoding
-import GHC.Foreign as GHC
-import System.Environment ( getEnv )
+import qualified GHC.Foreign as GHC
 import qualified System.Posix as Posix
 #endif
-
-#ifdef HAVE_UTIMENSAT
-import Foreign.C (throwErrnoPathIfMinus1_)
-import System.Posix.Internals ( withFilePath )
-#endif
-
-import System.Directory.Internal
 
 {- $intro
 A directory contains a series of entries, each of which is a named
@@ -330,7 +280,7 @@ setPermissions name (Permissions r w e s) =
       let mode3 = modifyBit (e || s) mode2 Posix.ownerExecuteMode
       Posix.setFileMode name mode3
  where
-   modifyBit :: Bool -> Posix.FileMode -> Posix.FileMode -> Posix.FileMode
+   modifyBit :: Bool -> FileMode -> FileMode -> FileMode
    modifyBit False m b = m .&. (complement b)
    modifyBit True  m b = m .|. b
 #endif

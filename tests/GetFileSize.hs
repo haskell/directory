@@ -1,16 +1,14 @@
 {-# LANGUAGE CPP #-}
 module GetFileSize where
 #include "util.inl"
-import System.Directory
-import qualified System.IO as IO
 
 main :: TestEnv -> IO ()
 main _t = do
 
-  IO.withBinaryFile "emptyfile" IO.WriteMode $ \ _ -> do
+  withBinaryFile "emptyfile" WriteMode $ \ _ -> do
     return ()
-  IO.withBinaryFile "testfile" IO.WriteMode $ \ h -> do
-    IO.hPutStr h string
+  withBinaryFile "testfile" WriteMode $ \ h -> do
+    hPutStr h string
 
   T(expectEq) () 0 =<< getFileSize "emptyfile"
   T(expectEq) () (fromIntegral (length string)) =<< getFileSize "testfile"

@@ -6,8 +6,8 @@ module System.Directory.Internal.Windows where
 #ifdef HAVE_SYS_STAT_H
 # include <sys/stat.h>
 #endif
-import Foreign.C
-import System.Posix.Types
+import Prelude ()
+import System.Directory.Internal.Prelude
 import qualified System.Win32 as Win32
 
 win32_cSIDL_LOCAL_APPDATA :: Win32.CSIDL

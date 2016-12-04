@@ -1,7 +1,6 @@
 {-# LANGUAGE CPP #-}
 module GetPermissions001 where
 #include "util.inl"
-import System.Directory
 
 main :: TestEnv -> IO ()
 main _t = do

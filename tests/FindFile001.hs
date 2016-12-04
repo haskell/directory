@@ -1,8 +1,7 @@
 {-# LANGUAGE CPP #-}
 module FindFile001 where
 #include "util.inl"
-import System.Directory
-import System.FilePath
+import System.FilePath ((</>))
 
 main :: TestEnv -> IO ()
 main _t = do

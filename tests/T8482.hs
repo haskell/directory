@@ -1,9 +1,6 @@
 {-# LANGUAGE CPP #-}
 module T8482 where
 #include "util.inl"
-import GHC.IO.Exception (IOErrorType(InappropriateType))
-import System.Directory
-import System.IO.Error (ioeGetErrorType)
 
 tmp1 :: FilePath
 tmp1 = "T8482.tmp1"

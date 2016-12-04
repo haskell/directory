@@ -1,16 +1,13 @@
 {-# LANGUAGE CPP #-}
 module FileTime where
 #include "util.inl"
-import System.Directory
-import System.IO.Error (isDoesNotExistError)
-import Data.Foldable (for_)
-import qualified Data.Time.Clock as Time
+import Data.Time.Clock (addUTCTime, getCurrentTime)
 
 main :: TestEnv -> IO ()
 main _t = do
-  now <- Time.getCurrentTime
-  let someTimeAgo  = Time.addUTCTime (-3600) now
-      someTimeAgo' = Time.addUTCTime (-7200) now
+  now <- getCurrentTime
+  let someTimeAgo  = addUTCTime (-3600) now
+      someTimeAgo' = addUTCTime (-7200) now
 
   T(expectIOErrorType) () isDoesNotExistError $
     getAccessTime "nonexistent-file"

@@ -1,7 +1,6 @@
 {-# LANGUAGE CPP #-}
 module Directory001 where
 #include "util.inl"
-import System.Directory
 
 main :: TestEnv -> IO ()
 main _t = do

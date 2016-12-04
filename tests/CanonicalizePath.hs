@@ -1,7 +1,6 @@
 {-# LANGUAGE CPP #-}
 module CanonicalizePath where
 #include "util.inl"
-import System.Directory
 import System.FilePath ((</>), dropTrailingPathSeparator, normalise)
 
 main :: TestEnv -> IO ()

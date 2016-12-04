@@ -1,11 +1,6 @@
 {-# LANGUAGE CPP #-}
 module PathIsSymbolicLink where
 #include "util.inl"
-import System.Directory
-import Control.Monad (when)
-#ifdef mingw32_HOST_OS
-import System.IO.Error (catchIOError, isPermissionError)
-#endif
 import TestUtils
 
 main :: TestEnv -> IO ()

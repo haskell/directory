@@ -1,11 +1,7 @@
 {-# LANGUAGE CPP #-}
 module CopyFileWithMetadata where
 #include "util.inl"
-import System.Directory
-import Control.Exception (finally)
-import Data.Foldable (for_)
-import Data.List (sort)
-import System.IO.Error (catchIOError)
+import qualified Data.List as List
 
 main :: TestEnv -> IO ()
 main _t = (`finally` cleanup) $ do
@@ -18,14 +14,14 @@ main _t = (`finally` cleanup) $ do
   perm <- getPermissions "a"
 
   -- sanity check
-  T(expectEq) () ["a", "b"] . sort =<< listDirectory "."
+  T(expectEq) () ["a", "b"] . List.sort =<< listDirectory "."
 
   -- copy file
   copyFileWithMetadata "a" "b"
   copyFileWithMetadata "a" "c"
 
   -- make sure we got the right results
-  T(expectEq) () ["a", "b", "c"] . sort =<< listDirectory "."
+  T(expectEq) () ["a", "b", "c"] . List.sort =<< listDirectory "."
   for_ ["b", "c"] $ \ f -> do
     T(expectEq) f perm =<< getPermissions f
     T(expectEq) f mtime =<< getModificationTime f

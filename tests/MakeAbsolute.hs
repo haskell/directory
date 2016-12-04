@@ -1,7 +1,6 @@
 {-# LANGUAGE CPP #-}
 module MakeAbsolute where
 #include "util.inl"
-import System.Directory
 import System.FilePath ((</>), addTrailingPathSeparator,
                         dropTrailingPathSeparator, normalise)
 

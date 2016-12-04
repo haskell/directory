@@ -1,15 +1,7 @@
 {-# LANGUAGE CPP #-}
 module CreateDirectoryIfMissing001 where
 #include "util.inl"
-import System.Directory
-import Control.Concurrent (forkIO, newEmptyMVar, putMVar, takeMVar)
-import qualified Control.Exception as E
-import Control.Monad (replicateM_)
-import Data.Monoid ((<>))
-import GHC.IO.Exception (IOErrorType(InappropriateType))
 import System.FilePath ((</>), addTrailingPathSeparator)
-import System.IO.Error (ioeGetErrorType, isAlreadyExistsError,
-                        isDoesNotExistError, isPermissionError)
 
 main :: TestEnv -> IO ()
 main _t = do
@@ -86,15 +78,15 @@ main _t = do
     -- It is also allowed to fail with permission errors
     -- (see bug #2924 on GHC Trac)
     create =
-      createDirectoryIfMissing True testdir_a `E.catch` \ e ->
+      createDirectoryIfMissing True testdir_a `catch` \ e ->
       if isDoesNotExistError e || isPermissionError e || isInappropriateTypeError e
       then return ()
       else ioError e
 
     cleanup = removeDirectoryRecursive testdir `catchAny` \ _ -> return ()
 
-    catchAny :: IO a -> (E.SomeException -> IO a) -> IO a
-    catchAny = E.catch
+    catchAny :: IO a -> (SomeException -> IO a) -> IO a
+    catchAny = catch
 
 #ifdef mingw32_HOST_OS
     isNotADirectoryError = isAlreadyExistsError

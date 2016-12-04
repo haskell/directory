@@ -10,10 +10,9 @@ module System.Directory.Internal.C_utimensat where
 #ifdef HAVE_SYS_STAT_H
 # include <sys/stat.h>
 #endif
-import Foreign
-import Foreign.C
+import Prelude ()
+import System.Directory.Internal.Prelude
 import Data.Time.Clock.POSIX (POSIXTime)
-import System.Posix.Types
 
 data CTimeSpec = CTimeSpec EpochTime CLong
 

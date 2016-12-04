@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# OPTIONS_HADDOCK hide #-}
 #include <HsDirectoryConfig.h>
 
 module System.Directory.Internal

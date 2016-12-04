@@ -42,8 +42,9 @@ Library
 
     exposed-modules:
         System.Directory
-    other-modules:
         System.Directory.Internal
+        System.Directory.Internal.Prelude
+    other-modules:
         System.Directory.Internal.Config
         System.Directory.Internal.C_utimensat
         System.Directory.Internal.Posix
