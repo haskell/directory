@@ -2,6 +2,7 @@
 module CanonicalizePath where
 #include "util.inl"
 import System.FilePath ((</>), dropTrailingPathSeparator, normalise)
+import TestUtils
 
 main :: TestEnv -> IO ()
 main _t = do
@@ -61,3 +62,30 @@ main _t = do
   T(expectEq) () fooNon fooNon6
   T(expectEq) () fooNon fooNon7
   T(expectEq) () fooNon fooNon8
+
+  supportsSymbolicLinks <- do
+#ifdef mingw32_HOST_OS
+    -- FIXME: canonicalizePath doesn't yet support symlinks on Windows
+    pure False
+#else
+    pure True
+#endif
+
+  when supportsSymbolicLinks $ do
+
+    let barQux = dot </> "bar" </> "qux"
+
+    createSymbolicLink "../bar" "foo/bar"
+    T(expectEq) () bar =<< canonicalizePath "foo/bar"
+    T(expectEq) () barQux =<< canonicalizePath "foo/bar/qux"
+
+    createSymbolicLink "foo" "lfoo"
+    T(expectEq) () foo =<< canonicalizePath "lfoo"
+    T(expectEq) () foo =<< canonicalizePath "lfoo/"
+    T(expectEq) () bar =<< canonicalizePath "lfoo/bar"
+    T(expectEq) () barQux =<< canonicalizePath "lfoo/bar/qux"
+
+    -- FIXME: uncomment this test once #64 is fixed
+    -- createSymbolicLink "../foo/non-existent" "foo/qux"
+    -- qux <- canonicalizePath "foo/qux"
+    -- T(expectEq) () qux (dot </> "../foo/non-existent")

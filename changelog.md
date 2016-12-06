@@ -10,6 +10,9 @@ Changelog for the [`directory`][1] package
     available but may be removed in the next major release.
     ([#52](https://github.com/haskell/directory/issues/52))
 
+  * Changed `canonicalizePath` to dereference symbolic links even if it points
+    to a file and is not the last path segment
+
 ## 1.2.7.1 (November 2016)
 
   * Don't abort `removePathForcibly` if files or directories go missing.
