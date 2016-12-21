@@ -6,6 +6,7 @@
 [![Windows build status][wi]][wl]
 
 Documentation can be found on [Hackage][hl].
+Changes between versions are recorded in the [change log](changelog.md).
 
 Building from Git repository
 ----------------------------

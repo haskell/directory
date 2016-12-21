@@ -3,11 +3,12 @@ Changelog for the [`directory`][1] package
 
 ## 1.3.0.0 (December 2016)
 
-  * Drop trailing slashes in `canonicalizePath`
+  * **[breaking]** Drop trailing slashes in `canonicalizePath`
     ([#63](https://github.com/haskell/directory/issues/63))
 
-  * Rename `isSymbolicLink` to `pathIsSymbolicLink`.  The old name will remain
-    available but may be removed in the next major release.
+  * **[deprecation]** Rename `isSymbolicLink` to `pathIsSymbolicLink`.  The
+    old name will remain available but may be removed in the next major
+    release.
     ([#52](https://github.com/haskell/directory/issues/52))
 
   * Changed `canonicalizePath` to dereference symbolic links even if it points
