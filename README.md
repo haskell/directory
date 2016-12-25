@@ -4,6 +4,7 @@
 [![Hackage][hi]][hl]
 [![Build status][bi]][bl]
 [![Windows build status][wi]][wl]
+[![Dependencies status][di]][dl]
 
 Documentation can be found on [Hackage][hl].
 Changes between versions are recorded in the [change log](changelog.md).
@@ -27,4 +28,6 @@ configure` does that automatically.
 [bl]: https://travis-ci.org/haskell/directory
 [wi]: https://ci.appveyor.com/api/projects/status/github/haskell/directory?branch=master&svg=true
 [wl]: https://ci.appveyor.com/project/hvr/directory
+[di]: https://img.shields.io/hackage-deps/v/directory.svg
+[dl]: http://packdeps.haskellers.com/feed?needle=directory
 [ac]: https://gnu.org/software/autoconf
