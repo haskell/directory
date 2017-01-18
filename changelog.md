@@ -1,6 +1,11 @@
 Changelog for the [`directory`][1] package
 ==========================================
 
+## 1.3.0.1 (January 2017)
+
+  * Relax Win32 version bounds to support 2.6.
+    ([#67](https://github.com/haskell/directory/pull/67))
+
 ## 1.3.0.0 (December 2016)
 
   * **[breaking]** Drop trailing slashes in `canonicalizePath`
