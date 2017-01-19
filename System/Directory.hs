@@ -530,7 +530,8 @@ removeContentsRecursive path =
 -- Unlike other removal functions, this function will also attempt to delete
 -- files marked as read-only or otherwise made unremovable due to permissions.
 -- As a result, if the removal is incomplete, the permissions or attributes on
--- the remaining files may be altered.
+-- the remaining files may be altered.  If there are hard links in the
+-- directory, then permissions on all related hard links may be altered.
 --
 -- If an entry within the directory vanishes while @removePathForcibly@ is
 -- running, it is silently ignored.
