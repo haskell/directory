@@ -896,7 +896,7 @@ copyHandleData hFrom hTo =
   (`ioeAddLocation` "copyData") `modifyIOError` do
     allocaBytes bufferSize go
   where
-    bufferSize = 1024
+    bufferSize = 131072 -- 128 KiB, as coreutils `cp` uses as of May 2014 (see ioblksize.h)
     go buffer = do
       count <- hGetBuf hFrom buffer bufferSize
       when (count > 0) $ do
