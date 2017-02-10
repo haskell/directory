@@ -1,6 +1,11 @@
 Changelog for the [`directory`][1] package
 ==========================================
 
+## 1.3.0.2 (February 2017)
+
+  * [optimization] Increase internal buffer size of `copyFile`
+    ([#69](https://github.com/haskell/directory/pull/69))
+
 ## 1.3.0.1 (January 2017)
 
   * Relax Win32 version bounds to support 2.5.
