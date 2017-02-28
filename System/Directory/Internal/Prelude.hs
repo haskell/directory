@@ -1,10 +1,18 @@
 {-# LANGUAGE CPP #-}
-{-# OPTIONS_HADDOCK hide #-}
+-- |
+-- Stability: unstable
+-- Portability: unportable
+--
+-- Internal modules are always subject to change from version to version.
+
 module System.Directory.Internal.Prelude
   ( module Prelude
-#if !MIN_VERSION_base(4, 8, 0)
+#if MIN_VERSION_base(4, 8, 0)
+  , module Data.Void
+#else
   , module Control.Applicative
   , module Data.Functor
+  , Void
 #endif
   , module Control.Arrow
   , module Control.Concurrent
@@ -29,7 +37,6 @@ module System.Directory.Internal.Prelude
   , module System.Posix.Internals
   , module System.Posix.Types
   , module System.Timeout
-  , Void
   ) where
 #if !MIN_VERSION_base(4, 6, 0)
 import Prelude hiding (catch)

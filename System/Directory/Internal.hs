@@ -1,22 +1,26 @@
 {-# LANGUAGE CPP #-}
-{-# OPTIONS_HADDOCK hide #-}
+-- |
+-- Stability: unstable
+-- Portability: unportable
+--
+-- Internal modules are always subject to change from version to version.
+
 #include <HsDirectoryConfig.h>
 
 module System.Directory.Internal
-  ( module System.Directory.Internal.Config
+  (
+
+#ifdef mingw32_HOST_OS
+    module System.Directory.Internal.Windows
+#else
+    module System.Directory.Internal.Posix
+#endif
 
 #ifdef HAVE_UTIMENSAT
   , module System.Directory.Internal.C_utimensat
 #endif
 
-#ifdef mingw32_HOST_OS
-  , module System.Directory.Internal.Windows
-#else
-  , module System.Directory.Internal.Posix
-#endif
-
   ) where
-import System.Directory.Internal.Config
 
 #ifdef HAVE_UTIMENSAT
 import System.Directory.Internal.C_utimensat

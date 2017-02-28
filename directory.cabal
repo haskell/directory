@@ -44,12 +44,12 @@ Library
     exposed-modules:
         System.Directory
         System.Directory.Internal
-        System.Directory.Internal.Prelude
-    other-modules:
-        System.Directory.Internal.Config
         System.Directory.Internal.C_utimensat
         System.Directory.Internal.Posix
+        System.Directory.Internal.Prelude
         System.Directory.Internal.Windows
+    other-modules:
+        System.Directory.Internal.Config
 
     include-dirs: .
 

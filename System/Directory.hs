@@ -115,6 +115,7 @@ import Data.Time.Clock.POSIX
   , utcTimeToPOSIXSeconds
   , POSIXTime
   )
+import qualified System.Directory.Internal.Config as Cfg
 #ifdef mingw32_HOST_OS
 import qualified System.Win32 as Win32
 #else
@@ -1292,6 +1293,13 @@ findFilesWithLazy f dirs path
       if found
         then return (Just (p, ListT (find ds)))
         else find ds
+
+-- | Filename extension for executable files (including the dot if any)
+--   (usually @\"\"@ on POSIX systems and @\".exe\"@ on Windows or OS\/2).
+--
+-- @since 1.2.4.0
+exeExtension :: String
+exeExtension = Cfg.exeExtension
 
 -- | Similar to 'listDirectory', but always includes the special entries (@.@
 -- and @..@).  (This applies to Windows as well.)

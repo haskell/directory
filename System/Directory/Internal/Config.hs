@@ -2,10 +2,6 @@
 #include <HsDirectoryConfig.h>
 module System.Directory.Internal.Config where
 
--- | Filename extension for executable files (including the dot if any)
---   (usually @\"\"@ on POSIX systems and @\".exe\"@ on Windows or OS\/2).
---
--- @since 1.2.4.0
 exeExtension :: String
 exeExtension = EXE_EXTENSION
 -- We avoid using #const_str from hsc because it breaks cross-compilation
