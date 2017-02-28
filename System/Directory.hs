@@ -52,10 +52,17 @@ module System.Directory
     , renamePath
     , copyFile
     , copyFileWithMetadata
+    , getFileSize
 
     , canonicalizePath
     , makeAbsolute
     , makeRelativeToCurrentDirectory
+
+    -- * Existence tests
+    , doesPathExist
+    , doesFileExist
+    , doesDirectoryExist
+
     , findExecutable
     , findExecutables
     , findExecutablesInDirectories
@@ -64,13 +71,6 @@ module System.Directory
     , findFileWith
     , findFilesWith
     , exeExtension
-
-    , getFileSize
-
-    -- * Existence tests
-    , doesPathExist
-    , doesFileExist
-    , doesDirectoryExist
 
     -- * Symbolic links
     , pathIsSymbolicLink
@@ -137,6 +137,28 @@ normally at least one absolute path to each file system object.  In
 some operating systems, it may also be possible to have paths which
 are relative to the current directory.
 -}
+
+-- | A generator with side-effects.
+newtype ListT m a = ListT (m (Maybe (a, ListT m a)))
+
+listTHead :: Functor m => ListT m a -> m (Maybe a)
+listTHead (ListT m) = (fst <$>) <$> m
+
+listTToList :: Monad m => ListT m a -> m [a]
+listTToList (ListT m) = do
+  mx <- m
+  case mx of
+    Nothing -> return []
+    Just (x, m') -> do
+      xs <- listTToList m'
+      return (x : xs)
+
+andM :: Monad m => m Bool -> m Bool -> m Bool
+andM mx my = do
+  x <- mx
+  if x
+    then my
+    else return x
 
 -----------------------------------------------------------------------------
 -- Permissions
@@ -1119,24 +1141,28 @@ makeRelativeToCurrentDirectory x = do
     cur <- getCurrentDirectory
     return $ makeRelative cur x
 
--- | Given an executable file name, searches for such file in the
--- directories listed in system PATH. The returned value is the path
--- to the found executable or Nothing if an executable with the given
--- name was not found. For example (findExecutable \"ghc\") gives you
--- the path to GHC.
+-- | Given the name or path of an executable file, 'findExecutable' searches
+-- for such a file in a list of system-defined locations, which generally
+-- includes @PATH@ and possibly more.  The full path to the executable is
+-- returned if found.  For example, @(findExecutable \"ghc\")@ would normally
+-- give you the path to GHC.
 --
--- The path returned by 'findExecutable' corresponds to the
--- program that would be executed by 'System.Process.createProcess'
--- when passed the same string (as a RawCommand, not a ShellCommand).
+-- The path returned by @'findExecutable' name@ corresponds to the program
+-- that would be executed by 'System.Process.createProcess' when passed the
+-- same string (as a @RawCommand@, not a @ShellCommand@), provided that @name@
+-- is not a relative path with more than one segment.
 --
--- On Windows, 'findExecutable' calls the Win32 function 'SearchPath',
--- which may search other places before checking the directories in
--- @PATH@.  Where it actually searches depends on registry settings,
--- but notably includes the directory containing the current
--- executable. See
--- <http://msdn.microsoft.com/en-us/library/aa365527.aspx> for more
--- details.
+-- On Windows, 'findExecutable' calls the Win32 function
+-- @<https://msdn.microsoft.com/en-us/library/aa365527.aspx SearchPath>@,
+-- which may search other places before checking the directories in the @PATH@
+-- environment variable.  Where it actually searches depends on registry
+-- settings, but notably includes the directory containing the current
+-- executable.
 --
+-- On non-Windows platforms, the behavior is equivalent to 'findFileWith'
+-- using the search directories from the @PATH@ environment variable and
+-- testing each file for executable permissions.  Details can be found in the
+-- documentation of 'findFileWith'.
 findExecutable :: String -> IO (Maybe FilePath)
 findExecutable binary = do
 #if defined(mingw32_HOST_OS)
@@ -1146,12 +1172,16 @@ findExecutable binary = do
     findFileWith isExecutable path (binary <.> exeExtension)
 #endif
 
--- | Given a file name, searches for the file and returns a list of all
--- occurences that are executable.
+-- | Search for executable files in a list of system-defined locations, which
+-- generally includes @PATH@ and possibly more.
 --
--- On Windows, this only returns the first ocurrence, if any.  It uses the
--- @SearchPath@ from the Win32 API, so the caveats noted in 'findExecutable'
--- apply here as well.
+-- On Windows, this /only returns the first ocurrence/, if any.  Its behavior
+-- is therefore equivalent to 'findExecutable'.
+--
+-- On non-Windows platforms, the behavior is equivalent to
+-- 'findExecutablesInDirectories' using the search directories from the @PATH@
+-- environment variable.  Details can be found in the documentation of
+-- 'findExecutablesInDirectories'.
 --
 -- @since 1.2.2.0
 findExecutables :: String -> IO [FilePath]
@@ -1172,73 +1202,96 @@ getPath = do
     return (splitSearchPath path)
 #endif
 
--- | Given a file name, searches for the file on the given paths and returns a
--- list of all occurences that are executable.
+-- | Given a name or path, 'findExecutable' appends the 'exeExtension' to the
+-- query and searches for executable files in the list of given search
+-- directories and returns all occurrences.
+--
+-- The behavior is equivalent to 'findFileWith' using the given search
+-- directories and testing each file for executable permissions.  Details can
+-- be found in the documentation of 'findFileWith'.
+--
+-- Unlike other similarly named functions, 'findExecutablesInDirectories' does
+-- not use @SearchPath@ from the Win32 API.  The behavior of this function on
+-- Windows is therefore equivalent to those on non-Windows platforms.
 --
 -- @since 1.2.4.0
 findExecutablesInDirectories :: [FilePath] -> String -> IO [FilePath]
 findExecutablesInDirectories path binary =
     findFilesWith isExecutable path (binary <.> exeExtension)
 
--- | Test whether a file is executable.
+-- | Test whether a file has executable permissions.
 isExecutable :: FilePath -> IO Bool
 isExecutable file = do
     perms <- getPermissions file
     return (executable perms)
 
--- | Search through the given set of directories for the given file.
+-- | Search through the given list of directories for the given file.
+--
+-- The behavior is equivalent to 'findFileWith', returning only the first
+-- occurrence.  Details can be found in the documentation of 'findFileWith'.
 findFile :: [FilePath] -> String -> IO (Maybe FilePath)
 findFile = findFileWith (\_ -> return True)
 
--- | Search through the given set of directories for the given file and
--- returns a list of paths where the given file exists.
+-- | Search through the given list of directories for the given file and
+-- returns all paths where the given file exists.
+--
+-- The behavior is equivalent to 'findFilesWith'.  Details can be found in the
+-- documentation of 'findFilesWith'.
 --
 -- @since 1.2.1.0
 findFiles :: [FilePath] -> String -> IO [FilePath]
 findFiles = findFilesWith (\_ -> return True)
 
--- | Search through the given set of directories for the given file and
--- with the given property (usually permissions) and returns the file path
--- where the given file exists and has the property.
+-- | Search through a given list of directories for a file that has the given
+-- name and satisfies the given predicate and return the path of the first
+-- occurrence.  The directories are checked in a left-to-right order.
+--
+-- This is essentially a more performant version of 'findFilesWith' that
+-- always returns the first result, if any.  Details can be found in the
+-- documentation of 'findFilesWith'.
 --
 -- @since 1.2.6.0
 findFileWith :: (FilePath -> IO Bool) -> [FilePath] -> String -> IO (Maybe FilePath)
-findFileWith f ds name = asumMaybeT (map (findFileWithIn f name) ds)
+findFileWith f ds name = listTHead (findFilesWithLazy f ds name)
 
--- | 'Data.Foldable.asum' for 'Control.Monad.Trans.Maybe.MaybeT', essentially.
+-- | @findFilesWith predicate dirs name@ searches through the list of
+-- directories (@dirs@) for files that have the given @name@ and satisfy the
+-- given @predicate@ ands return the paths of those files.  The directories
+-- are checked in a left-to-right order and the paths are returned in the same
+-- order.
 --
--- Returns the first 'Just' in the list or 'Nothing' if there aren't any.
-asumMaybeT :: Monad m => [m (Maybe a)] -> m (Maybe a)
-asumMaybeT = foldr attempt (return Nothing)
-  where
-    attempt mmx mx' = do
-        mx <- mmx
-        case mx of
-            Nothing -> mx'
-            Just _  -> return mx
-
--- | Search through the given set of directories for the given file and
--- with the given property (usually permissions) and returns a list of
--- paths where the given file exists and has the property.
+-- If the @name@ is a relative path, then for every search directory @dir@,
+-- the function checks whether @dir '</>' name@ exists and satisfies the
+-- predicate.  If so, @dir '</>' name@ is returned as one of the results.  In
+-- other words, the returned paths can be either relative or absolute
+-- depending on the search directories were used.  If there are no search
+-- directories, no results are ever returned.
+--
+-- If the @name@ is an absolute path, then the function will return a single
+-- result if the file exists and satisfies the predicate and no results
+-- otherwise.  This is irrespective of what search directories were given.
 --
 -- @since 1.2.1.0
 findFilesWith :: (FilePath -> IO Bool) -> [FilePath] -> String -> IO [FilePath]
-findFilesWith f ds name = do
-    mfiles <- mapM (findFileWithIn f name) ds
-    return (catMaybes mfiles)
+findFilesWith f ds name = listTToList (findFilesWithLazy f ds name)
 
--- | Like 'findFileWith', but searches only a single directory.
-findFileWithIn :: (FilePath -> IO Bool) -> String -> FilePath -> IO (Maybe FilePath)
-findFileWithIn f name d = do
-    let path = d </> name
-    exist <- doesFileExist path
-    if exist
-        then do
-            ok <- f path
-            if ok
-                then return (Just path)
-                else return Nothing
-        else return Nothing
+findFilesWithLazy
+  :: (FilePath -> IO Bool) -> [FilePath] -> String -> ListT IO FilePath
+findFilesWithLazy f dirs path
+  -- make sure absolute paths are handled properly irrespective of 'dirs'
+  -- https://github.com/haskell/directory/issues/72
+  | isAbsolute path = ListT (find [""])
+  | otherwise       = ListT (find dirs)
+
+  where
+
+    find []       = return Nothing
+    find (d : ds) = do
+      let p = d </> path
+      found <- doesFileExist p `andM` f p
+      if found
+        then return (Just (p, ListT (find ds)))
+        else find ds
 
 -- | Similar to 'listDirectory', but always includes the special entries (@.@
 -- and @..@).  (This applies to Windows as well.)

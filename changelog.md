@@ -1,6 +1,13 @@
 Changelog for the [`directory`][1] package
 ==========================================
 
+## 1.3.0.3 (March 2017)
+
+  * `findFile` (and similar functions): when an absolute path is given, the
+    list of search directories is now completely ignored.  Previously, if the
+    list was empty, `findFile` would always fail.
+    ([#72](https://github.com/haskell/directory/issues/72))
+
 ## 1.3.0.2 (February 2017)
 
   * [optimization] Increase internal buffer size of `copyFile`
