@@ -4,10 +4,6 @@ module CanonicalizePath where
 import System.FilePath ((</>), dropFileName, dropTrailingPathSeparator,
                         normalise, takeFileName)
 import TestUtils
-#ifdef mingw32_HOST_OS
-import System.Directory.Internal (win32_getFinalPathNameByHandle)
-import qualified System.Win32 as Win32
-#endif
 
 main :: TestEnv -> IO ()
 main _t = do
@@ -68,38 +64,18 @@ main _t = do
   T(expectEq) () fooNon fooNon7
   T(expectEq) () fooNon fooNon8
 
-  supportsSymbolicLinks <- do
-#ifdef mingw32_HOST_OS
-    hasSymbolicLinkPrivileges <-
-      (True <$ createSymbolicLink "_symlinktest_src" "_symlinktest_dst")
-        -- only test if symbolic links can be created
-        -- (usually disabled on Windows by group policy)
-        `catchIOError` \ e ->
-          if isPermissionError e
-          then pure False
-          else ioError e
-
-    supportsGetFinalPathNameByHandle <-
-      (True <$ win32_getFinalPathNameByHandle Win32.nullHANDLE 0)
-        `catchIOError` \ e ->
-          case ioeGetErrorType e of
-            UnsupportedOperation -> pure False
-            _ -> pure True
-
-    pure (hasSymbolicLinkPrivileges && supportsGetFinalPathNameByHandle)
-#else
-    pure True
-#endif
-
+  supportsSymbolicLinks <- supportsSymlinks
   when supportsSymbolicLinks $ do
 
     let barQux = dot </> "bar" </> "qux"
 
-    createSymbolicLink "../bar" "foo/bar"
+    -- note: this also checks that "../bar" gets normalized to "..\\bar"
+    --       since Windows does not like "/" in symbolic links targets
+    createFileLink "../bar" "foo/bar"
     T(expectEq) () bar =<< canonicalizePath "foo/bar"
     T(expectEq) () barQux =<< canonicalizePath "foo/bar/qux"
 
-    createSymbolicLink "foo" "lfoo"
+    createDirectoryLink "foo" "lfoo"
     T(expectEq) () foo =<< canonicalizePath "lfoo"
     T(expectEq) () foo =<< canonicalizePath "lfoo/"
     T(expectEq) () bar =<< canonicalizePath "lfoo/bar"

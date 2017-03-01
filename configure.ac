@@ -31,6 +31,7 @@ AC_PROG_CC()
 AC_CHECK_HEADERS([fcntl.h limits.h sys/types.h sys/stat.h time.h])
 
 AC_CHECK_FUNCS([utimensat])
+AC_CHECK_FUNCS([CreateSymbolicLinkW])
 AC_CHECK_FUNCS([GetFinalPathNameByHandleW])
 
 # EXTEXT is defined automatically by AC_PROG_CC;

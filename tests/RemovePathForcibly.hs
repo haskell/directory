@@ -28,9 +28,9 @@ main _t = do
   writeFile (tmp "a/x/w/u") "foo"
   writeFile (tmp "a/t")     "bar"
   writeFile (tmp "f/s")     "qux"
-  tryCreateSymbolicLink (normalise "../a") (tmp "b/g")
-  tryCreateSymbolicLink (normalise "../b") (tmp "c/h")
-  tryCreateSymbolicLink (normalise "a")    (tmp "d")
+  symlinkOrCopy (normalise "../a") (tmp "b/g")
+  symlinkOrCopy (normalise "../b") (tmp "c/h")
+  symlinkOrCopy (normalise "a")    (tmp "d")
   setPermissions (tmp "f/s") emptyPermissions
   setPermissions (tmp "f") emptyPermissions
 

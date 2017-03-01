@@ -73,7 +73,11 @@ module System.Directory
     , exeExtension
 
     -- * Symbolic links
+    , createFileLink
+    , createDirectoryLink
+    , removeDirectoryLink
     , pathIsSymbolicLink
+    , getSymbolicLinkTarget
 
     -- * Permissions
 
@@ -441,7 +445,7 @@ getDirectoryType :: FilePath -> IO DirectoryType
 getDirectoryType path =
   (`ioeAddLocation` "getDirectoryType") `modifyIOError` do
 #ifdef mingw32_HOST_OS
-    isDir <- withFileStatus "getDirectoryType" path isDirectory
+    isDir <- withSymbolicLinkStatus "getDirectoryType" path isDirectory
     if isDir
       then do
         isLink <- pathIsSymbolicLink path
@@ -1531,13 +1535,108 @@ doesFileExist name =
 #endif
    `catchIOError` \ _ -> return False
 
--- | Check whether the path refers to a symbolic link.  On Windows, this tests
--- for @FILE_ATTRIBUTE_REPARSE_POINT@.
+-- | Create a /file/ symbolic link.  The target path can be either absolute or
+-- relative and need not refer to an existing file.  The order of arguments
+-- follows the POSIX convention.
+--
+-- To remove an existing file symbolic link, use 'removeFile'.
+--
+-- Although the distinction between /file/ symbolic links and /directory/
+-- symbolic links does not exist on POSIX systems, on Windows this is an
+-- intrinsic property of every symbolic link and cannot be changed without
+-- recreating the link.  A file symbolic link that actually points to a
+-- directory will fail to dereference and vice versa.  Moreover, creating
+-- symbolic links on Windows requires privileges normally unavailable to users
+-- outside the Administrators group.  Portable programs that use symbolic
+-- links should take both into consideration.
+--
+-- On Windows, the function is implemented using @CreateSymbolicLink@ with
+-- @dwFlags@ set to zero.  On POSIX, the function uses @symlink@ and
+-- is therefore atomic.
+--
+-- Windows-specific errors: This operation may fail with 'permissionErrorType'
+-- if the user lacks the privileges to create symbolic links.  It may also
+-- fail with 'illegalOperationErrorType' if the file system does not support
+-- symbolic links.
+--
+-- @since 1.3.1.0
+createFileLink
+  :: FilePath                           -- ^ path to the target file
+  -> FilePath                           -- ^ path of the link to be created
+  -> IO ()
+createFileLink target link =
+  (`ioeAddLocation` "createFileLink") `modifyIOError` do
+#ifdef mingw32_HOST_OS
+    createSymbolicLink False target link
+#else
+    Posix.createSymbolicLink target link
+#endif
+
+-- | Create a /directory/ symbolic link.  The target path can be either
+-- absolute or relative and need not refer to an existing directory.  The
+-- order of arguments follows the POSIX convention.
+--
+-- To remove an existing directory symbolic link, use 'removeDirectoryLink'.
+--
+-- Although the distinction between /file/ symbolic links and /directory/
+-- symbolic links does not exist on POSIX systems, on Windows this is an
+-- intrinsic property of every symbolic link and cannot be changed without
+-- recreating the link.  A file symbolic link that actually points to a
+-- directory will fail to dereference and vice versa.  Moreover, creating
+-- symbolic links on Windows requires privileges normally unavailable to users
+-- outside the Administrators group.  Portable programs that use symbolic
+-- links should take both into consideration.
+--
+-- On Windows, the function is implemented using @CreateSymbolicLink@ with
+-- @dwFlags@ set to @SYMBOLIC_LINK_FLAG_DIRECTORY@.  On POSIX, this is an
+-- alias for 'createFileLink' and is therefore atomic.
+--
+-- Windows-specific errors: This operation may fail with 'permissionErrorType'
+-- if the user lacks the privileges to create symbolic links.  It may also
+-- fail with 'illegalOperationErrorType' if the file system does not support
+-- symbolic links.
+--
+-- @since 1.3.1.0
+createDirectoryLink
+  :: FilePath                           -- ^ path to the target directory
+  -> FilePath                           -- ^ path of the link to be created
+  -> IO ()
+createDirectoryLink target link =
+  (`ioeAddLocation` "createDirectoryLink") `modifyIOError` do
+#ifdef mingw32_HOST_OS
+    createSymbolicLink True target link
+#else
+    createFileLink target link
+#endif
+
+-- | Remove an existing /directory/ symbolic link.
+--
+-- On Windows, this is an alias for 'removeDirectory'.  On POSIX systems, this
+-- is an alias for 'removeFile'.
+--
+-- See also: 'removeFile', which can remove an existing /file/ symbolic link.
+--
+-- @since 1.3.1.0
+removeDirectoryLink :: FilePath -> IO ()
+removeDirectoryLink path =
+  (`ioeAddLocation` "removeDirectoryLink") `modifyIOError` do
+#ifdef mingw32_HOST_OS
+    removeDirectory path
+#else
+    removeFile path
+#endif
+
+-- | Check whether the path refers to a symbolic link.  An exception is thrown
+-- if the path does not exist or is inaccessible.
+--
+-- On Windows, this checks for @FILE_ATTRIBUTE_REPARSE_POINT@.  In addition to
+-- symbolic links, the function also returns true on junction points.  On
+-- POSIX systems, this checks for @S_IFLNK@.
 --
 -- @since 1.3.0.0
 pathIsSymbolicLink :: FilePath -> IO Bool
 pathIsSymbolicLink path =
-  (`ioeAddLocation` "getDirectoryType") `modifyIOError` do
+  (`ioeAddLocation` "pathIsSymbolicLink") `modifyIOError` do
 #ifdef mingw32_HOST_OS
     isReparsePoint <$> Win32.getFileAttributes path
   where
@@ -1549,6 +1648,28 @@ pathIsSymbolicLink path =
 {-# DEPRECATED isSymbolicLink "Use 'pathIsSymbolicLink' instead" #-}
 isSymbolicLink :: FilePath -> IO Bool
 isSymbolicLink = pathIsSymbolicLink
+
+-- | Retrieve the target path of either a file or directory symbolic link.
+-- The returned path may not be absolute, may not exist, and may not even be a
+-- valid path.
+--
+-- On Windows systems, this calls @DeviceIoControl@ with
+-- @FSCTL_GET_REPARSE_POINT@.  In addition to symbolic links, the function
+-- also works on junction points.  On POSIX systems, this calls `readlink`.
+--
+-- Windows-specific errors: This operation may fail with
+-- 'illegalOperationErrorType' if the file system does not support symbolic
+-- links.
+--
+-- @since 1.3.1.0
+getSymbolicLinkTarget :: FilePath -> IO FilePath
+getSymbolicLinkTarget path =
+  (`ioeAddLocation` "getSymbolicLinkTarget") `modifyIOError` do
+#ifdef mingw32_HOST_OS
+    readSymbolicLink path
+#else
+    Posix.readSymbolicLink path
+#endif
 
 #ifdef mingw32_HOST_OS
 -- | Open the handle of an existing file or directory.
@@ -1751,8 +1872,14 @@ posixToWindowsTime t = Win32.FILETIME $
 
 #ifdef mingw32_HOST_OS
 withFileStatus :: String -> FilePath -> (Ptr CStat -> IO a) -> IO a
-withFileStatus loc name f = do
-  modifyIOError (`ioeSetFileName` name) $
+withFileStatus loc name f =
+  modifyIOError (`ioeSetFileName` name) $ do
+    name' <- getFinalPathName name
+    withSymbolicLinkStatus loc name' f
+
+withSymbolicLinkStatus :: String -> FilePath -> (Ptr CStat -> IO a) -> IO a
+withSymbolicLinkStatus loc name f = do
+  modifyIOError (`ioeSetFileName` name) $ do
     allocaBytes sizeof_stat $ \p ->
       withFilePath (fileNameEndClean name) $ \s -> do
         throwErrnoIfMinus1Retry_ loc (c_stat s p)

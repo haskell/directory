@@ -13,7 +13,8 @@ environment:
     STACK: stack --skip-msys --resolver lts-5
   - DEPS: Win32-2.3.0.1
     STACK: stack --skip-msys --resolver lts-2
-    PREBUILD: sed -i.bak /GetFinalPathNameByHandleW/d configure.ac
+    PREBUILD: sed -i.bak -e /CreateSymbolicLinkW/d
+                         -e /GetFinalPathNameByHandleW/d configure.ac
 cache:
 - "%STACK_ROOT%"
 install:

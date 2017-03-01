@@ -15,14 +15,12 @@ Usage:
 
 """[1:]
 
-LIBRARY = "System.Directory"
 TEST_DIR = "tests"
 TEST_EXT = ".hs"
 TEST_TEMPLATE = """
 {{-# LANGUAGE CPP #-}}
 module {name} where
 #include "util.inl"
-import {library}
 
 main :: TestEnv -> IO ()
 main _t = do
@@ -84,7 +82,7 @@ def add(name):
                          .format(program, filename))
         sys.exit(1)
     with open(filename, "wb") as file:
-        file.write(TEST_TEMPLATE.format(name=name, library=LIBRARY)
+        file.write(TEST_TEMPLATE.format(name=name)
                    .encode("utf8"))
     update()
     print("{0}: test added: {1}".format(program, filename))

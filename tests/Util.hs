@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns #-}
+-- | A rudimentary testing framework
 module Util where
 import Prelude ()
 import System.Directory.Internal.Prelude

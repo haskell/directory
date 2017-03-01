@@ -1,12 +1,28 @@
 Changelog for the [`directory`][1] package
 ==========================================
 
-## 1.3.0.3 (March 2017)
+## 1.3.1.0 (March 2017)
 
   * `findFile` (and similar functions): when an absolute path is given, the
     list of search directories is now completely ignored.  Previously, if the
     list was empty, `findFile` would always fail.
     ([#72](https://github.com/haskell/directory/issues/72))
+
+  * For symbolic links on Windows, the following functions had previously
+    interpreted paths as referring to the links themselves rather than their
+    targets.  This was inconsistent with other platforms and has been fixed.
+      * `getFileSize`
+      * `doesPathExist`
+      * `doesDirectoryExist`
+      * `doesFileExist`
+
+  * Fix incorrect location info in errors from `pathIsSymbolicLink`.
+
+  * Add functions for symbolic link manipulation:
+      * `createFileLink`
+      * `createDirectoryLink`
+      * `removeDirectoryLink`
+      * `getSymbolicLinkTarget`
 
 ## 1.3.0.2 (February 2017)
 

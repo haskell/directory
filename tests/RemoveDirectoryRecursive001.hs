@@ -26,9 +26,9 @@ main _t = do
   createDirectoryIfMissing True (tmp "c")
   writeFile (tmp "a/x/w/u") "foo"
   writeFile (tmp "a/t")     "bar"
-  tryCreateSymbolicLink (normalise "../a") (tmp "b/g")
-  tryCreateSymbolicLink (normalise "../b") (tmp "c/h")
-  tryCreateSymbolicLink (normalise "a")    (tmp "d")
+  symlinkOrCopy (normalise "../a") (tmp "b/g")
+  symlinkOrCopy (normalise "../b") (tmp "c/h")
+  symlinkOrCopy (normalise "a")    (tmp "d")
   modifyPermissions (tmp "c") (\ p -> p { writable = False })
 
   ------------------------------------------------------------

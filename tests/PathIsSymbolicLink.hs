@@ -5,14 +5,29 @@ import TestUtils
 
 main :: TestEnv -> IO ()
 main _t = do
-  success <- (createSymbolicLink "x" "y" >> return True)
-#ifdef mingw32_HOST_OS
-    -- only test if symbolic links can be created
-    -- (usually disabled on Windows by group policy)
-    `catchIOError` \ e ->
-      if isPermissionError e
-      then return False
-      else ioError e
-#endif
-  when success $
+  supportsSymbolicLinks <- supportsSymlinks
+  when supportsSymbolicLinks $ do
+
+    createFileLink "x" "y"
+    createDirectoryLink "a" "b"
+
     T(expect) () =<< pathIsSymbolicLink "y"
+    T(expect) () =<< pathIsSymbolicLink "b"
+    T(expectEq) () "x" =<< getSymbolicLinkTarget "y"
+    T(expectEq) () "a" =<< getSymbolicLinkTarget "b"
+    T(expectEq) () False =<< doesFileExist "y"
+    T(expectEq) () False =<< doesDirectoryExist "b"
+
+    writeFile "x" ""
+    createDirectory "a"
+
+    T(expect) () =<< doesFileExist "y"
+    T(expect) () =<< doesDirectoryExist "b"
+
+    removeFile "y"
+    removeDirectoryLink "b"
+
+    T(expectIOErrorType) () isDoesNotExistError (pathIsSymbolicLink "y")
+    T(expectIOErrorType) () isDoesNotExistError (pathIsSymbolicLink "b")
+    T(expectEq) () False =<< doesFileExist "y"
+    T(expectEq) () False =<< doesDirectoryExist "b"

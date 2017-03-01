@@ -26,7 +26,8 @@ module System.Directory.Internal.Windows where
 #include <System/Directory/Internal/windows.h>
 import Prelude ()
 import System.Directory.Internal.Prelude
-import System.FilePath (isRelative, normalise, splitDirectories)
+import System.FilePath (isPathSeparator, isRelative, normalise,
+                        pathSeparator, splitDirectories)
 import qualified Data.List as List
 import qualified System.Win32 as Win32
 
@@ -258,6 +259,14 @@ readSymbolicLink path = modifyIOError (`ioeSetFileName` path) $ do
       Win32.fILE_SHARE_WRITE
     strip sn = fromMaybe sn (List.stripPrefix "\\??\\" sn)
 
+-- | Normalise the path separators and prepend the @"\\\\?\\"@ prefix if
+-- necessary or possible.
+normaliseSeparators :: FilePath -> FilePath
+normaliseSeparators path
+  | isRelative path = normaliseSep <$> path
+  | otherwise = toExtendedLengthPath path
+  where normaliseSep c = if isPathSeparator c then pathSeparator else c
+
 -- | Add the @"\\\\?\\"@ prefix if necessary or possible.
 -- The path remains unchanged if the prefix is not added.
 toExtendedLengthPath :: FilePath -> FilePath
@@ -309,8 +318,58 @@ getPathNameWith cFunc = do
       r' <- getPathNameWithLen len
       case r' of
         Right s -> pure s
-        Left _ -> ioError (mkIOError OtherError "" Nothing Nothing
+        Left _ -> throwIO (mkIOError OtherError "" Nothing Nothing
                            `ioeSetErrorString` "path changed unexpectedly")
+
+win32_createSymbolicLink :: String -> String -> Bool -> IO ()
+win32_createSymbolicLink link _target _isDir =
+#ifdef HAVE_CREATESYMBOLICLINKW
+  withCWString link $ \ pLink ->
+  withCWString _target $ \ pTarget -> do
+    let flags = if _isDir then win32_sYMBOLIC_LINK_FLAG_DIRECTORY else 0
+    status <- c_CreateSymbolicLink pLink pTarget flags
+    if status == 0
+      then do
+        e <- Win32.getLastError
+        case () of
+          _ | e == win32_eRROR_INVALID_FUNCTION -> do
+                let msg = "Incorrect function. The underlying file system " <>
+                          "might not support symbolic links."
+                throwIO (mkIOError illegalOperationErrorType
+                                   "CreateSymbolicLink" Nothing (Just link)
+                         `ioeSetErrorString` msg)
+            | e == win32_eRROR_PRIVILEGE_NOT_HELD -> do
+                let msg = "A required privilege is not held by the client. " <>
+                          "Creating symbolic links usually requires " <>
+                          "administrative rights."
+                throwIO (mkIOError permissionErrorType "CreateSymbolicLink"
+                                   Nothing (Just link)
+                         `ioeSetErrorString` msg)
+            | otherwise -> Win32.failWith "CreateSymbolicLink" e
+      else return ()
+  where
+
+win32_eRROR_PRIVILEGE_NOT_HELD :: Win32.ErrCode
+win32_eRROR_PRIVILEGE_NOT_HELD = 0x522
+
+win32_sYMBOLIC_LINK_FLAG_DIRECTORY :: Win32.DWORD
+win32_sYMBOLIC_LINK_FLAG_DIRECTORY = 0x1
+
+foreign import WINAPI unsafe "windows.h CreateSymbolicLinkW"
+  c_CreateSymbolicLink
+    :: Ptr CWchar -> Ptr CWchar -> Win32.DWORD -> IO Win32.BYTE
+
+#else
+  throwIO . (`ioeSetErrorString` unsupportedErrorMsg) $
+               mkIOError UnsupportedOperation "CreateSymbolicLink"
+                         Nothing (Just link)
+  where unsupportedErrorMsg = "Not supported on Windows XP or older"
+#endif
+
+createSymbolicLink :: Bool -> String -> String -> IO ()
+createSymbolicLink isDir target link = do
+  -- toExtendedLengthPath ensures the target gets normalised properly
+  win32_createSymbolicLink link (normaliseSeparators target) isDir
 
 foreign import ccall unsafe "_wchmod"
   c_wchmod :: CWString -> CMode -> IO CInt
