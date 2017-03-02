@@ -1,12 +1,3 @@
-
--- |
--- Stability: unstable
--- Portability: unportable
---
--- Internal modules are always subject to change from version to version.
--- Since this is a platform-specific module, the contents shown in the Hackage
--- documentation may differ from what is actually available on your system.
-
 module System.Directory.Internal.Posix where
 #include <HsDirectoryConfig.h>
 #ifndef mingw32_HOST_OS

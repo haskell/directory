@@ -4,6 +4,9 @@
 -- Portability: unportable
 --
 -- Internal modules are always subject to change from version to version.
+-- The contents of this module are also platform-dependent, hence what is
+-- shown in the Hackage documentation may differ from what is actually
+-- available on your system.
 
 #include <HsDirectoryConfig.h>
 

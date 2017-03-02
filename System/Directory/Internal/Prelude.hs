@@ -1,7 +1,7 @@
 {-# LANGUAGE CPP #-}
 -- |
 -- Stability: unstable
--- Portability: unportable
+-- Portability: portable
 --
 -- Internal modules are always subject to change from version to version.
 
