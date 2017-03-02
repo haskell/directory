@@ -81,10 +81,18 @@ main _t = do
     T(expectEq) () bar =<< canonicalizePath "lfoo/bar"
     T(expectEq) () barQux =<< canonicalizePath "lfoo/bar/qux"
 
-    -- FIXME: uncomment this test once #64 is fixed
-    -- createSymbolicLink "../foo/non-existent" "foo/qux"
-    -- qux <- canonicalizePath "foo/qux"
-    -- T(expectEq) () qux (dot </> "../foo/non-existent")
+    -- regression test for #64
+    createFileLink "../foo/non-existent" "foo/qux"
+    qux <- canonicalizePath "foo/qux"
+    T(expectEq) () qux =<< canonicalizePath "foo/non-existent"
+
+    -- make sure it can handle loops
+    createFileLink "loop1" "loop2"
+    createFileLink "loop2" "loop1"
+    loop1 <- canonicalizePath "loop1"
+    loop2 <- canonicalizePath "loop2"
+    T(expectEq) () loop1 (normalise (dot </> "loop1"))
+    T(expectEq) () loop2 (normalise (dot </> "loop2"))
 
   caseInsensitive <-
     (False <$ createDirectory "FOO")

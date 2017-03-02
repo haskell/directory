@@ -1008,12 +1008,13 @@ copyFileTimesFromStatus st dst = do
 -- working directory.
 --
 -- Indirections include the two special directories @.@ and @..@, as well as
--- any symbolic links.  The input path need not point to an existing file or
--- directory.  Canonicalization is performed on the longest prefix of the path
--- that points to an existing file or directory.  The remaining portion of the
--- path that does not point to an existing file or directory will still
--- undergo 'normalise', but case canonicalization and indirection removal are
--- skipped as they are impossible to do on a nonexistent path.
+-- any symbolic links (and junction points on Windows).  The input path need
+-- not point to an existing file or directory.  Canonicalization is performed
+-- on the longest prefix of the path that points to an existing file or
+-- directory.  The remaining portion of the path that does not point to an
+-- existing file or directory will still undergo 'normalise', but case
+-- canonicalization and indirection removal are skipped as they are impossible
+-- to do on a nonexistent path.
 --
 -- Most programs should not worry about the canonicity of a path.  In
 -- particular, despite the name, the function does not truly guarantee
@@ -1027,11 +1028,11 @@ copyFileTimesFromStatus st dst = do
 -- The results can be utterly wrong if the portions of the path change while
 -- this function is running.
 --
--- Since symbolic links (and, on non-Windows systems, parent directories @..@)
--- are dependent on the state of the existing filesystem, the function can
--- only make a conservative attempt by removing such indirections from the
--- longest prefix of the path that still points to an existing file or
--- directory.
+-- Since some indirections (symbolic links on all systems, @..@ on non-Windows
+-- systems, and junction points on Windows) are dependent on the state of the
+-- existing filesystem, the function can only make a conservative attempt by
+-- removing such indirections from the longest prefix of the path that still
+-- points to an existing file or directory.
 --
 -- Note that on Windows parent directories @..@ are always fully expanded
 -- before the symbolic links, as consistent with the rest of the Windows API
@@ -1044,10 +1045,13 @@ copyFileTimesFromStatus st dst = do
 -- Similar to 'normalise', passing an empty path is equivalent to passing the
 -- current directory.
 --
--- /Known bugs/: When the path contains an existing symbolic link, but the
--- target of the link does not exist, then the path is not dereferenced (bug
--- #64).  Symbolic link expansion is not performed on Windows XP or earlier
--- due to the absence of @GetFinalPathNameByHandle@.
+-- @canonicalizePath@ can resolve at least 64 indirections in a single path,
+-- more than what is supported by most operating systems.  Therefore, it may
+-- return the fully resolved path even though the operating system itself
+-- would have long given up.
+--
+-- On Windows XP or earlier systems, junction expansion is not performed due
+-- to their lack of @GetFinalPathNameByHandle@.
 --
 -- /Changes since 1.2.3.0:/ The function has been altered to be more robust
 -- and has the same exception behavior as 'makeAbsolute'.
@@ -1067,9 +1071,12 @@ canonicalizePath = \ path ->
   where
 
 #if defined(mingw32_HOST_OS)
-    transform path =
-      attemptRealpath getFinalPathName =<<
-        (Win32.getFullPathName path `catchIOError` \ _ -> return path)
+    transform = attemptRealpath getFinalPathName
+
+    simplify path =
+      Win32.getFullPathName path
+        `catchIOError` \ _ ->
+          return path
 #else
     transform path = do
       encoding <- getFileSystemEncoding
@@ -1077,22 +1084,67 @@ canonicalizePath = \ path ->
             GHC.withCString encoding path'
               (`withRealpath` GHC.peekCString encoding)
       attemptRealpath realpath path
+
+    simplify = return
 #endif
 
-    attemptRealpath realpath path =
-      realpathPrefix realpath (reverse (zip prefixes suffixes)) path
-      where segments = splitDirectories path
-            prefixes = scanl1 (</>) segments
-            suffixes = tail (scanr (</>) "" segments)
+    -- allow up to 64 cycles before giving up
+    attemptRealpath realpath =
+      attemptRealpathWith (64 :: Int) Nothing realpath <=< simplify
 
-    -- call realpath on the largest possible prefix
-    realpathPrefix realpath ((prefix, suffix) : rest) path = do
-      exist <- doesPathExist prefix
-      if exist -- never call realpath on an inaccessible path
-        then ((</> suffix) <$> realpath prefix)
-             `catchIOError` \ _ -> realpathPrefix realpath rest path
-        else realpathPrefix realpath rest path
-    realpathPrefix _ _ path = return path
+    -- n is a counter to make sure we don't run into an infinite loop; we
+    -- don't try to do any cycle detection here because an adversary could DoS
+    -- any arbitrarily clever algorithm
+    attemptRealpathWith n mFallback realpath path =
+      case mFallback of
+        -- too many indirections ... giving up.
+        Just fallback | n <= 0 -> return fallback
+        -- either mFallback == Nothing (first attempt)
+        --     or n > 0 (still have some attempts left)
+        _ -> realpathPrefix (reverse (zip prefixes suffixes))
+
+      where
+
+        segments = splitDirectories path
+        prefixes = scanl1 (</>) segments
+        suffixes = tail (scanr (</>) "" segments)
+
+        -- try to call realpath on the largest possible prefix
+        realpathPrefix candidates =
+          case candidates of
+            [] -> return path
+            (prefix, suffix) : rest -> do
+              exist <- doesPathExist prefix
+              if not exist
+                -- never call realpath on an inaccessible path
+                -- (to avoid bugs in system realpath implementations)
+                -- try a smaller prefix instead
+                then realpathPrefix rest
+                else do
+                  mp <- tryIOError (realpath prefix)
+                  case mp of
+                    -- realpath failed: try a smaller prefix instead
+                    Left _ -> realpathPrefix rest
+                    -- realpath succeeded: fine-tune the result
+                    Right p -> realpathFurther (p </> suffix) p suffix
+
+        -- by now we have a reasonable fallback value that we can use if we
+        -- run into too many indirections; the fallback value is the same
+        -- result that we have been returning in versions prior to 1.3.1.0
+        -- (this is essentially the fix to #64)
+        realpathFurther fallback p suffix =
+          case splitDirectories suffix of
+            [] -> return fallback
+            next : restSuffix -> do
+              -- see if the 'next' segment is a symlink
+              mTarget <- tryIOError (getSymbolicLinkTarget (p </> next))
+              case mTarget of
+                Left _ -> return fallback
+                Right target -> do
+                  -- if so, dereference it and restart the whole cycle
+                  let mFallback' = Just (fromMaybe fallback mFallback)
+                  path' <- simplify (p </> target </> joinPath restSuffix)
+                  attemptRealpathWith (n - 1) mFallback' realpath path'
 
 -- | Convert a path into an absolute path.  If the given path is relative, the
 -- current directory is prepended and then the combined result is

@@ -24,6 +24,9 @@ Changelog for the [`directory`][1] package
       * `removeDirectoryLink`
       * `getSymbolicLinkTarget`
 
+  * `canonicalizePath` can now resolve broken symbolic links too.
+    ([#64](https://github.com/haskell/directory/issues/64))
+
 ## 1.3.0.2 (February 2017)
 
   * [optimization] Increase internal buffer size of `copyFile`
