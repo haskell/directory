@@ -81,10 +81,18 @@ main _t = do
     T(expectEq) () bar =<< canonicalizePath "lfoo/bar"
     T(expectEq) () barQux =<< canonicalizePath "lfoo/bar/qux"
 
+    -- create a haphazard chain of links
+    createDirectoryLink "./../foo/../foo/." "./foo/./somelink3"
+    createDirectoryLink ".././foo/somelink3" "foo/somelink2"
+    createDirectoryLink "./foo/somelink2" "somelink"
+    T(expectEq) () foo =<< canonicalizePath "somelink"
+
     -- regression test for #64
     createFileLink "../foo/non-existent" "foo/qux"
+    removeDirectoryLink "foo/somelink3" -- break the chain made earlier
     qux <- canonicalizePath "foo/qux"
     T(expectEq) () qux =<< canonicalizePath "foo/non-existent"
+    T(expectEq) () (foo </> "somelink3") =<< canonicalizePath "somelink"
 
     -- make sure it can handle loops
     createFileLink "loop1" "loop2"
