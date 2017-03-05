@@ -64,6 +64,11 @@ main _t = do
   T(expectEq) () fooNon fooNon7
   T(expectEq) () fooNon fooNon8
 
+  -- make sure ".." gets expanded properly by 'toExtendedLengthPath'
+  -- (turns out this test won't detect the problem because GetFullPathName
+  -- would expand them for us if we don't, but leaving it here anyway)
+  T(expectEq) () foo =<< canonicalizePath (foo </> ".." </> "foo")
+
   supportsSymbolicLinks <- supportsSymlinks
   when supportsSymbolicLinks $ do
 
@@ -101,6 +106,11 @@ main _t = do
     loop2 <- canonicalizePath "loop2"
     T(expectEq) () loop1 (normalise (dot </> "loop1"))
     T(expectEq) () loop2 (normalise (dot </> "loop2"))
+
+    -- make sure ".." gets expanded properly by 'toExtendedLengthPath'
+    createDirectoryLink (foo </> ".." </> "foo") "foolink"
+    _ <- listDirectory "foolink" -- make sure directory is accessible
+    T(expectEq) () foo =<< canonicalizePath "foolink"
 
   caseInsensitive <-
     (False <$ createDirectory "FOO")

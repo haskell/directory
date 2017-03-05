@@ -18,8 +18,10 @@ module System.Directory.Internal.Windows where
 #include <System/Directory/Internal/windows.h>
 import Prelude ()
 import System.Directory.Internal.Prelude
-import System.FilePath (isPathSeparator, isRelative, normalise,
-                        pathSeparator, splitDirectories)
+import System.FilePath (addTrailingPathSeparator, hasTrailingPathSeparator,
+                        isPathSeparator, isRelative, joinDrive, joinPath,
+                        normalise, pathSeparator, pathSeparators,
+                        splitDirectories, splitDrive)
 import qualified Data.List as List
 import qualified System.Win32 as Win32
 
@@ -251,25 +253,72 @@ readSymbolicLink path = modifyIOError (`ioeSetFileName` path) $ do
       Win32.fILE_SHARE_WRITE
     strip sn = fromMaybe sn (List.stripPrefix "\\??\\" sn)
 
+-- | Given a list of path segments, expand @.@ and @..@.  The path segments
+-- must not contain path separators.
+expandDots :: [FilePath] -> [FilePath]
+expandDots = reverse . go []
+  where
+    go ys' xs' =
+      case xs' of
+        [] -> ys'
+        x : xs ->
+          case x of
+            "." -> go ys' xs
+            ".." ->
+              case ys' of
+                _ : ys -> go ys xs
+                [] -> go (x : ys') xs
+            _ -> go (x : ys') xs
+
+-- | Remove redundant trailing slashes and pick the right kind of slash.
+normaliseTrailingSep :: FilePath -> FilePath
+normaliseTrailingSep path = do
+  let path' = reverse path
+  let (sep, path'') = span isPathSeparator path'
+  let addSep = if null sep then id else (pathSeparator :)
+  reverse (addSep path'')
+
+-- | A variant of 'normalise' to handle Windows paths a little better.  It
+--
+-- * deduplicates trailing slashes after the drive,
+-- * expands parent dirs (@..@), and
+-- * preserves paths with @\\\\?\\@.
+normaliseW :: FilePath -> FilePath
+normaliseW path@('\\' : '\\' : '?' : '\\' : _) = path
+normaliseW path = normalise (joinDrive drive' subpath')
+  where
+    (drive, subpath) = splitDrive path
+    drive' = normaliseTrailingSep drive
+    subpath' = appendSep . prependSep . joinPath .
+               stripPardirs . expandDots . skipSeps .
+               splitDirectories $ subpath
+
+    skipSeps = filter (not . (`elem` (pure <$> pathSeparators)))
+    stripPardirs | not (isRelative path) = dropWhile (== "..")
+                 | otherwise = id
+    prependSep | any isPathSeparator (take 1 subpath) = (pathSeparator :)
+               | otherwise = id
+    appendSep | hasTrailingPathSeparator subpath = addTrailingPathSeparator
+              | otherwise = id
+
 -- | Normalise the path separators and prepend the @"\\\\?\\"@ prefix if
--- necessary or possible.
+-- necessary or possible.  This is used for symbolic links targets because
+-- they can't handle forward slashes.
 normaliseSeparators :: FilePath -> FilePath
 normaliseSeparators path
   | isRelative path = normaliseSep <$> path
   | otherwise = toExtendedLengthPath path
   where normaliseSep c = if isPathSeparator c then pathSeparator else c
 
--- | Add the @"\\\\?\\"@ prefix if necessary or possible.
--- The path remains unchanged if the prefix is not added.
+-- | Add the @"\\\\?\\"@ prefix if necessary or possible.  The path remains
+-- unchanged if the prefix is not added.  This function can sometimes be used
+-- to bypass the @MAX_PATH@ length restriction in Windows API calls.
 toExtendedLengthPath :: FilePath -> FilePath
 toExtendedLengthPath path
   | isRelative path = path
   | otherwise =
-      case normalise path of
-        -- note: as of filepath-1.4.1.0 normalise doesn't honor \\?\
-        -- https://github.com/haskell/filepath/issues/56
-        -- this means we cannot trust the result of normalise on
-        -- paths that start with \\?\
+      case normaliseW path of
+        '\\' : '?'  : '?' : '\\' : _ -> path
         '\\' : '\\' : '?' : '\\' : _ -> path
         '\\' : '\\' : '.' : '\\' : _ -> path
         '\\' : subpath@('\\' : _) -> "\\\\?\\UNC" <> subpath
