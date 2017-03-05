@@ -11,12 +11,12 @@
 #include <HsDirectoryConfig.h>
 
 module System.Directory.Internal
-  (
+  ( module System.Directory.Internal.Common
 
 #ifdef mingw32_HOST_OS
-    module System.Directory.Internal.Windows
+  , module System.Directory.Internal.Windows
 #else
-    module System.Directory.Internal.Posix
+  , module System.Directory.Internal.Posix
 #endif
 
 #ifdef HAVE_UTIMENSAT
@@ -25,12 +25,14 @@ module System.Directory.Internal
 
   ) where
 
-#ifdef HAVE_UTIMENSAT
-import System.Directory.Internal.C_utimensat
-#endif
+import System.Directory.Internal.Common
 
 #ifdef mingw32_HOST_OS
 import System.Directory.Internal.Windows
 #else
 import System.Directory.Internal.Posix
+#endif
+
+#ifdef HAVE_UTIMENSAT
+import System.Directory.Internal.C_utimensat
 #endif

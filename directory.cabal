@@ -47,6 +47,7 @@ Library
         System.Directory.Internal.Prelude
     other-modules:
         System.Directory.Internal.C_utimensat
+        System.Directory.Internal.Common
         System.Directory.Internal.Config
         System.Directory.Internal.Posix
         System.Directory.Internal.Windows

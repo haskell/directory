@@ -18,6 +18,7 @@ module System.Directory.Internal.Windows where
 #include <System/Directory/Internal/windows.h>
 import Prelude ()
 import System.Directory.Internal.Prelude
+import System.Directory.Internal.Common
 import System.FilePath (addTrailingPathSeparator, hasTrailingPathSeparator,
                         isPathSeparator, isRelative, joinDrive, joinPath,
                         normalise, pathSeparator, pathSeparators,
@@ -44,6 +45,12 @@ win32_fILE_SHARE_DELETE = Win32.fILE_SHARE_DELETE -- added in 2.3.0.2
 #else
 win32_fILE_SHARE_DELETE = (#const FILE_SHARE_DELETE)
 #endif
+
+maxShareMode :: Win32.ShareMode
+maxShareMode =
+  win32_fILE_SHARE_DELETE .|.
+  Win32.fILE_SHARE_READ   .|.
+  Win32.fILE_SHARE_WRITE
 
 win32_getLongPathName, win32_getShortPathName :: FilePath -> IO FilePath
 #if MIN_VERSION_Win32(2, 4, 0)
@@ -104,14 +111,10 @@ getFinalPathName =
   where
 #ifdef HAVE_GETFINALPATHNAMEBYHANDLEW
     rawGetFinalPathName path = do
-      let open = Win32.createFile path 0 shareMode Nothing
+      let open = Win32.createFile path 0 maxShareMode Nothing
                  Win32.oPEN_EXISTING Win32.fILE_FLAG_BACKUP_SEMANTICS Nothing
       bracket open Win32.closeHandle $ \ h -> do
         win32_getFinalPathNameByHandle h 0
-    shareMode =
-      win32_fILE_SHARE_DELETE .|.
-      Win32.fILE_SHARE_READ   .|.
-      Win32.fILE_SHARE_WRITE
 #else
     rawGetFinalPathName = win32_getLongPathName <=< win32_getShortPathName
 #endif
@@ -224,9 +227,9 @@ foreign import WINAPI unsafe "windows.h DeviceIoControl"
 readSymbolicLink :: FilePath -> IO FilePath
 readSymbolicLink path = modifyIOError (`ioeSetFileName` path) $ do
   let open = Win32.createFile (toExtendedLengthPath path)
-                               0 shareMode Nothing Win32.oPEN_EXISTING
-                               (Win32.fILE_FLAG_BACKUP_SEMANTICS .|.
-                               win32_fILE_FLAG_OPEN_REPARSE_POINT) Nothing
+                              0 maxShareMode Nothing Win32.oPEN_EXISTING
+                              (Win32.fILE_FLAG_BACKUP_SEMANTICS .|.
+                              win32_fILE_FLAG_OPEN_REPARSE_POINT) Nothing
   bracket open Win32.closeHandle $ \ h -> do
     win32_alloca_REPARSE_DATA_BUFFER $ \ ptrAndSize@(ptr, _) -> do
       result <- deviceIoControl h win32_fSCTL_GET_REPARSE_POINT
@@ -247,10 +250,6 @@ readSymbolicLink path = modifyIOError (`ioeSetFileName` path) $ do
         _ -> throwIO (mkIOError InappropriateType
                                 "readSymbolicLink" Nothing Nothing)
   where
-    shareMode =
-      win32_fILE_SHARE_DELETE .|.
-      Win32.fILE_SHARE_READ   .|.
-      Win32.fILE_SHARE_WRITE
     strip sn = fromMaybe sn (List.stripPrefix "\\??\\" sn)
 
 -- | Given a list of path segments, expand @.@ and @..@.  The path segments
@@ -414,6 +413,40 @@ createSymbolicLink isDir target link =
     win32_createSymbolicLink (toExtendedLengthPath link)
                              (normaliseSeparators target)
                              isDir
+
+type Metadata = Win32.BY_HANDLE_FILE_INFORMATION
+
+getSymbolicLinkMetadata :: FilePath -> IO Metadata
+getSymbolicLinkMetadata path =
+  (`ioeSetFileName` path) `modifyIOError` do
+    let open = Win32.createFile (toExtendedLengthPath path) 0 maxShareMode
+                                Nothing Win32.oPEN_EXISTING
+                                (Win32.fILE_FLAG_BACKUP_SEMANTICS .|.
+                                 win32_fILE_FLAG_OPEN_REPARSE_POINT) Nothing
+    bracket open Win32.closeHandle $ \ h -> do
+      Win32.getFileInformationByHandle h
+
+getFileMetadata :: FilePath -> IO Metadata
+getFileMetadata path =
+  (`ioeSetFileName` path) `modifyIOError` do
+    let open = Win32.createFile (toExtendedLengthPath path) 0 maxShareMode
+                                Nothing Win32.oPEN_EXISTING
+                                Win32.fILE_FLAG_BACKUP_SEMANTICS Nothing
+    bracket open Win32.closeHandle $ \ h -> do
+      Win32.getFileInformationByHandle h
+
+fileTypeFromMetadata :: Metadata -> FileType
+fileTypeFromMetadata info
+  | isLink    = if isDir then DirectoryLink else SymbolicLink
+  | isDir     = Directory
+  | otherwise = File
+  where
+    isLink = attrs .&. win32_fILE_ATTRIBUTE_REPARSE_POINT /= 0
+    isDir  = attrs .&. Win32.fILE_ATTRIBUTE_DIRECTORY /= 0
+    attrs  = Win32.bhfiFileAttributes info
+
+fileSizeFromMetadata :: Metadata -> Integer
+fileSizeFromMetadata = fromIntegral . Win32.bhfiSize
 
 foreign import ccall unsafe "_wchmod"
   c_wchmod :: CWString -> CMode -> IO CInt

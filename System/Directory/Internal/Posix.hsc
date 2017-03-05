@@ -6,6 +6,8 @@ module System.Directory.Internal.Posix where
 #endif
 import Prelude ()
 import System.Directory.Internal.Prelude
+import System.Directory.Internal.Common
+import qualified System.Posix as Posix
 
 -- we use the 'free' from the standard library here since it's not entirely
 -- clear whether Haskell's 'free' corresponds to the same one
@@ -34,5 +36,25 @@ withRealpath path action = case c_PATH_MAX of
     -- allocate one extra just to be safe
     allocaBytes (pathMax + 1) (realpath >=> action)
   where realpath = throwErrnoIfNull "" . c_realpath path
+
+type Metadata = Posix.FileStatus
+
+getSymbolicLinkMetadata :: FilePath -> IO Metadata
+getSymbolicLinkMetadata = Posix.getSymbolicLinkStatus
+
+getFileMetadata :: FilePath -> IO Metadata
+getFileMetadata = Posix.getFileStatus
+
+fileTypeFromMetadata :: Metadata -> FileType
+fileTypeFromMetadata stat
+  | isLink    = SymbolicLink
+  | isDir     = Directory
+  | otherwise = File
+  where
+    isLink = Posix.isSymbolicLink stat
+    isDir  = Posix.isDirectory stat
+
+fileSizeFromMetadata :: Metadata -> Integer
+fileSizeFromMetadata = fromIntegral . Posix.fileSize
 
 #endif

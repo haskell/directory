@@ -422,45 +422,12 @@ createDirectoryIfMissing create_parents path0
           -- directory.
           | isAlreadyExistsError e
          || isPermissionError    e -> do
-              canIgnore <- isDir `catchIOError` \ _ ->
-                           return (isAlreadyExistsError e)
+              canIgnore <- pathIsDirectory dir
+                             `catchIOError` \ _ ->
+                               return (isAlreadyExistsError e)
               unless canIgnore (ioError e)
           | otherwise              -> ioError e
-      where
-#ifdef mingw32_HOST_OS
-        isDir = withFileStatus "createDirectoryIfMissing" dir isDirectory
-#else
-        isDir = (Posix.isDirectory <$> Posix.getFileStatus dir)
-#endif
 
--- | * @'NotDirectory'@:   not a directory.
---   * @'Directory'@:      a true directory (not a symbolic link).
---   * @'DirectoryLink'@:  a directory symbolic link (only exists on Windows).
-data DirectoryType = NotDirectory
-                   | Directory
-                   | DirectoryLink
-                   deriving (Enum, Eq, Ord, Read, Show)
-
--- | Obtain the type of a directory.
-getDirectoryType :: FilePath -> IO DirectoryType
-getDirectoryType path =
-  (`ioeAddLocation` "getDirectoryType") `modifyIOError` do
-#ifdef mingw32_HOST_OS
-    isDir <- withSymbolicLinkStatus "getDirectoryType" path isDirectory
-    if isDir
-      then do
-        isLink <- pathIsSymbolicLink path
-        if isLink
-          then return DirectoryLink
-          else return Directory
-      else do
-        return NotDirectory
-#else
-    stat <- Posix.getSymbolicLinkStatus path
-    return $ if Posix.isDirectory stat
-             then Directory
-             else NotDirectory
-#endif
 
 {- | @'removeDirectory' dir@ removes an existing directory /dir/.  The
 implementation may specify additional constraints which must be
@@ -520,13 +487,13 @@ removeDirectory path =
 removeDirectoryRecursive :: FilePath -> IO ()
 removeDirectoryRecursive path =
   (`ioeAddLocation` "removeDirectoryRecursive") `modifyIOError` do
-    dirType <- getDirectoryType path
-    case dirType of
+    m <- getSymbolicLinkMetadata path
+    case fileTypeFromMetadata m of
       Directory ->
         removeContentsRecursive path
       DirectoryLink ->
         ioError (err `ioeSetErrorString` "is a directory symbolic link")
-      NotDirectory ->
+      _ ->
         ioError (err `ioeSetErrorString` "not a directory")
   where err = mkIOError InappropriateType "" Nothing (Just path)
 
@@ -536,11 +503,11 @@ removeDirectoryRecursive path =
 removePathRecursive :: FilePath -> IO ()
 removePathRecursive path =
   (`ioeAddLocation` "removePathRecursive") `modifyIOError` do
-    dirType <- getDirectoryType path
-    case dirType of
-      NotDirectory  -> removeFile path
+    m <- getSymbolicLinkMetadata path
+    case fileTypeFromMetadata m of
       Directory     -> removeContentsRecursive path
       DirectoryLink -> removeDirectory path
+      _             -> removeFile path
 
 -- | @'removeContentsRecursive' dir@ removes the contents of the directory
 -- /dir/ recursively. Symbolic links are removed without affecting their the
@@ -575,15 +542,15 @@ removePathForcibly path =
   (`ioeAddLocation` "removePathForcibly") `modifyIOError` do
     makeRemovable path `catchIOError` \ _ -> return ()
     ignoreDoesNotExistError $ do
-      dirType <- getDirectoryType path
-      case dirType of
-        NotDirectory  -> removeFile path
+      m <- getSymbolicLinkMetadata path
+      case fileTypeFromMetadata m of
         DirectoryLink -> removeDirectory path
         Directory     -> do
           names <- listDirectory path
           sequenceWithIOErrors_ $
             [ removePathForcibly (path </> name) | name <- names ] ++
             [ removeDirectory path ]
+        _             -> removeFile path
   where
 
     ignoreDoesNotExistError :: IO () -> IO ()
@@ -709,20 +676,13 @@ Either path refers to an existing non-directory object.
 
 renameDirectory :: FilePath -> FilePath -> IO ()
 renameDirectory opath npath =
-   -- XXX this test isn't performed atomically with the following rename
-#ifdef mingw32_HOST_OS
-   -- ToDo: use Win32 API
-   withFileStatus "renameDirectory" opath $ \st -> do
-   is_dir <- isDirectory st
-#else
-   do
-   stat <- Posix.getFileStatus opath
-   let is_dir = Posix.fileMode stat .&. Posix.directoryMode /= 0
-#endif
-   when (not is_dir) $ do
-     ioError . (`ioeSetErrorString` "not a directory") $
-       (mkIOError InappropriateType "renameDirectory" Nothing (Just opath))
-   renamePath opath npath
+   (`ioeAddLocation` "renameDirectory") `modifyIOError` do
+     -- XXX this test isn't performed atomically with the following rename
+     isDir <- pathIsDirectory opath
+     when (not isDir) $ do
+       ioError . (`ioeSetErrorString` "not a directory") $
+         (mkIOError InappropriateType "renameDirectory" Nothing (Just opath))
+     renamePath opath npath
 
 {- |@'renameFile' old new@ changes the name of an existing file system
 object from /old/ to /new/.  If the /new/ object already
@@ -783,12 +743,11 @@ renameFile opath npath = (`ioeAddLocation` "renameFile") `modifyIOError` do
        checkNotDir npath
        ioError err
    where checkNotDir path = do
-           dirType <- getDirectoryType path
-                      `catchIOError` \ _ -> return NotDirectory
-           case dirType of
-             Directory     -> errIsDir path
-             DirectoryLink -> errIsDir path
-             NotDirectory  -> return ()
+           m <- tryIOError (getSymbolicLinkMetadata path)
+           case fileTypeFromMetadata <$> m of
+             Right Directory     -> errIsDir path
+             Right DirectoryLink -> errIsDir path
+             _                   -> return ()
          errIsDir path = ioError . (`ioeSetErrorString` "is a directory") $
                          mkIOError InappropriateType "" Nothing (Just path)
 
@@ -1549,11 +1508,7 @@ withCurrentDirectory dir action =
 getFileSize :: FilePath -> IO Integer
 getFileSize path =
   (`ioeAddLocation` "getFileSize") `modifyIOError` do
-#ifdef mingw32_HOST_OS
-    fromIntegral <$> withFileStatus "" path st_size
-#else
-    fromIntegral . Posix.fileSize <$> Posix.getFileStatus path
-#endif
+    fileSizeFromMetadata <$> getFileMetadata path
 
 -- | Test whether the given path points to an existing filesystem object.  If
 -- the user lacks necessary permissions to search the parent directories, this
@@ -1561,13 +1516,10 @@ getFileSize path =
 --
 -- @since 1.2.7.0
 doesPathExist :: FilePath -> IO Bool
-doesPathExist path =
-#ifdef mingw32_HOST_OS
-  (withFileStatus "" path $ \ _ -> return True)
-#else
-  (Posix.getFileStatus path >> return True)
-#endif
-  `catchIOError` \ _ -> return False
+doesPathExist path = do
+  (True <$ getFileMetadata path)
+    `catchIOError` \ _ ->
+      return False
 
 {- |The operation 'doesDirectoryExist' returns 'True' if the argument file
 exists and is either a directory or a symbolic link to a directory,
@@ -1575,28 +1527,28 @@ and 'False' otherwise.
 -}
 
 doesDirectoryExist :: FilePath -> IO Bool
-doesDirectoryExist name =
-#ifdef mingw32_HOST_OS
-   (withFileStatus "doesDirectoryExist" name $ \st -> isDirectory st)
-#else
-   (do stat <- Posix.getFileStatus name
-       return (Posix.isDirectory stat))
-#endif
-   `catchIOError` \ _ -> return False
+doesDirectoryExist path = do
+  pathIsDirectory path
+    `catchIOError` \ _ ->
+      return False
 
 {- |The operation 'doesFileExist' returns 'True'
 if the argument file exists and is not a directory, and 'False' otherwise.
 -}
 
 doesFileExist :: FilePath -> IO Bool
-doesFileExist name =
-#ifdef mingw32_HOST_OS
-   (withFileStatus "doesFileExist" name $ \st -> do b <- isDirectory st; return (not b))
-#else
-   (do stat <- Posix.getFileStatus name
-       return (not (Posix.isDirectory stat)))
-#endif
-   `catchIOError` \ _ -> return False
+doesFileExist path = do
+  (not <$> pathIsDirectory path)
+    `catchIOError` \ _ ->
+      return False
+
+pathIsDirectory :: FilePath -> IO Bool
+pathIsDirectory path = (`ioeAddLocation` "pathIsDirectory") `modifyIOError` do
+  m <- getFileMetadata path
+  case fileTypeFromMetadata m of
+    Directory     -> return True
+    DirectoryLink -> return True
+    _             -> return False
 
 -- | Create a /file/ symbolic link.  The target path can be either absolute or
 -- relative and need not refer to an existing file.  The order of arguments
@@ -1934,31 +1886,6 @@ windowsToPosixTime (Win32.FILETIME t) =
 posixToWindowsTime :: POSIXTime -> Win32.FILETIME
 posixToWindowsTime t = Win32.FILETIME $
   truncate (t * 10000000 + windowsPosixEpochDifference)
-#endif
-
-#ifdef mingw32_HOST_OS
-withFileStatus :: String -> FilePath -> (Ptr CStat -> IO a) -> IO a
-withFileStatus loc name f =
-  modifyIOError (`ioeSetFileName` name) $ do
-    name' <- getFinalPathName name
-    withSymbolicLinkStatus loc name' f
-
-withSymbolicLinkStatus :: String -> FilePath -> (Ptr CStat -> IO a) -> IO a
-withSymbolicLinkStatus loc name f = do
-  modifyIOError (`ioeSetFileName` name) $ do
-    allocaBytes sizeof_stat $ \p ->
-      withFilePath (fileNameEndClean name) $ \s -> do
-        throwErrnoIfMinus1Retry_ loc (c_stat s p)
-        f p
-
-isDirectory :: Ptr CStat -> IO Bool
-isDirectory stat = do
-  mode <- st_mode stat
-  return (s_isdir mode)
-
-fileNameEndClean :: String -> String
-fileNameEndClean name = if isDrive name then addTrailingPathSeparator name
-                                        else dropTrailingPathSeparator name
 #endif
 
 {- | Returns the current user's home directory.
