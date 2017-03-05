@@ -6,6 +6,16 @@ Changelog for the [`directory`][1] package
   * Fix a bug where `createFileLink` and `createDirectoryLink` failed to
     handle `..` in absolute paths.
 
+  * Improve support (partially) for paths longer than 260 characters on
+    Windows.  To achieve this, many functions will now automatically prepend
+    `\\?\` before calling the Windows API.  Side effects of this change:
+      * After calling `setCurrentDirectory`, calls to the Windows API function
+        `GetCurrentDirectory` will return a path with the `\\?\` prefix.  The
+        Haskell function `getCurrentDirectory` mitigates this problem by
+        automatically stripping the prefix.
+      * The `\\?\` prefix may show up in the error messages of the affected
+        functions.
+
 ## 1.3.1.0 (March 2017)
 
   * `findFile` (and similar functions): when an absolute path is given, the

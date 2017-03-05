@@ -376,7 +376,8 @@ The path refers to an existing non-directory object.
 createDirectory :: FilePath -> IO ()
 createDirectory path = do
 #ifdef mingw32_HOST_OS
-  Win32.createDirectory path Nothing
+  (`ioeSetFileName` path) `modifyIOError` do
+    Win32.createDirectory (toExtendedLengthPath path) Nothing
 #else
   Posix.createDirectory path 0o777
 #endif
@@ -505,7 +506,8 @@ The operand refers to an existing non-directory object.
 removeDirectory :: FilePath -> IO ()
 removeDirectory path =
 #ifdef mingw32_HOST_OS
-  Win32.removeDirectory path
+  (`ioeSetFileName` path) `modifyIOError` do
+    Win32.removeDirectory (toExtendedLengthPath path)
 #else
   Posix.removeDirectory path
 #endif
@@ -650,7 +652,8 @@ The operand refers to an existing directory.
 removeFile :: FilePath -> IO ()
 removeFile path =
 #ifdef mingw32_HOST_OS
-  Win32.deleteFile path
+  (`ioeSetFileName` path) `modifyIOError` do
+    Win32.deleteFile (toExtendedLengthPath path)
 #else
   Posix.removeLink path
 #endif
@@ -836,7 +839,10 @@ renamePath :: FilePath                  -- ^ Old path
            -> IO ()
 renamePath opath npath = (`ioeAddLocation` "renamePath") `modifyIOError` do
 #ifdef mingw32_HOST_OS
-   Win32.moveFileEx opath npath Win32.mOVEFILE_REPLACE_EXISTING
+   (`ioeSetFileName` opath) `modifyIOError` do
+     Win32.moveFileEx (toExtendedLengthPath opath)
+                      (toExtendedLengthPath npath)
+                      Win32.mOVEFILE_REPLACE_EXISTING
 #else
    Posix.rename opath npath
 #endif
@@ -956,7 +962,10 @@ copyFileWithMetadata src dst =
   (`ioeAddLocation` "copyFileWithMetadata") `modifyIOError` doCopy
   where
 #ifdef mingw32_HOST_OS
-    doCopy = Win32.copyFile src dst False
+    doCopy = (`ioeSetFileName` src) `modifyIOError` do
+      Win32.copyFile (toExtendedLengthPath src)
+                     (toExtendedLengthPath dst)
+                     False
 #else
     doCopy = do
       st <- Posix.getFileStatus src
@@ -1074,7 +1083,8 @@ canonicalizePath = \ path ->
     transform = attemptRealpath getFinalPathName
 
     simplify path =
-      Win32.getFullPathName path
+      (fromExtendedLengthPath <$>
+       Win32.getFullPathName (toExtendedLengthPath path))
         `catchIOError` \ _ ->
           return path
 #else
@@ -1381,7 +1391,7 @@ getDirectoryContents path =
           else loop (acc . (e:))
 #else
   bracket
-     (Win32.findFirstFile (path </> "*"))
+     (Win32.findFirstFile (toExtendedLengthPath (path </> "*")))
      (\(h,_) -> Win32.findClose h)
      (\(h,fdat) -> loop h fdat [])
   where
@@ -1469,7 +1479,7 @@ getCurrentDirectory =
     getCwd
   where
 #ifdef mingw32_HOST_OS
-    getCwd = Win32.getCurrentDirectory
+    getCwd = fromExtendedLengthPath <$> Win32.getCurrentDirectory
 #else
     getCwd = Posix.getWorkingDirectory
 #endif
@@ -1508,11 +1518,12 @@ getCurrentDirectory =
 -- @[ENOTDIR]@
 --
 setCurrentDirectory :: FilePath -> IO ()
-setCurrentDirectory =
+setCurrentDirectory path = do
 #ifdef mingw32_HOST_OS
-  Win32.setCurrentDirectory
+  (`ioeSetFileName` path) `modifyIOError` do
+    Win32.setCurrentDirectory (toExtendedLengthPath path)
 #else
-  Posix.changeWorkingDirectory
+  Posix.changeWorkingDirectory path
 #endif
 
 -- | Run an 'IO' action with the given working directory and restore the
@@ -1688,9 +1699,10 @@ removeDirectoryLink path =
 -- @since 1.3.0.0
 pathIsSymbolicLink :: FilePath -> IO Bool
 pathIsSymbolicLink path =
-  (`ioeAddLocation` "pathIsSymbolicLink") `modifyIOError` do
+  ((`ioeAddLocation` "pathIsSymbolicLink") .
+   (`ioeSetFileName` path)) `modifyIOError` do
 #ifdef mingw32_HOST_OS
-    isReparsePoint <$> Win32.getFileAttributes path
+    isReparsePoint <$> Win32.getFileAttributes (toExtendedLengthPath path)
   where
     isReparsePoint attr = attr .&. win32_fILE_ATTRIBUTE_REPARSE_POINT /= 0
 #else
@@ -1726,8 +1738,10 @@ getSymbolicLinkTarget path =
 #ifdef mingw32_HOST_OS
 -- | Open the handle of an existing file or directory.
 openFileHandle :: String -> Win32.AccessMode -> IO Win32.HANDLE
-openFileHandle path mode = Win32.createFile path mode share Nothing
-                                            Win32.oPEN_EXISTING flags Nothing
+openFileHandle path mode =
+  (`ioeSetFileName` path) `modifyIOError` do
+    Win32.createFile (toExtendedLengthPath path) mode share Nothing
+                     Win32.oPEN_EXISTING flags Nothing
   where share =  win32_fILE_SHARE_DELETE
              .|. Win32.fILE_SHARE_READ
              .|. Win32.fILE_SHARE_WRITE

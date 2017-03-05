@@ -407,10 +407,13 @@ foreign import WINAPI unsafe "windows.h CreateSymbolicLinkW"
   where unsupportedErrorMsg = "Not supported on Windows XP or older"
 #endif
 
-createSymbolicLink :: Bool -> String -> String -> IO ()
-createSymbolicLink isDir target link = do
-  -- toExtendedLengthPath ensures the target gets normalised properly
-  win32_createSymbolicLink link (normaliseSeparators target) isDir
+createSymbolicLink :: Bool -> FilePath -> FilePath -> IO ()
+createSymbolicLink isDir target link =
+  (`ioeSetFileName` link) `modifyIOError` do
+    -- normaliseSeparators ensures the target gets normalised properly
+    win32_createSymbolicLink (toExtendedLengthPath link)
+                             (normaliseSeparators target)
+                             isDir
 
 foreign import ccall unsafe "_wchmod"
   c_wchmod :: CWString -> CMode -> IO CInt
