@@ -17,6 +17,7 @@ import qualified GetDirContents002
 import qualified GetFileSize
 import qualified GetHomeDirectory001
 import qualified GetPermissions001
+import qualified LongPaths
 import qualified MakeAbsolute
 import qualified PathIsSymbolicLink
 import qualified RemoveDirectoryRecursive001
@@ -47,6 +48,7 @@ main = T.testMain $ \ _t -> do
   T.isolatedRun _t "GetFileSize" GetFileSize.main
   T.isolatedRun _t "GetHomeDirectory001" GetHomeDirectory001.main
   T.isolatedRun _t "GetPermissions001" GetPermissions001.main
+  T.isolatedRun _t "LongPaths" LongPaths.main
   T.isolatedRun _t "MakeAbsolute" MakeAbsolute.main
   T.isolatedRun _t "PathIsSymbolicLink" PathIsSymbolicLink.main
   T.isolatedRun _t "RemoveDirectoryRecursive001" RemoveDirectoryRecursive001.main

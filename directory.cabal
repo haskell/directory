@@ -98,6 +98,7 @@ test-suite test
         GetFileSize
         GetHomeDirectory001
         GetPermissions001
+        LongPaths
         MakeAbsolute
         PathIsSymbolicLink
         RemoveDirectoryRecursive001
