@@ -1479,8 +1479,9 @@ getCurrentDirectory =
 setCurrentDirectory :: FilePath -> IO ()
 setCurrentDirectory path = do
 #ifdef mingw32_HOST_OS
-  (`ioeSetFileName` path) `modifyIOError` do
-    Win32.setCurrentDirectory (toExtendedLengthPath path)
+  -- SetCurrentDirectory does not support long paths even with the \\?\ prefix
+  -- https://ghc.haskell.org/trac/ghc/ticket/13373#comment:6
+  Win32.setCurrentDirectory path
 #else
   Posix.changeWorkingDirectory path
 #endif
