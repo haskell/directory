@@ -16,6 +16,8 @@ Changelog for the [`directory`][1] package
       * The `\\?\` prefix may show up in the error messages of the affected
         functions.
 
+  * `makeAbsolute` can now handle drive-relative paths on Windows.
+
 ## 1.3.1.0 (March 2017)
 
   * `findFile` (and similar functions): when an absolute path is given, the

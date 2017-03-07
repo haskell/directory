@@ -69,7 +69,7 @@ import Control.Exception
   )
 import Control.Monad ((>=>), (<=<), unless, when, replicateM_)
 import Data.Bits ((.&.), (.|.), complement)
-import Data.Char (isAlpha, isAscii, toLower)
+import Data.Char (isAlpha, isAscii, toLower, toUpper)
 import Data.Foldable (for_, traverse_)
 import Data.Function (on)
 import Data.Maybe (catMaybes, fromMaybe, maybeToList)

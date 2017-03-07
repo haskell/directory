@@ -1074,7 +1074,16 @@ prependCurrentDirectory path =
   modifyIOError ((`ioeAddLocation` "prependCurrentDirectory") .
                  (`ioeSetFileName` path)) $
   if isRelative path -- avoid the call to `getCurrentDirectory` if we can
-  then (</> path) <$> getCurrentDirectory
+  then do
+    cwd <- getCurrentDirectory
+    let curDrive = takeWhile (not . isPathSeparator) (takeDrive cwd)
+    let (drive, subpath) = splitDrive path
+    -- handle drive-relative paths (Windows only)
+    return . (</> subpath) $
+      case drive of
+        _ : _ | (toUpper <$> drive) /= (toUpper <$> curDrive) ->
+                  drive <> [pathSeparator]
+        _ -> cwd
   else return path
 
 -- | Add or remove the trailing path separator in the second path so as to

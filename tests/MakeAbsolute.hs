@@ -3,6 +3,9 @@ module MakeAbsolute where
 #include "util.inl"
 import System.FilePath ((</>), addTrailingPathSeparator,
                         dropTrailingPathSeparator, normalise)
+#ifdef mingw32_HOST_OS
+import System.FilePath (takeDrive)
+#endif
 
 main :: TestEnv -> IO ()
 main _t = do
@@ -31,3 +34,13 @@ main _t = do
   T(expectEq) () sfoo (normalise (dot </> "foo/"))
   T(expectEq) () sfoo sfoo2
   T(expectEq) () sfoo sfoo3
+
+#ifdef mingw32_HOST_OS
+  cwd <- getCurrentDirectory
+  let driveLetter = toUpper (head (takeDrive cwd))
+  let driveLetter' = if driveLetter == 'Z' then 'A' else succ driveLetter
+  drp1 <- makeAbsolute (driveLetter : ":foobar")
+  drp2 <- makeAbsolute (driveLetter' : ":foobar")
+  T(expectEq) () drp1 =<< makeAbsolute "foobar"
+  T(expectEq) () drp2 (driveLetter' : ":\\foobar")
+#endif
