@@ -1,6 +1,7 @@
 {-# LANGUAGE CPP #-}
 module GetPermissions001 where
 #include "util.inl"
+import TestUtils
 
 main :: TestEnv -> IO ()
 main _t = do
@@ -9,6 +10,20 @@ main _t = do
   checkExecutable
   checkOrdinary
   checkTrailingSlash
+
+  -- 'writable' is the only permission that can be changed on Windows
+  writeFile "foo.txt" ""
+  foo <- makeAbsolute "foo.txt"
+  modifyPermissions "foo.txt" (\ p -> p { writable = False })
+  T(expect) () =<< not . writable <$> getPermissions "foo.txt"
+  modifyPermissions "foo.txt" (\ p -> p { writable = True })
+  T(expect) () =<< writable <$> getPermissions "foo.txt"
+  modifyPermissions "foo.txt" (\ p -> p { writable = False })
+  T(expect) () =<< not . writable <$> getPermissions "foo.txt"
+  modifyPermissions foo (\ p -> p { writable = True })
+  T(expect) () =<< writable <$> getPermissions foo
+  modifyPermissions foo (\ p -> p { writable = False })
+  T(expect) () =<< not . writable <$> getPermissions foo
 
   where
 
