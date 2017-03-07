@@ -7,6 +7,9 @@ module System.Directory.Internal.Posix where
 import Prelude ()
 import System.Directory.Internal.Prelude
 import System.Directory.Internal.Common
+import Data.Time (UTCTime)
+import Data.Time.Clock.POSIX (POSIXTime, posixSecondsToUTCTime)
+import System.FilePath (normalise)
 import qualified System.Posix as Posix
 
 -- we use the 'free' from the standard library here since it's not entirely
@@ -39,11 +42,13 @@ withRealpath path action = case c_PATH_MAX of
 
 type Metadata = Posix.FileStatus
 
+-- note: normalise is needed to handle empty paths
+
 getSymbolicLinkMetadata :: FilePath -> IO Metadata
-getSymbolicLinkMetadata = Posix.getSymbolicLinkStatus
+getSymbolicLinkMetadata = Posix.getSymbolicLinkStatus . normalise
 
 getFileMetadata :: FilePath -> IO Metadata
-getFileMetadata = Posix.getFileStatus
+getFileMetadata = Posix.getFileStatus . normalise
 
 fileTypeFromMetadata :: Metadata -> FileType
 fileTypeFromMetadata stat
@@ -56,5 +61,23 @@ fileTypeFromMetadata stat
 
 fileSizeFromMetadata :: Metadata -> Integer
 fileSizeFromMetadata = fromIntegral . Posix.fileSize
+
+accessTimeFromMetadata :: Metadata -> UTCTime
+accessTimeFromMetadata =
+  posixSecondsToUTCTime . posix_accessTimeHiRes
+
+modificationTimeFromMetadata :: Metadata -> UTCTime
+modificationTimeFromMetadata =
+  posixSecondsToUTCTime . posix_modificationTimeHiRes
+
+posix_accessTimeHiRes, posix_modificationTimeHiRes
+  :: Posix.FileStatus -> POSIXTime
+#if MIN_VERSION_unix(2, 6, 0)
+posix_accessTimeHiRes = Posix.accessTimeHiRes
+posix_modificationTimeHiRes = Posix.modificationTimeHiRes
+#else
+posix_accessTimeHiRes = realToFrac . Posix.accessTime
+posix_modificationTimeHiRes = realToFrac . Posix.modificationTime
+#endif
 
 #endif

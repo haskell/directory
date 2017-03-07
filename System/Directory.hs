@@ -114,11 +114,7 @@ import System.Directory.Internal
 import System.Directory.Internal.Prelude
 import System.FilePath
 import Data.Time (UTCTime)
-import Data.Time.Clock.POSIX
-  ( posixSecondsToUTCTime
-  , utcTimeToPOSIXSeconds
-  , POSIXTime
-  )
+import Data.Time.Clock.POSIX (POSIXTime, utcTimeToPOSIXSeconds)
 import qualified System.Directory.Internal.Config as Cfg
 #ifdef mingw32_HOST_OS
 import qualified System.Win32 as Win32
@@ -962,7 +958,8 @@ copyGroupFromStatus st dst = do
 #ifndef mingw32_HOST_OS
 copyFileTimesFromStatus :: Posix.FileStatus -> FilePath -> IO ()
 copyFileTimesFromStatus st dst = do
-  let (atime, mtime) = fileTimesFromStatus st
+  let atime = accessTimeFromMetadata st
+  let mtime = modificationTimeFromMetadata st
   setFileTimes dst (Just atime, Just mtime)
 #endif
 
@@ -1693,12 +1690,9 @@ getSymbolicLinkTarget path =
 openFileHandle :: String -> Win32.AccessMode -> IO Win32.HANDLE
 openFileHandle path mode =
   (`ioeSetFileName` path) `modifyIOError` do
-    Win32.createFile (toExtendedLengthPath path) mode share Nothing
+    Win32.createFile (toExtendedLengthPath path) mode maxShareMode Nothing
                      Win32.oPEN_EXISTING flags Nothing
-  where share =  win32_fILE_SHARE_DELETE
-             .|. Win32.fILE_SHARE_READ
-             .|. Win32.fILE_SHARE_WRITE
-        flags =  Win32.fILE_ATTRIBUTE_NORMAL
+  where flags =  Win32.fILE_ATTRIBUTE_NORMAL
              .|. Win32.fILE_FLAG_BACKUP_SEMANTICS -- required for directories
 #endif
 
@@ -1718,8 +1712,9 @@ openFileHandle path mode =
 -- @since 1.2.3.0
 --
 getAccessTime :: FilePath -> IO UTCTime
-getAccessTime = modifyIOError (`ioeAddLocation` "getAccessTime") .
-                (fst <$>) . getFileTimes
+getAccessTime path =
+  modifyIOError (`ioeAddLocation` "getAccessTime") $ do
+    accessTimeFromMetadata <$> getFileMetadata path
 
 -- | Obtain the time at which the file or directory was last modified.
 --
@@ -1735,42 +1730,9 @@ getAccessTime = modifyIOError (`ioeAddLocation` "getAccessTime") .
 -- and the underlying filesystem supports them.
 --
 getModificationTime :: FilePath -> IO UTCTime
-getModificationTime = modifyIOError (`ioeAddLocation` "getModificationTime") .
-                      (snd <$>) . getFileTimes
-
-getFileTimes :: FilePath -> IO (UTCTime, UTCTime)
-getFileTimes path =
-  modifyIOError (`ioeAddLocation` "getFileTimes") .
-  modifyIOError (`ioeSetFileName` path) $
-    getTimes
-  where
-    path' = normalise path              -- handle empty paths
-#ifdef mingw32_HOST_OS
-    getTimes =
-      bracket (openFileHandle path' Win32.gENERIC_READ)
-              Win32.closeHandle $ \ handle ->
-      alloca $ \ atime ->
-      alloca $ \ mtime -> do
-        Win32.failIf_ not "" $
-          Win32.c_GetFileTime handle nullPtr atime mtime
-        ((,) `on` posixSecondsToUTCTime . windowsToPosixTime)
-          <$> peek atime
-          <*> peek mtime
-#else
-    getTimes = fileTimesFromStatus <$> Posix.getFileStatus path'
-#endif
-
-#ifndef mingw32_HOST_OS
-fileTimesFromStatus :: Posix.FileStatus -> (UTCTime, UTCTime)
-fileTimesFromStatus st =
-# if MIN_VERSION_unix(2, 6, 0)
-  ( posixSecondsToUTCTime (Posix.accessTimeHiRes st)
-  , posixSecondsToUTCTime (Posix.modificationTimeHiRes st) )
-# else
-  ( posixSecondsToUTCTime (realToFrac (Posix.accessTime st))
-  , posixSecondsToUTCTime (realToFrac (Posix.modificationTime st)) )
-# endif
-#endif
+getModificationTime path =
+  modifyIOError (`ioeAddLocation` "getModificationTime") $ do
+    modificationTimeFromMetadata <$> getFileMetadata path
 
 -- | Change the time at which the file or directory was last accessed.
 --
@@ -1856,7 +1818,9 @@ setFileTimes path (atime, mtime) =
 #else
     setTimes (Just atime', Just mtime') = setFileTimes' path' atime' mtime'
     setTimes (atime', mtime') = do
-      (atimeOld, mtimeOld) <- fileTimesFromStatus <$> Posix.getFileStatus path'
+      m <- getFileMetadata path'
+      let atimeOld = accessTimeFromMetadata m
+      let mtimeOld = modificationTimeFromMetadata m
       setFileTimes' path'
         (fromMaybe (utcTimeToPOSIXSeconds atimeOld) atime')
         (fromMaybe (utcTimeToPOSIXSeconds mtimeOld) mtime')
@@ -1870,23 +1834,6 @@ setFileTimes path (atime, mtime) =
         (fromInteger (truncate atime'))
         (fromInteger (truncate mtime'))
 # endif
-#endif
-
-#ifdef mingw32_HOST_OS
--- | Difference between the Windows and POSIX epochs in units of 100ns.
-windowsPosixEpochDifference :: Num a => a
-windowsPosixEpochDifference = 116444736000000000
-
--- | Convert from Windows time to POSIX time.
-windowsToPosixTime :: Win32.FILETIME -> POSIXTime
-windowsToPosixTime (Win32.FILETIME t) =
-  (fromIntegral t - windowsPosixEpochDifference) / 10000000
-
--- | Convert from POSIX time to Windows time.  This is lossy as Windows time
---   has a resolution of only 100ns.
-posixToWindowsTime :: POSIXTime -> Win32.FILETIME
-posixToWindowsTime t = Win32.FILETIME $
-  truncate (t * 10000000 + windowsPosixEpochDifference)
 #endif
 
 {- | Returns the current user's home directory.

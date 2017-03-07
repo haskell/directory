@@ -19,6 +19,8 @@ module System.Directory.Internal.Windows where
 import Prelude ()
 import System.Directory.Internal.Prelude
 import System.Directory.Internal.Common
+import Data.Time (UTCTime)
+import Data.Time.Clock.POSIX (POSIXTime, posixSecondsToUTCTime)
 import System.FilePath (addTrailingPathSeparator, hasTrailingPathSeparator,
                         isPathSeparator, isRelative, joinDrive, joinPath,
                         normalise, pathSeparator, pathSeparators,
@@ -300,6 +302,13 @@ normaliseW path = normalise (joinDrive drive' subpath')
     appendSep | hasTrailingPathSeparator subpath = addTrailingPathSeparator
               | otherwise = id
 
+-- | Like 'toExtendedLengthPath' but normalises relative paths too.
+-- This is needed to make sure e.g. getModificationTime works on empty paths.
+toNormalisedExtendedLengthPath :: FilePath -> FilePath
+toNormalisedExtendedLengthPath path
+  | isRelative path = normalise path
+  | otherwise = toExtendedLengthPath path
+
 -- | Normalise the path separators and prepend the @"\\\\?\\"@ prefix if
 -- necessary or possible.  This is used for symbolic links targets because
 -- they can't handle forward slashes.
@@ -419,8 +428,8 @@ type Metadata = Win32.BY_HANDLE_FILE_INFORMATION
 getSymbolicLinkMetadata :: FilePath -> IO Metadata
 getSymbolicLinkMetadata path =
   (`ioeSetFileName` path) `modifyIOError` do
-    let open = Win32.createFile (toExtendedLengthPath path) 0 maxShareMode
-                                Nothing Win32.oPEN_EXISTING
+    let open = Win32.createFile (toNormalisedExtendedLengthPath path) 0
+                                maxShareMode Nothing Win32.oPEN_EXISTING
                                 (Win32.fILE_FLAG_BACKUP_SEMANTICS .|.
                                  win32_fILE_FLAG_OPEN_REPARSE_POINT) Nothing
     bracket open Win32.closeHandle $ \ h -> do
@@ -429,8 +438,8 @@ getSymbolicLinkMetadata path =
 getFileMetadata :: FilePath -> IO Metadata
 getFileMetadata path =
   (`ioeSetFileName` path) `modifyIOError` do
-    let open = Win32.createFile (toExtendedLengthPath path) 0 maxShareMode
-                                Nothing Win32.oPEN_EXISTING
+    let open = Win32.createFile (toNormalisedExtendedLengthPath path) 0
+                                maxShareMode Nothing Win32.oPEN_EXISTING
                                 Win32.fILE_FLAG_BACKUP_SEMANTICS Nothing
     bracket open Win32.closeHandle $ \ h -> do
       Win32.getFileInformationByHandle h
@@ -447,6 +456,29 @@ fileTypeFromMetadata info
 
 fileSizeFromMetadata :: Metadata -> Integer
 fileSizeFromMetadata = fromIntegral . Win32.bhfiSize
+
+accessTimeFromMetadata :: Metadata -> UTCTime
+accessTimeFromMetadata =
+  posixSecondsToUTCTime . windowsToPosixTime . Win32.bhfiLastAccessTime
+
+modificationTimeFromMetadata :: Metadata -> UTCTime
+modificationTimeFromMetadata =
+  posixSecondsToUTCTime . windowsToPosixTime . Win32.bhfiLastWriteTime
+
+-- | Difference between the Windows and POSIX epochs in units of 100ns.
+windowsPosixEpochDifference :: Num a => a
+windowsPosixEpochDifference = 116444736000000000
+
+-- | Convert from Windows time to POSIX time.
+windowsToPosixTime :: Win32.FILETIME -> POSIXTime
+windowsToPosixTime (Win32.FILETIME t) =
+  (fromIntegral t - windowsPosixEpochDifference) / 10000000
+
+-- | Convert from POSIX time to Windows time.  This is lossy as Windows time
+--   has a resolution of only 100ns.
+posixToWindowsTime :: POSIXTime -> Win32.FILETIME
+posixToWindowsTime t = Win32.FILETIME $
+  truncate (t * 10000000 + windowsPosixEpochDifference)
 
 foreign import ccall unsafe "_wchmod"
   c_wchmod :: CWString -> CMode -> IO CInt
