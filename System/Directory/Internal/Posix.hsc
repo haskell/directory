@@ -80,4 +80,54 @@ posix_accessTimeHiRes = realToFrac . Posix.accessTime
 posix_modificationTimeHiRes = realToFrac . Posix.modificationTime
 #endif
 
+type Mode = Posix.FileMode
+
+modeFromMetadata :: Metadata -> Mode
+modeFromMetadata = Posix.fileMode
+
+allWriteMode :: Posix.FileMode
+allWriteMode =
+  Posix.ownerWriteMode .|.
+  Posix.groupWriteMode .|.
+  Posix.otherWriteMode
+
+hasWriteMode :: Mode -> Bool
+hasWriteMode m = m .&. allWriteMode /= 0
+
+setWriteMode :: Bool -> Mode -> Mode
+setWriteMode False m = m .&. complement allWriteMode
+setWriteMode True  m = m .|. allWriteMode
+
+setFileMode :: FilePath -> Mode -> IO ()
+setFileMode = Posix.setFileMode
+
+setFilePermissions :: FilePath -> Mode -> IO ()
+setFilePermissions = setFileMode
+
+getAccessPermissions :: FilePath -> IO Permissions
+getAccessPermissions path = do
+  m <- getFileMetadata path
+  let isDir = fileTypeIsDirectory (fileTypeFromMetadata m)
+  r <- Posix.fileAccess path True  False False
+  w <- Posix.fileAccess path False True  False
+  x <- Posix.fileAccess path False False True
+  return Permissions
+         { readable   = r
+         , writable   = w
+         , executable = x && not isDir
+         , searchable = x && isDir
+         }
+
+setAccessPermissions :: FilePath -> Permissions -> IO ()
+setAccessPermissions path (Permissions r w e s) = do
+  m <- getFileMetadata path
+  setFileMode path (modifyBit (e || s) Posix.ownerExecuteMode .
+                    modifyBit w Posix.ownerWriteMode .
+                    modifyBit r Posix.ownerReadMode .
+                    modeFromMetadata $ m)
+  where
+    modifyBit :: Bool -> Posix.FileMode -> Posix.FileMode -> Posix.FileMode
+    modifyBit False b m = m .&. complement b
+    modifyBit True  b m = m .|. b
+
 #endif

@@ -161,16 +161,8 @@ import System.IO.Error
   , tryIOError
   , userError
   )
-import System.Posix.Internals
-  ( CStat
-  , c_stat
-  , withFilePath
-  , s_isdir
-  , sizeof_stat
-  , st_mode
-  , st_size
-  )
-import System.Posix.Types (CMode(..), EpochTime, FileMode)
+import System.Posix.Internals (withFilePath)
+import System.Posix.Types (EpochTime)
 import System.Timeout (timeout)
 
 #if !MIN_VERSION_base(4, 8, 0)

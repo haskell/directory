@@ -183,12 +183,6 @@ Note that to change some, but not all permissions, a construct on the following 
 
 -}
 
-data Permissions
- = Permissions {
-    readable,   writable,
-    executable, searchable :: Bool
-   } deriving (Eq, Ord, Read, Show)
-
 emptyPermissions :: Permissions
 emptyPermissions = Permissions {
                        readable   = False,
@@ -209,125 +203,62 @@ setOwnerExecutable b p = p { executable = b }
 setOwnerSearchable :: Bool -> Permissions -> Permissions
 setOwnerSearchable b p = p { searchable = b }
 
-{- |The 'getPermissions' operation returns the
-permissions for the file or directory.
-
-The operation may fail with:
-
-* 'isPermissionError' if the user is not permitted to access
-  the permissions; or
-
-* 'isDoesNotExistError' if the file or directory does not exist.
-
--}
-
+-- | Get the permissions of a file or directory.
+--
+-- On Windows, the 'writable' permission corresponds to the "read-only"
+-- attribute.  The 'executable' permission is set if the file extension is of
+-- an executable file type.  The 'readable' permission is always set.
+--
+-- On POSIX systems, this returns the result of @access@.
+--
+-- The operation may fail with:
+--
+-- * 'isPermissionError' if the user is not permitted to access the
+--   permissions, or
+--
+-- * 'isDoesNotExistError' if the file or directory does not exist.
 getPermissions :: FilePath -> IO Permissions
-getPermissions name =
-#ifdef mingw32_HOST_OS
-  -- issue #9: Windows doesn't like trailing path separators
-  withFilePath (dropTrailingPathSeparator name) $ \s ->
-  -- stat() does a better job of guessing the permissions on Windows
-  -- than access() does.  e.g. for execute permission, it looks at the
-  -- filename extension :-)
-  --
-  -- I tried for a while to do this properly, using the Windows security API,
-  -- and eventually gave up.  getPermissions is a flawed API anyway. -- SimonM
-  allocaBytes sizeof_stat $ \ p_stat -> do
-  throwErrnoIfMinus1_ "getPermissions" $ c_stat s p_stat
-  mode <- st_mode p_stat
-  let usr_read   = mode .&. s_IRUSR
-  let usr_write  = mode .&. s_IWUSR
-  let usr_exec   = mode .&. s_IXUSR
-  let is_dir = mode .&. s_IFDIR
-  return (
-    Permissions {
-      readable   = usr_read  /= 0,
-      writable   = usr_write /= 0,
-      executable = is_dir == 0 && usr_exec /= 0,
-      searchable = is_dir /= 0 && usr_exec /= 0
-    }
-   )
-#else
-  do
-  read_ok  <- Posix.fileAccess name True  False False
-  write_ok <- Posix.fileAccess name False True  False
-  exec_ok  <- Posix.fileAccess name False False True
-  stat <- Posix.getFileStatus name
-  let is_dir = Posix.isDirectory stat
-  return (
-    Permissions {
-      readable   = read_ok,
-      writable   = write_ok,
-      executable = not is_dir && exec_ok,
-      searchable = is_dir && exec_ok
-    }
-   )
-#endif
+getPermissions path =
+  (`ioeAddLocation` "getPermissions") `modifyIOError` do
+    getAccessPermissions path
 
-{- |The 'setPermissions' operation sets the
-permissions for the file or directory.
-
-The operation may fail with:
-
-* 'isPermissionError' if the user is not permitted to set
-  the permissions; or
-
-* 'isDoesNotExistError' if the file or directory does not exist.
-
--}
-
+-- | Set the permissions of a file or directory.
+--
+-- On Windows, this is only capable of changing the 'writable' permission,
+-- which corresponds to the "read-only" attribute.  Changing the other
+-- permissions has no effect.
+--
+-- On POSIX systems, this sets the /owner/ permissions.
+--
+-- The operation may fail with:
+--
+-- * 'isPermissionError' if the user is not permitted to set the permissions,
+--   or
+--
+-- * 'isDoesNotExistError' if the file or directory does not exist.
 setPermissions :: FilePath -> Permissions -> IO ()
-setPermissions name (Permissions r w e s) =
-#ifdef mingw32_HOST_OS
-  allocaBytes sizeof_stat $ \ p_stat ->
-  withFilePath name $ \p_name -> do
-    throwErrnoIfMinus1_ "setPermissions" $
-      c_stat p_name p_stat
+setPermissions path p =
+  (`ioeAddLocation` "setPermissions") `modifyIOError` do
+    setAccessPermissions path p
 
-    throwErrnoIfMinus1_ "setPermissions" $ do
-      mode <- st_mode p_stat
-      let mode1 = modifyBit r mode s_IRUSR
-      let mode2 = modifyBit w mode1 s_IWUSR
-      let mode3 = modifyBit (e || s) mode2 s_IXUSR
-      c_wchmod p_name mode3
- where
-   modifyBit :: Bool -> CMode -> CMode -> CMode
-   modifyBit False m b = m .&. (complement b)
-   modifyBit True  m b = m .|. b
-#else
-  do
-      stat <- Posix.getFileStatus name
-      let mode = Posix.fileMode stat
-      let mode1 = modifyBit r mode  Posix.ownerReadMode
-      let mode2 = modifyBit w mode1 Posix.ownerWriteMode
-      let mode3 = modifyBit (e || s) mode2 Posix.ownerExecuteMode
-      Posix.setFileMode name mode3
- where
-   modifyBit :: Bool -> FileMode -> FileMode -> FileMode
-   modifyBit False m b = m .&. (complement b)
-   modifyBit True  m b = m .|. b
-#endif
-
+-- | Copy the permissions of one file to another.  This reproduces the
+-- permissions more accurately than using 'getPermissions' followed by
+-- 'setPermissions'.
+--
+-- On Windows, this copies only the read-only attribute.
+--
+-- On POSIX systems, this is equivalent to @stat@ followed by @chmod@.
 copyPermissions :: FilePath -> FilePath -> IO ()
-copyPermissions source dest =
-#ifdef mingw32_HOST_OS
-  allocaBytes sizeof_stat $ \ p_stat ->
-  withFilePath source $ \p_source ->
-  withFilePath dest $ \p_dest -> do
-    throwErrnoIfMinus1_ "copyPermissions" $ c_stat p_source p_stat
-    mode <- st_mode p_stat
-    throwErrnoIfMinus1_ "copyPermissions" $ c_wchmod p_dest mode
-#else
-  do
-  stat <- Posix.getFileStatus source
-  copyPermissionsFromStatus stat dest
-#endif
+copyPermissions src dst =
+  (`ioeAddLocation` "copyPermissions") `modifyIOError` do
+    m <- getFileMetadata src
+    copyPermissionsFromMetadata m dst
 
-#ifndef mingw32_HOST_OS
-copyPermissionsFromStatus :: Posix.FileStatus -> FilePath -> IO ()
-copyPermissionsFromStatus st dst = do
-  Posix.setFileMode dst (Posix.fileMode st)
-#endif
+copyPermissionsFromMetadata :: Metadata -> FilePath -> IO ()
+copyPermissionsFromMetadata m dst = do
+  -- instead of setFileMode, setFilePermissions is used here
+  -- this is to retain backward compatibility in copyPermissions
+  setFilePermissions dst (modeFromMetadata m)
 
 -----------------------------------------------------------------------------
 -- Implementation
@@ -932,7 +863,7 @@ copyFileWithMetadata src dst =
 copyMetadataFromStatus :: Posix.FileStatus -> FilePath -> IO ()
 copyMetadataFromStatus st dst = do
   tryCopyOwnerAndGroupFromStatus st dst
-  copyPermissionsFromStatus st dst
+  copyPermissionsFromMetadata st dst
   copyFileTimesFromStatus st dst
 #endif
 

@@ -11,9 +11,6 @@ module System.Directory.Internal.Windows where
 ##endif
 #include <shlobj.h>
 #include <windows.h>
-#ifdef HAVE_SYS_STAT_H
-# include <sys/stat.h>
-#endif
 #include <System/Directory/Internal/utility.h>
 #include <System/Directory/Internal/windows.h>
 import Prelude ()
@@ -24,7 +21,7 @@ import Data.Time.Clock.POSIX (POSIXTime, posixSecondsToUTCTime)
 import System.FilePath (addTrailingPathSeparator, hasTrailingPathSeparator,
                         isPathSeparator, isRelative, joinDrive, joinPath,
                         normalise, pathSeparator, pathSeparators,
-                        splitDirectories, splitDrive)
+                        splitDirectories, splitDrive, takeExtension)
 import qualified Data.List as List
 import qualified System.Win32 as Win32
 
@@ -484,19 +481,45 @@ posixToWindowsTime :: POSIXTime -> Win32.FILETIME
 posixToWindowsTime t = Win32.FILETIME $
   truncate (t * 10000000 + windowsPosixEpochDifference)
 
-foreign import ccall unsafe "_wchmod"
-  c_wchmod :: CWString -> CMode -> IO CInt
+type Mode = Win32.FileAttributeOrFlag
 
-s_IRUSR :: CMode
-s_IRUSR = (#const S_IRUSR)
+modeFromMetadata :: Metadata -> Mode
+modeFromMetadata = Win32.bhfiFileAttributes
 
-s_IWUSR :: CMode
-s_IWUSR = (#const S_IWUSR)
+hasWriteMode :: Mode -> Bool
+hasWriteMode m = m .&. Win32.fILE_ATTRIBUTE_READONLY == 0
 
-s_IXUSR :: CMode
-s_IXUSR = (#const S_IXUSR)
+setWriteMode :: Bool -> Mode -> Mode
+setWriteMode False m = m .|. Win32.fILE_ATTRIBUTE_READONLY
+setWriteMode True  m = m .&. complement Win32.fILE_ATTRIBUTE_READONLY
 
-s_IFDIR :: CMode
-s_IFDIR = (#const S_IFDIR)
+setFileMode :: FilePath -> Mode -> IO ()
+setFileMode = Win32.setFileAttributes
+
+-- | A restricted form of 'setFileMode' that only sets the permission bits.
+-- For Windows, this means only the "read-only" attribute is affected.
+setFilePermissions :: FilePath -> Mode -> IO ()
+setFilePermissions path m = do
+  m' <- modeFromMetadata <$> getFileMetadata path
+  setFileMode path ((m' .&. complement Win32.fILE_ATTRIBUTE_READONLY) .|.
+                    (m  .&. Win32.fILE_ATTRIBUTE_READONLY))
+
+getAccessPermissions :: FilePath -> IO Permissions
+getAccessPermissions path = do
+  m <- getFileMetadata path
+  let isDir = fileTypeIsDirectory (fileTypeFromMetadata m)
+  let w = hasWriteMode (modeFromMetadata m)
+  let x = (toLower <$> takeExtension path)
+          `elem` [".bat", ".cmd", ".com", ".exe"]
+  return Permissions
+         { readable   = True
+         , writable   = w
+         , executable = x && not isDir
+         , searchable = isDir
+         }
+
+setAccessPermissions :: FilePath -> Permissions -> IO ()
+setAccessPermissions path Permissions{writable = w} = do
+  setFilePermissions path (setWriteMode w 0)
 
 #endif
