@@ -1591,13 +1591,12 @@ pathIsSymbolicLink :: FilePath -> IO Bool
 pathIsSymbolicLink path =
   ((`ioeAddLocation` "pathIsSymbolicLink") .
    (`ioeSetFileName` path)) `modifyIOError` do
-#ifdef mingw32_HOST_OS
-    isReparsePoint <$> Win32.getFileAttributes (toExtendedLengthPath path)
-  where
-    isReparsePoint attr = attr .&. win32_fILE_ATTRIBUTE_REPARSE_POINT /= 0
-#else
-    Posix.isSymbolicLink <$> Posix.getSymbolicLinkStatus path
-#endif
+    m <- getSymbolicLinkMetadata path
+    return $
+      case fileTypeFromMetadata m of
+        DirectoryLink -> True
+        SymbolicLink  -> True
+        _             -> False
 
 {-# DEPRECATED isSymbolicLink "Use 'pathIsSymbolicLink' instead" #-}
 isSymbolicLink :: FilePath -> IO Bool
