@@ -8,15 +8,11 @@ Changelog for the [`directory`][1] package
 
   * Improve support (partially) for paths longer than 260 characters on
     Windows.  To achieve this, many functions will now automatically prepend
-    `\\?\` before calling the Windows API.  Side effects of this change:
-      * After calling `setCurrentDirectory`, calls to the Windows API function
-        `GetCurrentDirectory` will return a path with the `\\?\` prefix.  The
-        Haskell function `getCurrentDirectory` mitigates this problem by
-        automatically stripping the prefix.
-      * The `\\?\` prefix may show up in the error messages of the affected
-        functions.
+    `\\?\` before calling the Windows API.  As a side effect, the `\\?\`
+    prefix may show up in the error messages of the affected functions.
 
-  * `makeAbsolute` can now handle drive-relative paths on Windows.
+  * `makeAbsolute` can now handle drive-relative paths on Windows such as
+    `C:foobar`
 
 ## 1.3.1.0 (March 2017)
 
