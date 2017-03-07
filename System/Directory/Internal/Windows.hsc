@@ -229,8 +229,8 @@ foreign import WINAPI unsafe "windows.h DeviceIoControl"
 
 readSymbolicLink :: FilePath -> IO FilePath
 readSymbolicLink path = modifyIOError (`ioeSetFileName` path) $ do
-  let open = Win32.createFile (toExtendedLengthPath path)
-                              0 maxShareMode Nothing Win32.oPEN_EXISTING
+  path' <- toExtendedLengthPath <$> prependCurrentDirectory path
+  let open = Win32.createFile path' 0 maxShareMode Nothing Win32.oPEN_EXISTING
                               (Win32.fILE_FLAG_BACKUP_SEMANTICS .|.
                               win32_fILE_FLAG_OPEN_REPARSE_POINT) Nothing
   bracket open Win32.closeHandle $ \ h -> do
@@ -420,17 +420,16 @@ createSymbolicLink :: Bool -> FilePath -> FilePath -> IO ()
 createSymbolicLink isDir target link =
   (`ioeSetFileName` link) `modifyIOError` do
     -- normaliseSeparators ensures the target gets normalised properly
-    win32_createSymbolicLink (toExtendedLengthPath link)
-                             (normaliseSeparators target)
-                             isDir
+    link' <- toExtendedLengthPath <$> prependCurrentDirectory link
+    win32_createSymbolicLink link' (normaliseSeparators target) isDir
 
 type Metadata = Win32.BY_HANDLE_FILE_INFORMATION
 
 getSymbolicLinkMetadata :: FilePath -> IO Metadata
 getSymbolicLinkMetadata path =
   (`ioeSetFileName` path) `modifyIOError` do
-    let open = Win32.createFile (toNormalisedExtendedLengthPath path) 0
-                                maxShareMode Nothing Win32.oPEN_EXISTING
+    path' <- toNormalisedExtendedLengthPath <$> prependCurrentDirectory path
+    let open = Win32.createFile path' 0 maxShareMode Nothing Win32.oPEN_EXISTING
                                 (Win32.fILE_FLAG_BACKUP_SEMANTICS .|.
                                  win32_fILE_FLAG_OPEN_REPARSE_POINT) Nothing
     bracket open Win32.closeHandle $ \ h -> do
@@ -439,8 +438,8 @@ getSymbolicLinkMetadata path =
 getFileMetadata :: FilePath -> IO Metadata
 getFileMetadata path =
   (`ioeSetFileName` path) `modifyIOError` do
-    let open = Win32.createFile (toNormalisedExtendedLengthPath path) 0
-                                maxShareMode Nothing Win32.oPEN_EXISTING
+    path' <- toNormalisedExtendedLengthPath <$> prependCurrentDirectory path
+    let open = Win32.createFile path' 0 maxShareMode Nothing Win32.oPEN_EXISTING
                                 Win32.fILE_FLAG_BACKUP_SEMANTICS Nothing
     bracket open Win32.closeHandle $ \ h -> do
       Win32.getFileInformationByHandle h
@@ -494,7 +493,10 @@ setWriteMode False m = m .|. Win32.fILE_ATTRIBUTE_READONLY
 setWriteMode True  m = m .&. complement Win32.fILE_ATTRIBUTE_READONLY
 
 setFileMode :: FilePath -> Mode -> IO ()
-setFileMode = Win32.setFileAttributes
+setFileMode path mode =
+  (`ioeSetFileName` path) `modifyIOError` do
+    path' <- toNormalisedExtendedLengthPath <$> prependCurrentDirectory path
+    Win32.setFileAttributes path' mode
 
 -- | A restricted form of 'setFileMode' that only sets the permission bits.
 -- For Windows, this means only the "read-only" attribute is affected.

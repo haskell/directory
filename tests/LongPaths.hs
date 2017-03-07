@@ -6,7 +6,7 @@ import System.FilePath ((</>))
 
 main :: TestEnv -> IO ()
 main _t = do
-  let longName = mconcat (replicate 5 "thisisaverylongdirectoryname")
+  let longName = mconcat (replicate 10 "its_very_long")
   longDir <- makeAbsolute (longName </> longName)
 
   supportsLongPaths <- do
@@ -20,6 +20,14 @@ main _t = do
 
   -- skip tests on file systems that do not support long paths
   when supportsLongPaths $ do
+
+    -- test relative paths
+    let relDir = longName </> mconcat (replicate 8 "yeah_its_long")
+    createDirectory relDir
+    T(expect) () =<< doesDirectoryExist relDir
+    T(expectEq) () [] =<< listDirectory relDir
+    setPermissions relDir emptyPermissions
+    T(expectEq) () False =<< writable <$> getPermissions relDir
 
     writeFile "foobar.txt" "^.^" -- writeFile does not support long paths yet
 
@@ -42,7 +50,7 @@ main _t = do
     supportsSymbolicLinks <- supportsSymlinks
     when supportsSymbolicLinks $ do
 
-      -- tests: [createDirectoryLink], [getSymbolicLinkTarget]
+      -- tests: [createDirectoryLink], [getSymbolicLinkTarget], [listDirectory]
       -- also tests expansion of "." and ".."
       createDirectoryLink "." (longDir </> "link")
       _ <- listDirectory (longDir </> ".." </> longName </> "link")

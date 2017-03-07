@@ -304,7 +304,8 @@ createDirectory :: FilePath -> IO ()
 createDirectory path = do
 #ifdef mingw32_HOST_OS
   (`ioeSetFileName` path) `modifyIOError` do
-    Win32.createDirectory (toExtendedLengthPath path) Nothing
+    path' <- toExtendedLengthPath <$> prependCurrentDirectory path
+    Win32.createDirectory path' Nothing
 #else
   Posix.createDirectory path 0o777
 #endif
@@ -401,7 +402,8 @@ removeDirectory :: FilePath -> IO ()
 removeDirectory path =
 #ifdef mingw32_HOST_OS
   (`ioeSetFileName` path) `modifyIOError` do
-    Win32.removeDirectory (toExtendedLengthPath path)
+    path' <- toExtendedLengthPath <$> prependCurrentDirectory path
+    Win32.removeDirectory path'
 #else
   Posix.removeDirectory path
 #endif
@@ -547,7 +549,8 @@ removeFile :: FilePath -> IO ()
 removeFile path =
 #ifdef mingw32_HOST_OS
   (`ioeSetFileName` path) `modifyIOError` do
-    Win32.deleteFile (toExtendedLengthPath path)
+    path' <- toExtendedLengthPath <$> prependCurrentDirectory path
+    Win32.deleteFile path'
 #else
   Posix.removeLink path
 #endif
@@ -726,9 +729,9 @@ renamePath :: FilePath                  -- ^ Old path
 renamePath opath npath = (`ioeAddLocation` "renamePath") `modifyIOError` do
 #ifdef mingw32_HOST_OS
    (`ioeSetFileName` opath) `modifyIOError` do
-     Win32.moveFileEx (toExtendedLengthPath opath)
-                      (toExtendedLengthPath npath)
-                      Win32.mOVEFILE_REPLACE_EXISTING
+     opath' <- toExtendedLengthPath <$> prependCurrentDirectory opath
+     npath' <- toExtendedLengthPath <$> prependCurrentDirectory npath
+     Win32.moveFileEx opath' npath' Win32.mOVEFILE_REPLACE_EXISTING
 #else
    Posix.rename opath npath
 #endif
@@ -849,9 +852,9 @@ copyFileWithMetadata src dst =
   where
 #ifdef mingw32_HOST_OS
     doCopy = (`ioeSetFileName` src) `modifyIOError` do
-      Win32.copyFile (toExtendedLengthPath src)
-                     (toExtendedLengthPath dst)
-                     False
+      src' <- toExtendedLengthPath <$> prependCurrentDirectory src
+      dst' <- toExtendedLengthPath <$> prependCurrentDirectory dst
+      Win32.copyFile src' dst' False
 #else
     doCopy = do
       st <- Posix.getFileStatus src
@@ -1060,32 +1063,6 @@ makeAbsolute path =
                  (`ioeSetFileName` path)) $
   matchTrailingSeparator path . normalise <$> prependCurrentDirectory path
 
--- | Convert a path into an absolute path.  If the given path is relative, the
--- current directory is prepended.  If the path is already absolute, the path
--- is returned unchanged.  The function preserves the presence or absence of
--- the trailing path separator.
---
--- If the path is already absolute, the operation never fails.  Otherwise, the
--- operation may fail with the same exceptions as 'getCurrentDirectory'.
---
--- (internal API)
-prependCurrentDirectory :: FilePath -> IO FilePath
-prependCurrentDirectory path =
-  modifyIOError ((`ioeAddLocation` "prependCurrentDirectory") .
-                 (`ioeSetFileName` path)) $
-  if isRelative path -- avoid the call to `getCurrentDirectory` if we can
-  then do
-    cwd <- getCurrentDirectory
-    let curDrive = takeWhile (not . isPathSeparator) (takeDrive cwd)
-    let (drive, subpath) = splitDrive path
-    -- handle drive-relative paths (Windows only)
-    return . (</> subpath) $
-      case drive of
-        _ : _ | (toUpper <$> drive) /= (toUpper <$> curDrive) ->
-                  drive <> [pathSeparator]
-        _ -> cwd
-  else return path
-
 -- | Add or remove the trailing path separator in the second path so as to
 -- match its presence in the first path.
 --
@@ -1286,8 +1263,9 @@ getDirectoryContents path =
           then return (acc [])
           else loop (acc . (e:))
 #else
+  query <- toExtendedLengthPath <$> prependCurrentDirectory (path </> "*")
   bracket
-     (Win32.findFirstFile (toExtendedLengthPath (path </> "*")))
+     (Win32.findFirstFile query)
      (\(h,_) -> Win32.findClose h)
      (\(h,fdat) -> loop h fdat [])
   where
@@ -1338,47 +1316,6 @@ listDirectory :: FilePath -> IO [FilePath]
 listDirectory path =
   (filter f) <$> (getDirectoryContents path)
   where f filename = filename /= "." && filename /= ".."
-
--- | Obtain the current working directory as an absolute path.
---
--- In a multithreaded program, the current working directory is a global state
--- shared among all threads of the process.  Therefore, when performing
--- filesystem operations from multiple threads, it is highly recommended to
--- use absolute rather than relative paths (see: 'makeAbsolute').
---
--- The operation may fail with:
---
--- * 'HardwareFault'
--- A physical I\/O error has occurred.
--- @[EIO]@
---
--- * 'isDoesNotExistError' or 'NoSuchThing'
--- There is no path referring to the working directory.
--- @[EPERM, ENOENT, ESTALE...]@
---
--- * 'isPermissionError' or 'PermissionDenied'
--- The process has insufficient privileges to perform the operation.
--- @[EACCES]@
---
--- * 'ResourceExhausted'
--- Insufficient resources are available to perform the operation.
---
--- * 'UnsupportedOperation'
--- The operating system has no notion of current working directory.
---
-getCurrentDirectory :: IO FilePath
-getCurrentDirectory =
-  modifyIOError (`ioeAddLocation` "getCurrentDirectory") $
-  specializeErrorString
-    "Current working directory no longer exists"
-    isDoesNotExistError
-    getCwd
-  where
-#ifdef mingw32_HOST_OS
-    getCwd = fromExtendedLengthPath <$> Win32.getCurrentDirectory
-#else
-    getCwd = Posix.getWorkingDirectory
-#endif
 
 -- | Change the working directory to the given path.
 --
@@ -1629,7 +1566,8 @@ getSymbolicLinkTarget path =
 openFileHandle :: String -> Win32.AccessMode -> IO Win32.HANDLE
 openFileHandle path mode =
   (`ioeSetFileName` path) `modifyIOError` do
-    Win32.createFile (toExtendedLengthPath path) mode maxShareMode Nothing
+    path' <- toExtendedLengthPath <$> prependCurrentDirectory path
+    Win32.createFile path' mode maxShareMode Nothing
                      Win32.oPEN_EXISTING flags Nothing
   where flags =  Win32.fILE_ATTRIBUTE_NORMAL
              .|. Win32.fILE_FLAG_BACKUP_SEMANTICS -- required for directories
@@ -1890,22 +1828,6 @@ lookupEnv name = do
     Right value -> return (Just value)
 #endif
 
--- | Similar to 'try' but only catches a specify kind of 'IOError' as
---   specified by the predicate.
-tryIOErrorType :: (IOError -> Bool) -> IO a -> IO (Either IOError a)
-tryIOErrorType check action = do
-  result <- tryIOError action
-  case result of
-    Left  err -> if check err then return (Left err) else ioError err
-    Right val -> return (Right val)
-
-specializeErrorString :: String -> (IOError -> Bool) -> IO a -> IO a
-specializeErrorString str errType action = do
-  mx <- tryIOErrorType errType action
-  case mx of
-    Left  e -> ioError (ioeSetErrorString e str)
-    Right x -> return x
-
 -- | Obtain the path to a special directory for storing user-specific
 --   application data (traditional Unix location).  Newer applications may
 --   prefer the the XDG-conformant location provided by 'getXdgDirectory'
@@ -2008,10 +1930,3 @@ getTemporaryDirectory =
   getEnv "TMPDIR" `catchIOError` \ err ->
   if isDoesNotExistError err then return "/tmp" else ioError err
 #endif
-
-ioeAddLocation :: IOError -> String -> IOError
-ioeAddLocation e loc = do
-  ioeSetLocation e newLoc
-  where
-    newLoc = loc <> if null oldLoc then "" else ":" <> oldLoc
-    oldLoc = ioeGetLocation e
