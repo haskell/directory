@@ -1,7 +1,7 @@
 Changelog for the [`directory`][1] package
 ==========================================
 
-## 1.3.1.1 (April 2017)
+## 1.3.1.1 (March 2017)
 
   * Fix a bug where `createFileLink` and `createDirectoryLink` failed to
     handle `..` in absolute paths.
