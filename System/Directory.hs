@@ -85,6 +85,7 @@ module System.Directory
 
     , Permissions
     , emptyPermissions
+    , undefinedPermissions
     , readable
     , writable
     , executable
@@ -189,6 +190,14 @@ emptyPermissions = Permissions {
                        writable   = False,
                        executable = False,
                        searchable = False
+                   }
+
+undefinedPermissions :: Permissions
+undefinedPermissions = Permissions {
+                       readable   = undefined,
+                       writable   = undefined,
+                       executable = undefined,
+                       searchable = undefined
                    }
 
 setOwnerReadable :: Bool -> Permissions -> Permissions
