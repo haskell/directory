@@ -18,6 +18,16 @@ prepare() {
 
         stack="$STACK --no-terminal"
         mkdir -p _stack
+
+        # workaround for commercialhaskell/stack#3213:
+        # use official GHC tarball instead of stack's patched tarball
+        if [ "$LOCALAPPDATA" ] && printf "%s\n" "$STACK" | grep '\<lts-2\>'; then
+            dir=`cygpath -u "$LOCALAPPDATA"`/Programs/stack/x86_64-windows
+            mkdir -p "$dir"
+            curl -L "https://downloads.haskell.org/~ghc/7.8.4/ghc-7.8.4-x86_64-unknown-mingw32.tar.xz" | tar -C "$dir" -xJ
+            echo installed >"$dir/ghc-7.8.4.installed"
+        fi
+
         (
             cd _stack
             case `uname` in
