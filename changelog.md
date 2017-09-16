@@ -1,6 +1,10 @@
 Changelog for the [`directory`][1] package
 ==========================================
 
+## 1.3.1.2 (September 2017)
+
+  * Relax `base` version bounds to support 4.11.
+
 ## 1.3.1.1 (March 2017)
 
   * Fix a bug where `createFileLink` and `createDirectoryLink` failed to
