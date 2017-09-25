@@ -731,7 +731,11 @@ renamePath opath npath = (`ioeAddLocation` "renamePath") `modifyIOError` do
    (`ioeSetFileName` opath) `modifyIOError` do
      opath' <- toExtendedLengthPath <$> prependCurrentDirectory opath
      npath' <- toExtendedLengthPath <$> prependCurrentDirectory npath
+#  if MIN_VERSION_Win32(2,6,0)
+     Win32.moveFileEx opath' (Just npath') Win32.mOVEFILE_REPLACE_EXISTING
+#  else
      Win32.moveFileEx opath' npath' Win32.mOVEFILE_REPLACE_EXISTING
+#  endif
 #else
    Posix.rename opath npath
 #endif
@@ -1106,7 +1110,11 @@ makeRelativeToCurrentDirectory x = do
 findExecutable :: String -> IO (Maybe FilePath)
 findExecutable binary = do
 #if defined(mingw32_HOST_OS)
+#  if MIN_VERSION_Win32(2,6,0)
+    Win32.searchPath Nothing binary (Just exeExtension)
+#  else
     Win32.searchPath Nothing binary exeExtension
+# endif
 #else
     path <- getPath
     findFileWith isExecutable path (binary <.> exeExtension)
