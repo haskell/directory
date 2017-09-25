@@ -1,7 +1,7 @@
 Changelog for the [`directory`][1] package
 ==========================================
 
-## Unreleased
+## 1.3.1.4 (September 2017)
 
   * Fix `Win32` version 2.6 compatibility.
 
