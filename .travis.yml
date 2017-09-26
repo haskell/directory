@@ -2,9 +2,9 @@ language: c                             # make the validator happy
 sudo: false
 matrix:
   include:
-  # CABALVER=1.16 is the earliest available in the PPA
-  - env: STACK="stack --resolver lts-5"
+  - env: STACK_RESOLVER=lts-5.18
     os: osx
+  # CABALVER=1.16 is the earliest available in the PPA
   - env: GHCVER=7.4.2 CABALVER=1.16
       PREBUILD="sed -i.bak /utimensat/d configure.ac"
     addons:

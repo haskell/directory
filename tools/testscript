@@ -4,29 +4,32 @@ set -eu
 ghcflags="-rtsopts -threaded -Werror"
 testflags="CreateDirectoryIfMissing001.num-repeats=100000 +RTS -N2"
 
-before_build() {
-    # workaround for https://github.com/haskell/cabal/issues/2375
-    if grep "^resolver: lts-2" stack.yaml >/dev/null 2>&1; then
-        sed -i.bak 's/WithHooks autoconfUserHooks//' Setup.hs
-        stack exec sh ./configure
-    fi
-}
-
 prepare() {
     eval "${PREBUILD-}"
-    if [ "${STACK+x}" ]; then
-
-        stack="$STACK --no-terminal"
-        mkdir -p _stack
+    if [ -f configure.ac ]; then
+        autoreconf -i
+    fi
+    if [ "${STACK_RESOLVER+x}" ]; then
 
         # workaround for commercialhaskell/stack#3213:
         # use official GHC tarball instead of stack's patched tarball
-        if [ "${LOCALAPPDATA-}" ] && printf "%s\n" "$STACK" | grep '\<lts-2\>'; then
-            dir=`cygpath -u "$LOCALAPPDATA"`/Programs/stack/x86_64-windows
-            mkdir -p "$dir"
-            curl -L "https://downloads.haskell.org/~ghc/7.8.4/ghc-7.8.4-x86_64-unknown-mingw32.tar.xz" | tar -C "$dir" -xJ
-            echo installed >"$dir/ghc-7.8.4.installed"
-        fi
+        case $STACK_RESOLVER in
+            lts-2*)
+                if [ "${LOCALAPPDATA-}" ]; then
+                    dir=`cygpath -u "$LOCALAPPDATA"`/Programs/stack/x86_64-windows
+                    mkdir -p "$dir"
+                    curl -L "https://downloads.haskell.org/~ghc/7.8.4/ghc-7.8.4-x86_64-unknown-mingw32.tar.xz" | tar -C "$dir" -xJ
+                    echo installed >"$dir/ghc-7.8.4.installed"
+                fi;;
+        esac
+
+        cat >stack.yaml <<EOF
+resolver: $STACK_RESOLVER
+packages: [.]
+extra-deps: [${STACK_EXTRA_DEPS-}]
+EOF
+        stack="stack --no-terminal ${STACK_FLAGS-}"
+        mkdir -p _stack
 
         (
             cd _stack
@@ -56,12 +59,6 @@ prepare() {
         tools/retry $stack setup >/dev/null
         $stack ghc -- --version
         $stack --version
-        for dep in ${DEPS-}; do
-            url=https://hackage.haskell.org/package/${dep}/${dep}.tar.gz
-            curl --retry 3 -fsLS "$url" | tar xzf -
-        done
-        $stack init && :
-        $stack test --install-ghc --only-dependencies
         $stack list-dependencies
 
     else
@@ -72,16 +69,21 @@ prepare() {
         cabal install --enable-tests --only-dependencies
 
     fi
-    if [ -f configure.ac ]; then
-        autoreconf -i
-    fi
 }
 
 build() {
-    before_build
-    if [ "${STACK+x}" ]; then
+    if [ "${STACK_RESOLVER+x}" ]; then
 
-        stack="$STACK --no-terminal"
+        # workaround for https://github.com/haskell/cabal/issues/2375
+        case $STACK_RESOLVER in
+            lts-2*)
+                if [ -f configure ]; then
+                    sed -i.bak 's/WithHooks autoconfUserHooks//' Setup.hs
+                    stack exec sh ./configure
+                fi;;
+        esac
+
+        stack="stack --no-terminal ${STACK_FLAGS-}"
         $stack test --haddock --no-haddock-deps \
             --ghc-options "$ghcflags" \
             --test-arguments "$testflags"
