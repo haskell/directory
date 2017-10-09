@@ -12,7 +12,7 @@ module System.Directory.Internal.Windows where
 #include <shlobj.h>
 #include <windows.h>
 #include <System/Directory/Internal/utility.h>
-#include <System/Directory/Internal/windows.h>
+#include <System/Directory/Internal/windows_ext.h>
 import Prelude ()
 import System.Directory.Internal.Prelude
 import System.Directory.Internal.Common

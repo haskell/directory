@@ -1,9 +1,15 @@
 Changelog for the [`directory`][1] package
 ==========================================
 
+## 1.3.1.5 (October 2017)
+
+  * Rename the internal header `windows.h` to avoid GHC#14312.
+    ([#77](https://github.com/haskell/directory/issues/77))
+
 ## 1.3.1.4 (September 2017)
 
   * Fix `Win32` version 2.6 compatibility.
+    ([#75](https://github.com/haskell/directory/pull/75))
 
 ## 1.3.1.3 (September 2017)
 
@@ -12,6 +18,7 @@ Changelog for the [`directory`][1] package
 ## 1.3.1.2 (September 2017)
 
   * Relax `base` version bounds to support 4.11.
+    ([#74](https://github.com/haskell/directory/pull/74))
 
 ## 1.3.1.1 (March 2017)
 

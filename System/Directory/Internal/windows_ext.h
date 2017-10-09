@@ -1,3 +1,5 @@
+#ifndef HS_DIRECTORY_WINDOWS_EXT_H
+#define HS_DIRECTORY_WINDOWS_EXT_H
 #include <windows.h>
 
 // define prototype to get size, offsets, and alignments
@@ -27,3 +29,5 @@ typedef struct {
         } GenericReparseBuffer;
     };
 } HsDirectory_REPARSE_DATA_BUFFER;
+
+#endif
