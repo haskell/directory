@@ -42,6 +42,8 @@ module System.Directory
     , getHomeDirectory
     , XdgDirectory(..)
     , getXdgDirectory
+    , XdgDirectoryList(..)
+    , getXdgDirectoryList
     , getAppUserDataDirectory
     , getUserDocumentsDirectory
     , getTemporaryDirectory
@@ -1825,7 +1827,50 @@ getXdgDirectory xdgDir suffix =
         Just path | isRelative path -> fallback'
                   | otherwise       -> return path
       where fallback' = (</> fallback) <$> getHomeDirectory
+#endif
 
+-- | Search paths for various application data, as specified by the
+--   <http://standards.freedesktop.org/basedir-spec/basedir-spec-latest.html XDG Base Directory Specification>.
+--
+--   Note: On Windows, 'XdgDataDirs' and 'XdgConfigDirs' yield the same result.
+--
+--   @since 1.3.2.0
+data XdgDirectoryList
+  = XdgDataDirs
+    -- ^ For data files (e.g. images).
+    --   Defaults to @/usr/local/share/@ and @/usr/share/@ and can be
+    --   overridden by the @XDG_DATA_DIRS@ environment variable.
+    --   On Windows, it is @%PROGRAMDATA%@ or @%ALLUSERSPROFILE%@
+    --   (e.g. @C:\/ProgramData@).
+  | XdgConfigDirs
+    -- ^ For configuration files.
+    --   Defaults to @/etc/xdg@ and can be
+    --   overridden by the @XDG_CONFIG_DIRS@ environment variable.
+    --   On Windows, it is @%PROGRAMDATA%@ or @%ALLUSERSPROFILE%@
+    --   (e.g. @C:\/ProgramData@).
+  deriving (Bounded, Enum, Eq, Ord, Read, Show)
+
+getXdgDirectoryList :: XdgDirectoryList -- ^ which special directory list
+                    -> IO [FilePath]
+getXdgDirectoryList xdgDir =
+  modifyIOError (`ioeAddLocation` "getXdgDirectoryList") $
+  case xdgDir of
+    XdgDataDirs   -> get "XDG_DATA_DIRS"   ["/usr/local/share/", "/usr/share/"]
+    XdgConfigDirs -> get "XDG_CONFIG_DIRS" ["/etc/xdg"]
+  where
+#if defined(mingw32_HOST_OS)
+    get _ _ =
+      return <$> Win32.sHGetFolderPath nullPtr win32_cSIDL_COMMON_APPDATA
+                                       nullPtr 0
+#else
+    get name fallback = do
+      env <- lookupEnv name
+      case env of
+        Nothing    -> return fallback
+        Just paths -> return (splitSearchPath paths)
+#endif
+
+#if !defined(mingw32_HOST_OS)
 -- | Return the value of an environment variable, or 'Nothing' if there is no
 --   such value.  (Equivalent to "lookupEnv" from base-4.6.)
 lookupEnv :: String -> IO (Maybe String)

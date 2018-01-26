@@ -1,9 +1,12 @@
 Changelog for the [`directory`][1] package
 ==========================================
 
-## 1.3.1.6 (January 2018)
+## 1.3.2.0 (January 2018)
 
   * Relax `time` version bounds to support 1.9.
+
+  * Implement `getXdgDirectoryList` and `XdgDirectoryList`.
+    ([#78](https://github.com/haskell/directory/issues/78))
 
 ## 1.3.1.5 (October 2017)
 

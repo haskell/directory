@@ -28,6 +28,7 @@ import qualified RenamePath
 import qualified Safe
 import qualified T8482
 import qualified WithCurrentDirectory
+import qualified Xdg
 
 main :: IO ()
 main = T.testMain $ \ _t -> do
@@ -59,3 +60,4 @@ main = T.testMain $ \ _t -> do
   T.isolatedRun _t "Safe" Safe.main
   T.isolatedRun _t "T8482" T8482.main
   T.isolatedRun _t "WithCurrentDirectory" WithCurrentDirectory.main
+  T.isolatedRun _t "Xdg" Xdg.main
