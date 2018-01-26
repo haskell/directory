@@ -1,6 +1,10 @@
 Changelog for the [`directory`][1] package
 ==========================================
 
+## 1.3.1.6 (January 2018)
+
+  * Relax `time` version bounds to support 1.9.
+
 ## 1.3.1.5 (October 2017)
 
   * Rename the internal header `windows.h` to avoid GHC#14312.

@@ -29,7 +29,7 @@ main _t = (`finally` cleanup) $ do
 
   where
     contents = "This is the data\n"
-    mtime = read "2000-01-01 00:00:00"
+    mtime = read "2000-01-01 00:00:00Z"
 
     cleanup = do
       -- needed to ensure the test runner can clean up our mess
