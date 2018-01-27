@@ -73,17 +73,17 @@ EOF
 
 build() {
     if [ "${STACK_RESOLVER+x}" ]; then
+        stack="stack --no-terminal ${STACK_FLAGS-}"
 
         # workaround for https://github.com/haskell/cabal/issues/2375
         case $STACK_RESOLVER in
             lts-2*)
                 if [ -f configure ]; then
                     sed -i.bak 's/WithHooks autoconfUserHooks//' Setup.hs
-                    stack exec sh ./configure
+                    $stack exec sh ./configure
                 fi;;
         esac
 
-        stack="stack --no-terminal ${STACK_FLAGS-}"
         $stack test --haddock --no-haddock-deps \
             --ghc-options "$ghcflags" \
             --test-arguments "$testflags"
