@@ -1,6 +1,10 @@
 Changelog for the [`directory`][1] package
 ==========================================
 
+## 1.3.2.2 (April 2018)
+
+  * Relax `base` version bounds to support 4.12.
+
 ## 1.3.2.1 (March 2018)
 
   * Relax `Win32` version bounds to support 2.7.
