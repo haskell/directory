@@ -1,6 +1,10 @@
 Changelog for the [`directory`][1] package
 ==========================================
 
+## 1.3.2.3 (May 2018)
+
+  * Relax `unix` version bounds to support 2.8.
+
 ## 1.3.2.2 (April 2018)
 
   * Relax `base` version bounds to support 4.12.
