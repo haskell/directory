@@ -59,7 +59,7 @@ EOF
         tools/retry $stack setup >/dev/null
         $stack ghc -- --version
         $stack --version
-        $stack list-dependencies
+        $stack ls dependencies
 
     else
 

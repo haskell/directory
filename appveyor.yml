@@ -9,7 +9,7 @@ environment:
   matrix:
   - STACK_FLAGS: --skip-msys
     STACK_RESOLVER: lts-9.6
-    STACK_EXTRA_DEPS: Win32-2.7.0.0
+    STACK_EXTRA_DEPS: Win32-2.8.0.0
   - STACK_FLAGS: --skip-msys
     STACK_RESOLVER: lts-7.24
     STACK_EXTRA_DEPS: Win32-2.4.0.0
