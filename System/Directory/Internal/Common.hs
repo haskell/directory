@@ -1,13 +1,35 @@
 {-# LANGUAGE CPP #-}
+#if defined(ghcjs_HOST_OS)
+{-# LANGUAGE JavaScriptFFI #-}
+#endif
 module System.Directory.Internal.Common where
 import Prelude ()
 import System.Directory.Internal.Prelude
 import System.FilePath ((</>), isPathSeparator, isRelative,
                         pathSeparator, splitDrive, takeDrive)
-#ifdef mingw32_HOST_OS
+#if defined(mingw32_HOST_OS)
 import qualified System.Win32 as Win32
-#else
+#elif !defined(ghcjs_HOST_OS)
 import qualified System.Posix as Posix
+#else
+
+import GHCJS.Prim
+import Foreign.C.Error
+
+type JSObject = JSVal
+type JSString = JSVal
+type JSArray  = JSVal
+
+throwErrnoIfJSNull :: String -> IO JSVal -> IO JSVal
+throwErrnoIfJSNull msg m = do
+  r <- m
+  if isNull r then throwErrno msg
+              else return r
+
+foreign import javascript unsafe
+  "h$directory_getCurrentDirectory()"
+  js_getCurrentDirectory :: IO JSString
+
 #endif
 
 -- | Similar to 'try' but only catches a specify kind of 'IOError' as
@@ -87,7 +109,10 @@ getCurrentDirectory = (`ioeAddLocation` "getCurrentDirectory") `modifyIOError`
   specializeErrorString
     "Current working directory no longer exists"
     isDoesNotExistError
-#ifdef mingw32_HOST_OS
+#if defined(ghcjs_HOST_OS)
+    (fromJSString `fmap` throwErrnoIfJSNull "getCurrentDirectory"
+                                            js_getCurrentDirectory)
+#elif defined(mingw32_HOST_OS)
     Win32.getCurrentDirectory
 #else
     Posix.getWorkingDirectory
