@@ -13,7 +13,9 @@
 module System.Directory.Internal
   ( module System.Directory.Internal.Common
 
-#ifdef mingw32_HOST_OS
+#if defined(ghcjs_HOST_OS)
+  , module System.Directory.Internal.GHCJS
+#elif defined(mingw32_HOST_OS)
   , module System.Directory.Internal.Windows
 #else
   , module System.Directory.Internal.Posix
@@ -27,7 +29,9 @@ module System.Directory.Internal
 
 import System.Directory.Internal.Common
 
-#ifdef mingw32_HOST_OS
+#if defined(ghcjs_HOST_OS)
+import System.Directory.Internal.GHCJS
+#elif defined(mingw32_HOST_OS)
 import System.Directory.Internal.Windows
 #else
 import System.Directory.Internal.Posix

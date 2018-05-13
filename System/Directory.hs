@@ -1,8 +1,16 @@
 {-# LANGUAGE CPP #-}
+#if !defined(mingw32_HOST_OS) && !defined(ghcjs_HOST_OS)
+#define posix_OS 1
+#else
+#undef posix_OS
+#endif
 
 #if !(MIN_VERSION_base(4,8,0))
 -- In base-4.8.0 the Foreign module became Safe
 {-# LANGUAGE Trustworthy #-}
+#endif
+#if defined(ghcjs_HOST_OS)
+{-# LANGUAGE ForeignFunctionInterface, JavaScriptFFI, UnliftedFFITypes, MagicHash #-}
 #endif
 
 -----------------------------------------------------------------------------
@@ -118,12 +126,16 @@ import System.FilePath
 import Data.Time (UTCTime)
 import Data.Time.Clock.POSIX (POSIXTime, utcTimeToPOSIXSeconds)
 import qualified System.Directory.Internal.Config as Cfg
-#ifdef mingw32_HOST_OS
+#if defined(mingw32_HOST_OS)
 import qualified System.Win32 as Win32
-#else
+#elif !defined(ghcjs_HOST_OS)
 import qualified GHC.Foreign as GHC
 import qualified System.Posix as Posix
+#else
+import GHCJS.Prim
+import Data.Maybe (listToMaybe)
 #endif
+
 
 {- $intro
 A directory contains a series of entries, each of which is a named
@@ -304,7 +316,10 @@ The path refers to an existing non-directory object.
 
 createDirectory :: FilePath -> IO ()
 createDirectory path = do
-#ifdef mingw32_HOST_OS
+#if defined(ghcjs_HOST_OS)
+  (`ioeSetFileName` path) `modifyIOError` do
+    (createDirectoryInternal path)
+#elif defined(mingw32_HOST_OS)
   (`ioeSetFileName` path) `modifyIOError` do
     path' <- toExtendedLengthPath <$> prependCurrentDirectory path
     Win32.createDirectory path' Nothing
@@ -402,7 +417,9 @@ The operand refers to an existing non-directory object.
 
 removeDirectory :: FilePath -> IO ()
 removeDirectory path =
-#ifdef mingw32_HOST_OS
+#if defined(ghcjs_HOST_OS)
+  removeDirectoryInternal path
+#elif defined(mingw32_HOST_OS)
   (`ioeSetFileName` path) `modifyIOError` do
     path' <- toExtendedLengthPath <$> prependCurrentDirectory path
     Win32.removeDirectory path'
@@ -549,7 +566,9 @@ The operand refers to an existing directory.
 
 removeFile :: FilePath -> IO ()
 removeFile path =
-#ifdef mingw32_HOST_OS
+#if defined(ghcjs_HOST_OS)
+  removeFileInternal path
+#elif defined(mingw32_HOST_OS)
   (`ioeSetFileName` path) `modifyIOError` do
     path' <- toExtendedLengthPath <$> prependCurrentDirectory path
     Win32.deleteFile path'
@@ -729,7 +748,7 @@ renamePath :: FilePath                  -- ^ Old path
            -> FilePath                  -- ^ New path
            -> IO ()
 renamePath opath npath = (`ioeAddLocation` "renamePath") `modifyIOError` do
-#ifdef mingw32_HOST_OS
+#if defined(mingw32_HOST_OS)
    (`ioeSetFileName` opath) `modifyIOError` do
      opath' <- toExtendedLengthPath <$> prependCurrentDirectory opath
      npath' <- toExtendedLengthPath <$> prependCurrentDirectory npath
@@ -738,6 +757,8 @@ renamePath opath npath = (`ioeAddLocation` "renamePath") `modifyIOError` do
 #  else
      Win32.moveFileEx opath' npath' Win32.mOVEFILE_REPLACE_EXISTING
 #  endif
+#elif defined(ghcjs_HOST_OS)
+   renamePathInternal opath npath
 #else
    Posix.rename opath npath
 #endif
@@ -856,7 +877,9 @@ copyFileWithMetadata :: FilePath        -- ^ Source file
 copyFileWithMetadata src dst =
   (`ioeAddLocation` "copyFileWithMetadata") `modifyIOError` doCopy
   where
-#ifdef mingw32_HOST_OS
+#if defined(ghcjs_HOST_OS)
+    doCopy = js_copyFileWithMetadata (toJSString src) (toJSString dst)
+#elif defined(mingw32_HOST_OS)
     doCopy = (`ioeSetFileName` src) `modifyIOError` do
       src' <- toExtendedLengthPath <$> prependCurrentDirectory src
       dst' <- toExtendedLengthPath <$> prependCurrentDirectory dst
@@ -868,7 +891,7 @@ copyFileWithMetadata src dst =
       copyMetadataFromStatus st dst
 #endif
 
-#ifndef mingw32_HOST_OS
+#ifdef posix_OS
 copyMetadataFromStatus :: Posix.FileStatus -> FilePath -> IO ()
 copyMetadataFromStatus st dst = do
   tryCopyOwnerAndGroupFromStatus st dst
@@ -876,26 +899,26 @@ copyMetadataFromStatus st dst = do
   copyFileTimesFromStatus st dst
 #endif
 
-#ifndef mingw32_HOST_OS
+#ifdef posix_OS
 tryCopyOwnerAndGroupFromStatus :: Posix.FileStatus -> FilePath -> IO ()
 tryCopyOwnerAndGroupFromStatus st dst = do
   ignoreIOExceptions (copyOwnerFromStatus st dst)
   ignoreIOExceptions (copyGroupFromStatus st dst)
 #endif
 
-#ifndef mingw32_HOST_OS
+#ifdef posix_OS
 copyOwnerFromStatus :: Posix.FileStatus -> FilePath -> IO ()
 copyOwnerFromStatus st dst = do
   Posix.setOwnerAndGroup dst (Posix.fileOwner st) (-1)
 #endif
 
-#ifndef mingw32_HOST_OS
+#ifdef posix_OS
 copyGroupFromStatus :: Posix.FileStatus -> FilePath -> IO ()
 copyGroupFromStatus st dst = do
   Posix.setOwnerAndGroup dst (-1) (Posix.fileGroup st)
 #endif
 
-#ifndef mingw32_HOST_OS
+#ifdef posix_OS
 copyFileTimesFromStatus :: Posix.FileStatus -> FilePath -> IO ()
 copyFileTimesFromStatus st dst = do
   let atime = accessTimeFromMetadata st
@@ -968,6 +991,10 @@ copyFileTimesFromStatus st dst = do
 --
 canonicalizePath :: FilePath -> IO FilePath
 canonicalizePath = \ path ->
+#if defined(ghcjs_HOST_OS)
+  -- fixme implement correct exception behaviour for GHCJS impl
+  canonicalizePathInternal path
+#else
   modifyIOError ((`ioeAddLocation` "canonicalizePath") .
                  (`ioeSetFileName` path)) $
   -- normalise does more stuff, like upper-casing the drive letter
@@ -1051,6 +1078,7 @@ canonicalizePath = \ path ->
                   let mFallback' = Just (fromMaybe fallback mFallback)
                   path' <- simplify (p </> target </> joinPath restSuffix)
                   attemptRealpathWith (n - 1) mFallback' realpath path'
+#endif
 
 -- | Convert a path into an absolute path.  If the given path is relative, the
 -- current directory is prepended and then the combined result is
@@ -1111,7 +1139,9 @@ makeRelativeToCurrentDirectory x = do
 -- documentation of 'findFileWith'.
 findExecutable :: String -> IO (Maybe FilePath)
 findExecutable binary = do
-#if defined(mingw32_HOST_OS)
+#if defined(ghcjs_HOST_OS)
+    listToMaybe <$> findExecutables binary
+#elif defined(mingw32_HOST_OS)
 #  if MIN_VERSION_Win32(2,6,0)
     Win32.searchPath Nothing binary (Just exeExtension)
 #  else
@@ -1136,7 +1166,9 @@ findExecutable binary = do
 -- @since 1.2.2.0
 findExecutables :: String -> IO [FilePath]
 findExecutables binary = do
-#if defined(mingw32_HOST_OS)
+#if defined(ghcjs_HOST_OS)
+    findExecutablesInternal binary
+#elif defined(mingw32_HOST_OS)
     file <- findExecutable binary
     return $ maybeToList file
 #else
@@ -1144,7 +1176,7 @@ findExecutables binary = do
     findExecutablesInDirectories path binary
 #endif
 
-#ifndef mingw32_HOST_OS
+#ifdef posix_OS
 -- | Get the contents of the @PATH@ environment variable.
 getPath :: IO [FilePath]
 getPath = do
@@ -1258,7 +1290,9 @@ getDirectoryContents :: FilePath -> IO [FilePath]
 getDirectoryContents path =
   modifyIOError ((`ioeSetFileName` path) .
                  (`ioeAddLocation` "getDirectoryContents")) $ do
-#ifndef mingw32_HOST_OS
+#if defined(ghcjs_HOST_OS)
+    getDirectoryContentsInternal path
+#elif !defined(mingw32_HOST_OS)
     bracket
       (Posix.openDirStream path)
       Posix.closeDirStream
@@ -1290,6 +1324,7 @@ getDirectoryContents path =
           else return (filename:acc)
                  -- no need to reverse, ordering is undefined
 #endif /* mingw32 */
+{-# NOINLINE getDirectoryContents #-}
 
 -- | @'listDirectory' dir@ returns a list of /all/ entries in /dir/ without
 -- the special entries (@.@ and @..@).
@@ -1362,7 +1397,9 @@ listDirectory path =
 --
 setCurrentDirectory :: FilePath -> IO ()
 setCurrentDirectory path = do
-#ifdef mingw32_HOST_OS
+#if defined(ghcjs_HOST_OS)
+  setCurrentDirectoryInternal path
+#elif defined(mingw32_HOST_OS)
   -- SetCurrentDirectory does not support long paths even with the \\?\ prefix
   -- https://ghc.haskell.org/trac/ghc/ticket/13373#comment:6
   Win32.setCurrentDirectory path
@@ -1466,8 +1503,10 @@ createFileLink
   -> IO ()
 createFileLink target link =
   (`ioeAddLocation` "createFileLink") `modifyIOError` do
-#ifdef mingw32_HOST_OS
+#if defined(mingw32_HOST_OS)
     createSymbolicLink False target link
+#elif defined(ghcjs_HOST_OS)
+    createSymbolicLinkInternal target link
 #else
     Posix.createSymbolicLink target link
 #endif
@@ -1565,7 +1604,7 @@ isSymbolicLink = pathIsSymbolicLink
 getSymbolicLinkTarget :: FilePath -> IO FilePath
 getSymbolicLinkTarget path =
   (`ioeAddLocation` "getSymbolicLinkTarget") `modifyIOError` do
-#ifdef mingw32_HOST_OS
+#if defined(mingw32_HOST_OS) || defined(ghcjs_HOST_OS)
     readSymbolicLink path
 #else
     Posix.readSymbolicLink path
@@ -1687,7 +1726,10 @@ setFileTimes path (atime, mtime) =
     path' = normalise path              -- handle empty paths
 
     setTimes :: (Maybe POSIXTime, Maybe POSIXTime) -> IO ()
-#ifdef mingw32_HOST_OS
+#if defined(ghcjs_HOST_OS)
+    setTimes time =
+      error "fixme: setFileTimes unimplemented for GHCJS"
+#elif defined(mingw32_HOST_OS)
     setTimes (atime', mtime') =
       bracket (openFileHandle path' Win32.gENERIC_WRITE)
               Win32.closeHandle $ \ handle ->
@@ -1746,7 +1788,9 @@ cannot be found.
 getHomeDirectory :: IO FilePath
 getHomeDirectory = modifyIOError (`ioeAddLocation` "getHomeDirectory") get
   where
-#if defined(mingw32_HOST_OS)
+#if defined(ghcjs_HOST_OS)
+    get = fromJSString `fmap` throwErrnoIfJSNull "getHomeDirectory" js_getHomeDirectory
+#elif defined(mingw32_HOST_OS)
     get = getFolderPath Win32.cSIDL_PROFILE `catchIOError` \ _ ->
           getFolderPath Win32.cSIDL_WINDOWS
     getFolderPath what = Win32.sHGetFolderPath nullPtr what nullPtr 0
@@ -1815,7 +1859,9 @@ getXdgDirectory xdgDir suffix =
     XdgConfig -> get False "XDG_CONFIG_HOME" ".config"
     XdgCache  -> get True  "XDG_CACHE_HOME"  ".cache"
   where
-#if defined(mingw32_HOST_OS)
+#if defined(ghcjs_HOST_OS)
+    get _ _ _ = error "fixme: getXdgDirectory not implemented for GHCJS"
+#elif defined(mingw32_HOST_OS)
     get isLocal _ _ = Win32.sHGetFolderPath nullPtr which nullPtr 0
       where which | isLocal   = win32_cSIDL_LOCAL_APPDATA
                   | otherwise = Win32.cSIDL_APPDATA
@@ -1912,7 +1958,10 @@ getAppUserDataDirectory :: FilePath     -- ^ a relative path that is appended
                         -> IO FilePath
 getAppUserDataDirectory appName = do
   modifyIOError (`ioeAddLocation` "getAppUserDataDirectory") $ do
-#if defined(mingw32_HOST_OS)
+#if defined(ghcjs_HOST_OS)
+    fromJSString `fmap` throwErrnoIfJSNull "getAppUserDataDirectory"
+      (js_getAppUserDataDirectory (toJSString appName))
+#elif defined(mingw32_HOST_OS)
     s <- Win32.sHGetFolderPath nullPtr Win32.cSIDL_APPDATA nullPtr 0
     return (s++'\\':appName)
 #else
@@ -1943,7 +1992,9 @@ cannot be found.
 getUserDocumentsDirectory :: IO FilePath
 getUserDocumentsDirectory = do
   modifyIOError (`ioeAddLocation` "getUserDocumentsDirectory") $ do
-#if defined(mingw32_HOST_OS)
+#if defined(ghcjs_HOST_OS)
+    fromJSString `fmap` throwErrnoIfJSNull "getUserDocumentsDirectory" js_getUserDocumentsDirectory
+#elif defined(mingw32_HOST_OS)
     Win32.sHGetFolderPath nullPtr Win32.cSIDL_PERSONAL nullPtr 0
 #else
     getEnv "HOME"
@@ -1977,7 +2028,9 @@ The function doesn\'t verify whether the path exists.
 -}
 getTemporaryDirectory :: IO FilePath
 getTemporaryDirectory =
-#if defined(mingw32_HOST_OS)
+#if defined(ghcjs_HOST_OS)
+  fromJSString `fmap` throwErrnoIfJSNull "getTemporaryDirectory" js_getTemporaryDirectory
+#elif defined(mingw32_HOST_OS)
   Win32.getTemporaryDirectory
 #else
   getEnv "TMPDIR" `catchIOError` \ err ->
