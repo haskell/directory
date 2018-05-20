@@ -1,10 +1,10 @@
 {-# LANGUAGE CPP #-}
 module System.Directory.Internal.Windows where
 #include <HsDirectoryConfig.h>
-#ifdef mingw32_HOST_OS
-##if defined i386_HOST_ARCH
+#if defined(mingw32_HOST_OS)
+##if defined(i386_HOST_ARCH)
 ## define WINAPI stdcall
-##elif defined x86_64_HOST_ARCH
+##elif defined(x86_64_HOST_ARCH)
 ## define WINAPI ccall
 ##else
 ## error unknown architecture
@@ -16,14 +16,60 @@ module System.Directory.Internal.Windows where
 import Prelude ()
 import System.Directory.Internal.Prelude
 import System.Directory.Internal.Common
+import System.Directory.Internal.Config (exeExtension)
 import Data.Time (UTCTime)
 import Data.Time.Clock.POSIX (POSIXTime, posixSecondsToUTCTime)
-import System.FilePath (addTrailingPathSeparator, hasTrailingPathSeparator,
-                        isPathSeparator, isRelative, joinDrive, joinPath,
-                        normalise, pathSeparator, pathSeparators,
-                        splitDirectories, splitDrive, takeExtension)
+import System.FilePath
+  ( (</>)
+  , addTrailingPathSeparator
+  , hasTrailingPathSeparator
+  , isPathSeparator
+  , isRelative
+  , joinDrive
+  , joinPath
+  , normalise
+  , pathSeparator
+  , pathSeparators
+  , splitDirectories
+  , splitDrive
+  , takeExtension
+  )
 import qualified Data.List as List
 import qualified System.Win32 as Win32
+
+createDirectoryInternal :: FilePath -> IO ()
+createDirectoryInternal path =
+  (`ioeSetFileName` path) `modifyIOError` do
+    path' <- toExtendedLengthPath <$> prependCurrentDirectory path
+    Win32.createDirectory path' Nothing
+
+removePathInternal :: Bool -> FilePath -> IO ()
+removePathInternal isDir path =
+  (`ioeSetFileName` path) `modifyIOError`
+    (toExtendedLengthPath <$> prependCurrentDirectory path
+     >>= if isDir then Win32.removeDirectory else Win32.deleteFile)
+
+renamePathInternal :: FilePath -> FilePath -> IO ()
+renamePathInternal opath npath =
+  (`ioeSetFileName` opath) `modifyIOError` do
+    opath' <- toExtendedLengthPath <$> prependCurrentDirectory opath
+    npath' <- toExtendedLengthPath <$> prependCurrentDirectory npath
+#if MIN_VERSION_Win32(2, 6, 0)
+    Win32.moveFileEx opath' (Just npath') Win32.mOVEFILE_REPLACE_EXISTING
+#else
+    Win32.moveFileEx opath' npath' Win32.mOVEFILE_REPLACE_EXISTING
+#endif
+
+copyFileWithMetadataInternal :: (Metadata -> FilePath -> IO ())
+                             -> (Metadata -> FilePath -> IO ())
+                             -> FilePath
+                             -> FilePath
+                             -> IO ()
+copyFileWithMetadataInternal _ _ src dst =
+  (`ioeSetFileName` src) `modifyIOError` do
+    src' <- toExtendedLengthPath <$> prependCurrentDirectory src
+    dst' <- toExtendedLengthPath <$> prependCurrentDirectory dst
+    Win32.copyFile src' dst' False
 
 win32_cSIDL_LOCAL_APPDATA :: Win32.CSIDL
 #if MIN_VERSION_Win32(2, 3, 1)
@@ -374,6 +420,64 @@ getPathNameWith cFunc = do
         Left _ -> throwIO (mkIOError OtherError "" Nothing Nothing
                            `ioeSetErrorString` "path changed unexpectedly")
 
+canonicalizePathWith :: ((FilePath -> IO FilePath) -> FilePath -> IO FilePath)
+                     -> FilePath
+                     -> IO FilePath
+canonicalizePathWith attemptRealpath = attemptRealpath getFinalPathName
+
+canonicalizePathSimplify :: FilePath -> IO FilePath
+canonicalizePathSimplify path =
+  (fromExtendedLengthPath <$>
+   Win32.getFullPathName (toExtendedLengthPath path))
+    `catchIOError` \ _ ->
+      return path
+
+searchPathEnvForExes :: String -> IO (Maybe FilePath)
+searchPathEnvForExes binary =
+#if MIN_VERSION_Win32(2, 6, 0)
+  Win32.searchPath Nothing binary (Just exeExtension)
+#else
+  Win32.searchPath Nothing binary exeExtension
+#endif
+
+findExecutablesLazyInternal :: ([FilePath] -> String -> ListT IO FilePath)
+                            -> String
+                            -> ListT IO FilePath
+findExecutablesLazyInternal _ = maybeToListT . searchPathEnvForExes
+
+exeExtensionInternal :: String
+exeExtensionInternal = exeExtension
+
+getDirectoryContentsInternal :: FilePath -> IO [FilePath]
+getDirectoryContentsInternal path = do
+  query <- toExtendedLengthPath <$> prependCurrentDirectory (path </> "*")
+  bracket
+     (Win32.findFirstFile query)
+     (\(h,_) -> Win32.findClose h)
+     (\(h,fdat) -> loop h fdat [])
+  where
+        -- we needn't worry about empty directories: adirectory always
+        -- has at least "." and ".." entries
+    loop :: Win32.HANDLE -> Win32.FindData -> [FilePath] -> IO [FilePath]
+    loop h fdat acc = do
+       filename <- Win32.getFindDataFileName fdat
+       more <- Win32.findNextFile h fdat
+       if more
+          then loop h fdat (filename:acc)
+          else return (filename:acc)
+                 -- no need to reverse, ordering is undefined
+
+getCurrentDirectoryInternal :: IO FilePath
+getCurrentDirectoryInternal = Win32.getCurrentDirectory
+
+prependCurrentDirectory :: FilePath -> IO FilePath
+prependCurrentDirectory = prependCurrentDirectoryWith getCurrentDirectoryInternal
+
+-- SetCurrentDirectory does not support long paths even with the \\?\ prefix
+-- https://ghc.haskell.org/trac/ghc/ticket/13373#comment:6
+setCurrentDirectoryInternal :: FilePath -> IO ()
+setCurrentDirectoryInternal = Win32.setCurrentDirectory
+
 win32_createSymbolicLink :: String -> String -> Bool -> IO ()
 win32_createSymbolicLink link _target _isDir =
 #ifdef HAVE_CREATESYMBOLICLINKW
@@ -418,6 +522,9 @@ foreign import WINAPI unsafe "windows.h CreateSymbolicLinkW"
                          Nothing (Just link)
   where unsupportedErrorMsg = "Not supported on Windows XP or older"
 #endif
+
+linkToDirectoryIsDirectory :: Bool
+linkToDirectoryIsDirectory = True
 
 createSymbolicLink :: Bool -> FilePath -> FilePath -> IO ()
 createSymbolicLink isDir target link =
@@ -483,6 +590,25 @@ posixToWindowsTime :: POSIXTime -> Win32.FILETIME
 posixToWindowsTime t = Win32.FILETIME $
   truncate (t * 10000000 + windowsPosixEpochDifference)
 
+setTimes :: FilePath -> (Maybe POSIXTime, Maybe POSIXTime) -> IO ()
+setTimes path' (atime', mtime') =
+  bracket (openFileHandle path' Win32.gENERIC_WRITE)
+          Win32.closeHandle $ \ handle ->
+  maybeWith with (posixToWindowsTime <$> atime') $ \ atime'' ->
+  maybeWith with (posixToWindowsTime <$> mtime') $ \ mtime'' ->
+  Win32.failIf_ not "" $
+    Win32.c_SetFileTime handle nullPtr atime'' mtime''
+
+-- | Open the handle of an existing file or directory.
+openFileHandle :: String -> Win32.AccessMode -> IO Win32.HANDLE
+openFileHandle path mode =
+  (`ioeSetFileName` path) `modifyIOError` do
+    path' <- toExtendedLengthPath <$> prependCurrentDirectory path
+    Win32.createFile path' mode maxShareMode Nothing
+                     Win32.oPEN_EXISTING flags Nothing
+  where flags =  Win32.fILE_ATTRIBUTE_NORMAL
+             .|. Win32.fILE_FLAG_BACKUP_SEMANTICS -- required for directories
+
 type Mode = Win32.FileAttributeOrFlag
 
 modeFromMetadata :: Metadata -> Mode
@@ -526,5 +652,36 @@ getAccessPermissions path = do
 setAccessPermissions :: FilePath -> Permissions -> IO ()
 setAccessPermissions path Permissions{writable = w} = do
   setFilePermissions path (setWriteMode w 0)
+
+getFolderPath :: Win32.CSIDL -> IO FilePath
+getFolderPath what = Win32.sHGetFolderPath nullPtr what nullPtr 0
+
+getHomeDirectoryInternal :: IO FilePath
+getHomeDirectoryInternal =
+  getFolderPath Win32.cSIDL_PROFILE `catchIOError` \ _ ->
+    getFolderPath Win32.cSIDL_WINDOWS
+
+getXdgDirectoryInternal :: IO FilePath -> XdgDirectory -> IO FilePath
+getXdgDirectoryInternal _ xdgDir = do
+  case xdgDir of
+    XdgData   -> getFolderPath Win32.cSIDL_APPDATA
+    XdgConfig -> getFolderPath Win32.cSIDL_APPDATA
+    XdgCache  -> getFolderPath win32_cSIDL_LOCAL_APPDATA
+
+getXdgDirectoryListInternal :: XdgDirectoryList -> IO [FilePath]
+getXdgDirectoryListInternal _ =
+  return <$> Win32.sHGetFolderPath nullPtr win32_cSIDL_COMMON_APPDATA nullPtr 0
+
+getAppUserDataDirectoryInternal :: FilePath -> IO FilePath
+getAppUserDataDirectoryInternal appName = do
+  s <- Win32.sHGetFolderPath nullPtr Win32.cSIDL_APPDATA nullPtr 0
+  return (s++'\\':appName)
+
+getUserDocumentsDirectoryInternal :: IO FilePath
+getUserDocumentsDirectoryInternal =
+  Win32.sHGetFolderPath nullPtr Win32.cSIDL_PERSONAL nullPtr 0
+
+getTemporaryDirectoryInternal :: IO FilePath
+getTemporaryDirectoryInternal = Win32.getTemporaryDirectory
 
 #endif

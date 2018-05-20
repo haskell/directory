@@ -1,6 +1,6 @@
 {-# LANGUAGE CPP #-}
 module Xdg where
-#if !defined(mingw32_HOST_OS) && MIN_VERSION_base(4,7,0)
+#if !defined(mingw32_HOST_OS) && MIN_VERSION_base(4, 7, 0)
 import System.Environment (setEnv, unsetEnv)
 #endif
 #include "util.inl"
@@ -14,7 +14,7 @@ main _t = do
 
   T(expect) () True -- avoid warnings about redundant imports
 
-#if !defined(mingw32_HOST_OS) && MIN_VERSION_base(4,7,0)
+#if !defined(mingw32_HOST_OS) && MIN_VERSION_base(4, 7, 0)
   unsetEnv "XDG_DATA_DIRS"
   unsetEnv "XDG_CONFIG_DIRS"
   T(expectEq) () ["/usr/local/share/", "/usr/share/"] =<<

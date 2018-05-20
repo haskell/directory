@@ -1,16 +1,32 @@
 module System.Directory.Internal.Posix where
 #include <HsDirectoryConfig.h>
-#ifndef mingw32_HOST_OS
+#if !defined(mingw32_HOST_OS)
 #ifdef HAVE_LIMITS_H
 # include <limits.h>
 #endif
 import Prelude ()
 import System.Directory.Internal.Prelude
+#ifdef HAVE_UTIMENSAT
+import System.Directory.Internal.C_utimensat
+#endif
 import System.Directory.Internal.Common
+import System.Directory.Internal.Config (exeExtension)
 import Data.Time (UTCTime)
-import Data.Time.Clock.POSIX (POSIXTime, posixSecondsToUTCTime)
-import System.FilePath (normalise)
+import Data.Time.Clock.POSIX (POSIXTime)
+import System.FilePath ((</>), isRelative, normalise, splitSearchPath)
+import qualified Data.Time.Clock.POSIX as POSIXTime
+import qualified GHC.Foreign as GHC
 import qualified System.Posix as Posix
+
+createDirectoryInternal :: FilePath -> IO ()
+createDirectoryInternal path = Posix.createDirectory path 0o777
+
+removePathInternal :: Bool -> FilePath -> IO ()
+removePathInternal True  = Posix.removeDirectory
+removePathInternal False = Posix.removeLink
+
+renamePathInternal :: FilePath -> FilePath -> IO ()
+renamePathInternal = Posix.rename
 
 -- we use the 'free' from the standard library here since it's not entirely
 -- clear whether Haskell's 'free' corresponds to the same one
@@ -40,6 +56,63 @@ withRealpath path action = case c_PATH_MAX of
     allocaBytes (pathMax + 1) (realpath >=> action)
   where realpath = throwErrnoIfNull "" . c_realpath path
 
+canonicalizePathWith :: ((FilePath -> IO FilePath) -> FilePath -> IO FilePath)
+                     -> FilePath
+                     -> IO FilePath
+canonicalizePathWith attemptRealpath path = do
+  encoding <- getFileSystemEncoding
+  let realpath path' =
+        GHC.withCString encoding path'
+          (`withRealpath` GHC.peekCString encoding)
+  attemptRealpath realpath path
+
+canonicalizePathSimplify :: FilePath -> IO FilePath
+canonicalizePathSimplify = return
+
+findExecutablesLazyInternal :: ([FilePath] -> String -> ListT IO FilePath)
+                            -> String
+                            -> ListT IO FilePath
+findExecutablesLazyInternal findExecutablesInDirectoriesLazy binary =
+  getPath `liftBindListT` \ path ->
+  findExecutablesInDirectoriesLazy path binary
+
+exeExtensionInternal :: String
+exeExtensionInternal = exeExtension
+
+getDirectoryContentsInternal :: FilePath -> IO [FilePath]
+getDirectoryContentsInternal path =
+  bracket
+    (Posix.openDirStream path)
+    Posix.closeDirStream
+    start
+ where
+  start dirp =
+      loop id
+    where
+      loop acc = do
+        e <- Posix.readDirStream dirp
+        if null e
+          then return (acc [])
+          else loop (acc . (e:))
+
+getCurrentDirectoryInternal :: IO FilePath
+getCurrentDirectoryInternal = Posix.getWorkingDirectory
+
+prependCurrentDirectory :: FilePath -> IO FilePath
+prependCurrentDirectory = prependCurrentDirectoryWith getCurrentDirectoryInternal
+
+setCurrentDirectoryInternal :: FilePath -> IO ()
+setCurrentDirectoryInternal = Posix.changeWorkingDirectory
+
+linkToDirectoryIsDirectory :: Bool
+linkToDirectoryIsDirectory = False
+
+createSymbolicLink :: Bool -> FilePath -> FilePath -> IO ()
+createSymbolicLink _ = Posix.createSymbolicLink
+
+readSymbolicLink :: FilePath -> IO FilePath
+readSymbolicLink = Posix.readSymbolicLink
+
 type Metadata = Posix.FileStatus
 
 -- note: normalise is needed to handle empty paths
@@ -64,11 +137,11 @@ fileSizeFromMetadata = fromIntegral . Posix.fileSize
 
 accessTimeFromMetadata :: Metadata -> UTCTime
 accessTimeFromMetadata =
-  posixSecondsToUTCTime . posix_accessTimeHiRes
+  POSIXTime.posixSecondsToUTCTime . posix_accessTimeHiRes
 
 modificationTimeFromMetadata :: Metadata -> UTCTime
 modificationTimeFromMetadata =
-  posixSecondsToUTCTime . posix_modificationTimeHiRes
+  POSIXTime.posixSecondsToUTCTime . posix_modificationTimeHiRes
 
 posix_accessTimeHiRes, posix_modificationTimeHiRes
   :: Posix.FileStatus -> POSIXTime
@@ -129,5 +202,111 @@ setAccessPermissions path (Permissions r w e s) = do
     modifyBit :: Bool -> Posix.FileMode -> Posix.FileMode -> Posix.FileMode
     modifyBit False b m = m .&. complement b
     modifyBit True  b m = m .|. b
+
+copyOwnerFromStatus :: Posix.FileStatus -> FilePath -> IO ()
+copyOwnerFromStatus st dst = do
+  Posix.setOwnerAndGroup dst (Posix.fileOwner st) (-1)
+
+copyGroupFromStatus :: Posix.FileStatus -> FilePath -> IO ()
+copyGroupFromStatus st dst = do
+  Posix.setOwnerAndGroup dst (-1) (Posix.fileGroup st)
+
+tryCopyOwnerAndGroupFromStatus :: Posix.FileStatus -> FilePath -> IO ()
+tryCopyOwnerAndGroupFromStatus st dst = do
+  ignoreIOExceptions (copyOwnerFromStatus st dst)
+  ignoreIOExceptions (copyGroupFromStatus st dst)
+
+copyFileWithMetadataInternal :: (Metadata -> FilePath -> IO ())
+                             -> (Metadata -> FilePath -> IO ())
+                             -> FilePath
+                             -> FilePath
+                             -> IO ()
+copyFileWithMetadataInternal copyPermissionsFromMetadata
+                             copyTimesFromMetadata
+                             src
+                             dst = do
+  st <- Posix.getFileStatus src
+  copyFileContents src dst
+  tryCopyOwnerAndGroupFromStatus st dst
+  copyPermissionsFromMetadata st dst
+  copyTimesFromMetadata st dst
+
+setTimes :: FilePath -> (Maybe POSIXTime, Maybe POSIXTime) -> IO ()
+#ifdef HAVE_UTIMENSAT
+setTimes path' (atime', mtime') =
+  withFilePath path' $ \ path'' ->
+  withArray [ maybe utimeOmit toCTimeSpec atime'
+            , maybe utimeOmit toCTimeSpec mtime' ] $ \ times ->
+  throwErrnoPathIfMinus1_ "" path' $
+    c_utimensat c_AT_FDCWD path'' times 0
+#else
+setTimes path' (Just atime', Just mtime') = setFileTimes' path' atime' mtime'
+setTimes path' (atime', mtime') = do
+  m <- getFileMetadata path'
+  let atimeOld = accessTimeFromMetadata m
+  let mtimeOld = modificationTimeFromMetadata m
+  setFileTimes' path'
+    (fromMaybe (POSIXTime.utcTimeToPOSIXSeconds atimeOld) atime')
+    (fromMaybe (POSIXTime.utcTimeToPOSIXSeconds mtimeOld) mtime')
+
+setFileTimes' :: FilePath -> POSIXTime -> POSIXTime -> IO ()
+# if MIN_VERSION_unix(2, 7, 0)
+setFileTimes' = Posix.setFileTimesHiRes
+#  else
+setFileTimes' pth atime' mtime' =
+  Posix.setFileTimes pth
+    (fromInteger (truncate atime'))
+    (fromInteger (truncate mtime'))
+# endif
+#endif
+
+-- | Get the contents of the @PATH@ environment variable.
+getPath :: IO [FilePath]
+getPath = do
+  path <- getEnv "PATH"
+  return (splitSearchPath path)
+
+getHomeDirectoryInternal :: IO FilePath
+getHomeDirectoryInternal = getEnv "HOME"
+
+getXdgDirectoryInternal :: IO FilePath -> XdgDirectory -> IO FilePath
+getXdgDirectoryInternal getHomeDirectory xdgDir = do
+  case xdgDir of
+    XdgData   -> get "XDG_DATA_HOME"   ".local/share"
+    XdgConfig -> get "XDG_CONFIG_HOME" ".config"
+    XdgCache  -> get "XDG_CACHE_HOME"  ".cache"
+  where
+    get name fallback = do
+      env <- lookupEnv name
+      case env of
+        Nothing                     -> fallback'
+        Just path | isRelative path -> fallback'
+                  | otherwise       -> return path
+      where fallback' = (</> fallback) <$> getHomeDirectory
+
+getXdgDirectoryListInternal :: XdgDirectoryList -> IO [FilePath]
+getXdgDirectoryListInternal xdgDir =
+  case xdgDir of
+    XdgDataDirs   -> get "XDG_DATA_DIRS"   ["/usr/local/share/", "/usr/share/"]
+    XdgConfigDirs -> get "XDG_CONFIG_DIRS" ["/etc/xdg"]
+  where
+    get name fallback = do
+      env <- lookupEnv name
+      case env of
+        Nothing    -> return fallback
+        Just paths -> return (splitSearchPath paths)
+
+getAppUserDataDirectoryInternal :: FilePath -> IO FilePath
+getAppUserDataDirectoryInternal appName = do
+  path <- getEnv "HOME"
+  return (path++'/':'.':appName)
+
+getUserDocumentsDirectoryInternal :: IO FilePath
+getUserDocumentsDirectoryInternal = getEnv "HOME"
+
+getTemporaryDirectoryInternal :: IO FilePath
+getTemporaryDirectoryInternal =
+  getEnv "TMPDIR" `catchIOError` \ err ->
+  if isDoesNotExistError err then return "/tmp" else ioError err
 
 #endif

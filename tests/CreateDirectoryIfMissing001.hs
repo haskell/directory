@@ -88,7 +88,7 @@ main _t = do
     catchAny :: IO a -> (SomeException -> IO a) -> IO a
     catchAny = catch
 
-#ifdef mingw32_HOST_OS
+#if defined(mingw32_HOST_OS)
     isNotADirectoryError = isAlreadyExistsError
 #else
     isNotADirectoryError = isInappropriateTypeError

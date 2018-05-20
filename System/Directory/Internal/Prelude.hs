@@ -7,12 +7,12 @@
 
 module System.Directory.Internal.Prelude
   ( module Prelude
-#if MIN_VERSION_base(4, 8, 0)
-  , module Data.Void
-#else
+#if !MIN_VERSION_base(4, 6, 0)
+  , lookupEnv
+#endif
+#if !MIN_VERSION_base(4, 8, 0)
   , module Control.Applicative
   , module Data.Functor
-  , Void
 #endif
   , module Control.Arrow
   , module Control.Concurrent
@@ -37,14 +37,17 @@ module System.Directory.Internal.Prelude
   , module System.Posix.Internals
   , module System.Posix.Types
   , module System.Timeout
+  , Void
   ) where
-#if !MIN_VERSION_base(4, 6, 0)
+#if MIN_VERSION_base(4, 6, 0)
+import System.Environment (lookupEnv)
+#else
 import Prelude hiding (catch)
 #endif
 #if MIN_VERSION_base(4, 8, 0)
 import Data.Void (Void)
 #else
-import Control.Applicative ((<*>), pure)
+import Control.Applicative (Applicative, (<*>), pure)
 import Data.Functor ((<$>), (<$))
 #endif
 import Control.Arrow (second)
@@ -164,6 +167,16 @@ import System.IO.Error
 import System.Posix.Internals (withFilePath)
 import System.Posix.Types (EpochTime)
 import System.Timeout (timeout)
+
+#if !MIN_VERSION_base(4, 6, 0)
+lookupEnv :: String -> IO (Maybe String)
+lookupEnv name = do
+  env <- tryIOError (getEnv name)
+  case env of
+    Left err | isDoesNotExistError err -> return Nothing
+             | otherwise               -> throwIO err
+    Right value -> return (Just value)
+#endif
 
 #if !MIN_VERSION_base(4, 8, 0)
 data Void = Void

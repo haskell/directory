@@ -3,7 +3,7 @@ module MakeAbsolute where
 #include "util.inl"
 import System.FilePath ((</>), addTrailingPathSeparator,
                         dropTrailingPathSeparator, normalise)
-#ifdef mingw32_HOST_OS
+#if defined(mingw32_HOST_OS)
 import System.FilePath (takeDrive)
 #endif
 
@@ -35,7 +35,7 @@ main _t = do
   T(expectEq) () sfoo sfoo2
   T(expectEq) () sfoo sfoo3
 
-#ifdef mingw32_HOST_OS
+#if defined(mingw32_HOST_OS)
   cwd <- getCurrentDirectory
   let driveLetter = toUpper (head (takeDrive cwd))
   let driveLetter' = if driveLetter == 'Z' then 'A' else succ driveLetter

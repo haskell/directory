@@ -10,7 +10,7 @@ import Prelude ()
 import System.Directory.Internal.Prelude
 import System.Directory
 import System.FilePath ((</>), normalise, takeDirectory)
-#ifdef mingw32_HOST_OS
+#if defined(mingw32_HOST_OS)
 import System.Directory.Internal (win32_getFinalPathNameByHandle)
 import qualified System.Win32 as Win32
 #endif
@@ -44,7 +44,7 @@ handleSymlinkUnavail
   -> IO a                               -- ^ arbitrary action
   -> IO a
 handleSymlinkUnavail _handler action = action
-#ifdef mingw32_HOST_OS
+#if defined(mingw32_HOST_OS)
   `catchIOError` \ e ->
     case ioeGetErrorType e of
       UnsupportedOperation -> _handler
@@ -85,7 +85,7 @@ supportsLinkCreation = do
 
 supportsLinkDeref :: IO Bool
 supportsLinkDeref = do
-#ifdef mingw32_HOST_OS
+#if defined(mingw32_HOST_OS)
     True <$ win32_getFinalPathNameByHandle Win32.nullHANDLE 0
   `catchIOError` \ e ->
     case ioeGetErrorType e of

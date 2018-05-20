@@ -12,12 +12,12 @@ main _t = do
 
   T(expect) () . not =<< doesDirectoryExist "nonexistent"
   T(expect) () =<< doesDirectoryExist "somedir"
-#ifdef mingw32_HOST_OS
+#if defined(mingw32_HOST_OS)
   T(expect) () =<< doesDirectoryExist "SoMeDiR"
 #endif
 
   where
-#ifdef mingw32_HOST_OS
+#if defined(mingw32_HOST_OS)
     rootDir = "C:\\"
 #else
     rootDir = "/"

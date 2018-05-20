@@ -47,7 +47,7 @@ main _t = do
 
   removeDirectoryRecursive (tmp "d")
     `catchIOError` \ _ -> removeFile      (tmp "d")
-#ifdef mingw32_HOST_OS
+#if defined(mingw32_HOST_OS)
     `catchIOError` \ _ -> removeDirectory (tmp "d")
 #endif
 
