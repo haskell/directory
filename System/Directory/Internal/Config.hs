@@ -1,6 +1,6 @@
 {-# LANGUAGE CPP #-}
-#include <HsDirectoryConfig.h>
 module System.Directory.Internal.Config where
+#include <HsDirectoryConfig.h>
 
 exeExtension :: String
 exeExtension = EXE_EXTENSION

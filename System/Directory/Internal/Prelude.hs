@@ -173,9 +173,9 @@ lookupEnv :: String -> IO (Maybe String)
 lookupEnv name = do
   env <- tryIOError (getEnv name)
   case env of
-    Left err | isDoesNotExistError err -> return Nothing
+    Left err | isDoesNotExistError err -> pure Nothing
              | otherwise               -> throwIO err
-    Right value -> return (Just value)
+    Right value -> pure (Just value)
 #endif
 
 #if !MIN_VERSION_base(4, 8, 0)

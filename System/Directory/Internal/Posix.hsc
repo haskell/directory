@@ -42,8 +42,7 @@ c_PATH_MAX | c_PATH_MAX' > toInteger maxValue = Nothing
 c_PATH_MAX = Nothing
 #endif
 
-foreign import ccall "realpath" c_realpath
-  :: CString -> CString -> IO CString
+foreign import ccall "realpath" c_realpath :: CString -> CString -> IO CString
 
 withRealpath :: CString -> (CString -> IO a) -> IO a
 withRealpath path action = case c_PATH_MAX of
@@ -62,19 +61,19 @@ canonicalizePathWith :: ((FilePath -> IO FilePath) -> FilePath -> IO FilePath)
 canonicalizePathWith attemptRealpath path = do
   encoding <- getFileSystemEncoding
   let realpath path' =
-        GHC.withCString encoding path'
-          (`withRealpath` GHC.peekCString encoding)
+        GHC.withCString encoding path' (`withRealpath` GHC.peekCString encoding)
   attemptRealpath realpath path
 
 canonicalizePathSimplify :: FilePath -> IO FilePath
-canonicalizePathSimplify = return
+canonicalizePathSimplify = pure
 
 findExecutablesLazyInternal :: ([FilePath] -> String -> ListT IO FilePath)
                             -> String
                             -> ListT IO FilePath
 findExecutablesLazyInternal findExecutablesInDirectoriesLazy binary =
-  getPath `liftBindListT` \ path ->
-  findExecutablesInDirectoriesLazy path binary
+  liftJoinListT $ do
+    path <- getPath
+    pure (findExecutablesInDirectoriesLazy path binary)
 
 exeExtensionInternal :: String
 exeExtensionInternal = exeExtension
@@ -85,15 +84,14 @@ getDirectoryContentsInternal path =
     (Posix.openDirStream path)
     Posix.closeDirStream
     start
- where
-  start dirp =
-      loop id
-    where
-      loop acc = do
-        e <- Posix.readDirStream dirp
-        if null e
-          then return (acc [])
-          else loop (acc . (e:))
+  where
+    start dirp = loop id
+      where
+        loop acc = do
+          e <- Posix.readDirStream dirp
+          if null e
+            then pure (acc [])
+            else loop (acc . (e:))
 
 getCurrentDirectoryInternal :: IO FilePath
 getCurrentDirectoryInternal = Posix.getWorkingDirectory
@@ -184,12 +182,12 @@ getAccessPermissions path = do
   r <- Posix.fileAccess path True  False False
   w <- Posix.fileAccess path False True  False
   x <- Posix.fileAccess path False False True
-  return Permissions
-         { readable   = r
-         , writable   = w
-         , executable = x && not isDir
-         , searchable = x && isDir
-         }
+  pure Permissions
+       { readable   = r
+       , writable   = w
+       , executable = x && not isDir
+       , searchable = x && isDir
+       }
 
 setAccessPermissions :: FilePath -> Permissions -> IO ()
 setAccessPermissions path (Permissions r w e s) = do
@@ -262,9 +260,7 @@ setFileTimes' pth atime' mtime' =
 
 -- | Get the contents of the @PATH@ environment variable.
 getPath :: IO [FilePath]
-getPath = do
-  path <- getEnv "PATH"
-  return (splitSearchPath path)
+getPath = splitSearchPath <$> getEnv "PATH"
 
 getHomeDirectoryInternal :: IO FilePath
 getHomeDirectoryInternal = getEnv "HOME"
@@ -281,32 +277,29 @@ getXdgDirectoryInternal getHomeDirectory xdgDir = do
       case env of
         Nothing                     -> fallback'
         Just path | isRelative path -> fallback'
-                  | otherwise       -> return path
+                  | otherwise       -> pure path
       where fallback' = (</> fallback) <$> getHomeDirectory
 
 getXdgDirectoryListInternal :: XdgDirectoryList -> IO [FilePath]
-getXdgDirectoryListInternal xdgDir =
-  case xdgDir of
+getXdgDirectoryListInternal xdgDirs =
+  case xdgDirs of
     XdgDataDirs   -> get "XDG_DATA_DIRS"   ["/usr/local/share/", "/usr/share/"]
     XdgConfigDirs -> get "XDG_CONFIG_DIRS" ["/etc/xdg"]
   where
     get name fallback = do
       env <- lookupEnv name
       case env of
-        Nothing    -> return fallback
-        Just paths -> return (splitSearchPath paths)
+        Nothing    -> pure fallback
+        Just paths -> pure (splitSearchPath paths)
 
 getAppUserDataDirectoryInternal :: FilePath -> IO FilePath
-getAppUserDataDirectoryInternal appName = do
-  path <- getEnv "HOME"
-  return (path++'/':'.':appName)
+getAppUserDataDirectoryInternal appName =
+  (\ home -> home <> ('/' : '.' : appName)) <$> getHomeDirectoryInternal
 
 getUserDocumentsDirectoryInternal :: IO FilePath
-getUserDocumentsDirectoryInternal = getEnv "HOME"
+getUserDocumentsDirectoryInternal = getHomeDirectoryInternal
 
 getTemporaryDirectoryInternal :: IO FilePath
-getTemporaryDirectoryInternal =
-  getEnv "TMPDIR" `catchIOError` \ err ->
-  if isDoesNotExistError err then return "/tmp" else ioError err
+getTemporaryDirectoryInternal = fromMaybe "/tmp" <$> lookupEnv "TMPDIR"
 
 #endif

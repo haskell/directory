@@ -13,8 +13,12 @@ emptyListT = ListT (pure Nothing)
 maybeToListT :: Applicative m => m (Maybe a) -> ListT m a
 maybeToListT m = ListT (((\ x -> (x, emptyListT)) <$>) <$> m)
 
-liftBindListT :: Monad m => m a -> (a -> ListT m b) -> ListT m b
-liftBindListT f g = ListT (f >>= unListT . g)
+listToListT :: Applicative m => [a] -> ListT m a
+listToListT [] = emptyListT
+listToListT (x : xs) = ListT (pure (Just (x, listToListT xs)))
+
+liftJoinListT :: Monad m => m (ListT m a) -> ListT m a
+liftJoinListT m = ListT (m >>= unListT)
 
 listTHead :: Functor m => ListT m a -> m (Maybe a)
 listTHead (ListT m) = (fst <$>) <$> m
@@ -35,26 +39,43 @@ andM mx my = do
     then my
     else return x
 
+sequenceWithIOErrors_ :: [IO ()] -> IO ()
+sequenceWithIOErrors_ actions = go (Right ()) actions
+  where
+
+    go :: Either IOError () -> [IO ()] -> IO ()
+    go (Left e)   []       = ioError e
+    go (Right ()) []       = pure ()
+    go s          (m : ms) = s `seq` do
+      r <- tryIOError m
+      go (thenEither s r) ms
+
+    -- equivalent to (*>) for Either, defined here to retain compatibility
+    -- with base prior to 4.3
+    thenEither :: Either b a -> Either b a -> Either b a
+    thenEither x@(Left _) _ = x
+    thenEither _          y = y
+
 -- | Similar to 'try' but only catches a specify kind of 'IOError' as
 --   specified by the predicate.
 tryIOErrorType :: (IOError -> Bool) -> IO a -> IO (Either IOError a)
 tryIOErrorType check action = do
   result <- tryIOError action
   case result of
-    Left  err -> if check err then return (Left err) else ioError err
-    Right val -> return (Right val)
+    Left  err -> if check err then pure (Left err) else throwIO err
+    Right val -> pure (Right val)
 
 -- | Attempt to perform the given action, silencing any IO exception thrown by
 -- it.
 ignoreIOExceptions :: IO () -> IO ()
-ignoreIOExceptions io = io `catchIOError` (\_ -> return ())
+ignoreIOExceptions io = io `catchIOError` (\_ -> pure ())
 
 specializeErrorString :: String -> (IOError -> Bool) -> IO a -> IO a
 specializeErrorString str errType action = do
   mx <- tryIOErrorType errType action
   case mx of
-    Left  e -> ioError (ioeSetErrorString e str)
-    Right x -> return x
+    Left  e -> throwIO (ioeSetErrorString e str)
+    Right x -> pure x
 
 ioeAddLocation :: IOError -> String -> IOError
 ioeAddLocation e loc = do
@@ -77,6 +98,12 @@ fileTypeIsDirectory Directory     = True
 fileTypeIsDirectory DirectoryLink = True
 fileTypeIsDirectory _             = False
 
+-- | Return whether the given 'FileType' is a link.
+fileTypeIsLink :: FileType -> Bool
+fileTypeIsLink SymbolicLink  = True
+fileTypeIsLink DirectoryLink = True
+fileTypeIsLink _             = False
+
 data Permissions
   = Permissions
   { readable :: Bool
@@ -96,20 +123,20 @@ data Permissions
 -- (internal API)
 prependCurrentDirectoryWith :: IO FilePath -> FilePath -> IO FilePath
 prependCurrentDirectoryWith getCurrentDirectory path =
-  modifyIOError ((`ioeAddLocation` "prependCurrentDirectory") .
-                 (`ioeSetFileName` path)) $
-  if isRelative path -- avoid the call to `getCurrentDirectory` if we can
-  then do
-    cwd <- getCurrentDirectory
-    let curDrive = takeWhile (not . isPathSeparator) (takeDrive cwd)
-    let (drive, subpath) = splitDrive path
-    -- handle drive-relative paths (Windows only)
-    return . (</> subpath) $
-      case drive of
-        _ : _ | (toUpper <$> drive) /= (toUpper <$> curDrive) ->
-                  drive <> [pathSeparator]
-        _ -> cwd
-  else return path
+  ((`ioeAddLocation` "prependCurrentDirectory") .
+   (`ioeSetFileName` path)) `modifyIOError` do
+    if isRelative path -- avoid the call to `getCurrentDirectory` if we can
+    then do
+      cwd <- getCurrentDirectory
+      let curDrive = takeWhile (not . isPathSeparator) (takeDrive cwd)
+      let (drive, subpath) = splitDrive path
+      -- handle drive-relative paths (Windows only)
+      pure . (</> subpath) $
+        case drive of
+          _ : _ | (toUpper <$> drive) /= (toUpper <$> curDrive) ->
+                    drive <> [pathSeparator]
+          _ -> cwd
+    else pure path
 
 -- | Truncate the destination file and then copy the contents of the source
 -- file to the destination file.  If the destination file already exists, its
