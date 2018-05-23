@@ -1254,13 +1254,14 @@ pathIsDirectory path =
 -- intrinsic property of every symbolic link and cannot be changed without
 -- recreating the link.  A file symbolic link that actually points to a
 -- directory will fail to dereference and vice versa.  Moreover, creating
--- symbolic links on Windows requires privileges normally unavailable to users
+-- symbolic links on Windows may require privileges unavailable to users
 -- outside the Administrators group.  Portable programs that use symbolic
 -- links should take both into consideration.
 --
--- On Windows, the function is implemented using @CreateSymbolicLink@ with
--- @dwFlags@ set to zero.  On POSIX, the function uses @symlink@ and
--- is therefore atomic.
+-- On Windows, the function is implemented using @CreateSymbolicLink@.  Since
+-- 1.3.3.0, the @SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE@ flag is included
+-- if supported by the operating system.  On POSIX, the function uses @symlink@
+-- and is therefore atomic.
 --
 -- Windows-specific errors: This operation may fail with 'permissionErrorType'
 -- if the user lacks the privileges to create symbolic links.  It may also
@@ -1287,13 +1288,15 @@ createFileLink target link =
 -- intrinsic property of every symbolic link and cannot be changed without
 -- recreating the link.  A file symbolic link that actually points to a
 -- directory will fail to dereference and vice versa.  Moreover, creating
--- symbolic links on Windows requires privileges normally unavailable to users
+-- symbolic links on Windows may require privileges unavailable to users
 -- outside the Administrators group.  Portable programs that use symbolic
 -- links should take both into consideration.
 --
 -- On Windows, the function is implemented using @CreateSymbolicLink@ with
--- @dwFlags@ set to @SYMBOLIC_LINK_FLAG_DIRECTORY@.  On POSIX, this is an
--- alias for 'createFileLink' and is therefore atomic.
+-- @SYMBOLIC_LINK_FLAG_DIRECTORY@.  Since 1.3.3.0, the
+-- @SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE@ flag is also included if
+-- supported by the operating system.   On POSIX, this is an alias for
+-- 'createFileLink' and is therefore atomic.
 --
 -- Windows-specific errors: This operation may fail with 'permissionErrorType'
 -- if the user lacks the privileges to create symbolic links.  It may also

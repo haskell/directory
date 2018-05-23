@@ -82,7 +82,19 @@ win32_cSIDL_COMMON_APPDATA :: Win32.CSIDL
 win32_cSIDL_COMMON_APPDATA = (#const CSIDL_COMMON_APPDATA)
 
 win32_eRROR_INVALID_FUNCTION :: Win32.ErrCode
-win32_eRROR_INVALID_FUNCTION = 0x1
+win32_eRROR_INVALID_FUNCTION = (#const ERROR_INVALID_FUNCTION)
+
+win32_eRROR_INVALID_PARAMETER :: Win32.ErrCode
+win32_eRROR_INVALID_PARAMETER = (#const ERROR_INVALID_PARAMETER)
+
+win32_eRROR_PRIVILEGE_NOT_HELD :: Win32.ErrCode
+win32_eRROR_PRIVILEGE_NOT_HELD = (#const ERROR_PRIVILEGE_NOT_HELD)
+
+win32_sYMBOLIC_LINK_FLAG_DIRECTORY :: Win32.DWORD
+win32_sYMBOLIC_LINK_FLAG_DIRECTORY = 0x1
+
+win32_sYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE :: Win32.DWORD
+win32_sYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE = 0x2
 
 win32_fILE_ATTRIBUTE_REPARSE_POINT :: Win32.FileAttributeOrFlag
 #if MIN_VERSION_Win32(2, 4, 0)
@@ -476,15 +488,17 @@ prependCurrentDirectory = prependCurrentDirectoryWith getCurrentDirectoryInterna
 setCurrentDirectoryInternal :: FilePath -> IO ()
 setCurrentDirectoryInternal = Win32.setCurrentDirectory
 
-win32_createSymbolicLink :: String -> String -> Bool -> IO ()
-win32_createSymbolicLink link _target _isDir =
+createSymbolicLinkUnpriv :: String -> String -> Bool -> IO ()
+createSymbolicLinkUnpriv link _target _isDir =
 #ifdef HAVE_CREATESYMBOLICLINKW
   withCWString link $ \ pLink ->
   withCWString _target $ \ pTarget -> do
     let flags = if _isDir then win32_sYMBOLIC_LINK_FLAG_DIRECTORY else 0
-    status <- c_CreateSymbolicLink pLink pTarget flags
-    if status == 0
-      then do
+    call pLink pTarget flags win32_sYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE
+  where
+    call pLink pTarget flags unpriv = do
+      status <- c_CreateSymbolicLink pLink pTarget flags
+      when (status == 0) $ do
         e <- Win32.getLastError
         case () of
           _ | e == win32_eRROR_INVALID_FUNCTION -> do
@@ -500,15 +514,12 @@ win32_createSymbolicLink link _target _isDir =
                 throwIO (mkIOError permissionErrorType "CreateSymbolicLink"
                                    Nothing (Just link)
                          `ioeSetErrorString` msg)
+            | e == win32_eRROR_INVALID_PARAMETER &&
+              unpriv /= 0 ->
+                -- for compatibility with older versions of Windows,
+                -- try it again without the flag
+                call pLink pTarget flags 0
             | otherwise -> Win32.failWith "CreateSymbolicLink" e
-      else pure ()
-  where
-
-win32_eRROR_PRIVILEGE_NOT_HELD :: Win32.ErrCode
-win32_eRROR_PRIVILEGE_NOT_HELD = 0x522
-
-win32_sYMBOLIC_LINK_FLAG_DIRECTORY :: Win32.DWORD
-win32_sYMBOLIC_LINK_FLAG_DIRECTORY = 0x1
 
 foreign import WINAPI unsafe "windows.h CreateSymbolicLinkW"
   c_CreateSymbolicLink
@@ -529,7 +540,7 @@ createSymbolicLink isDir target link =
   (`ioeSetFileName` link) `modifyIOError` do
     -- normaliseSeparators ensures the target gets normalised properly
     link' <- toExtendedLengthPath <$> prependCurrentDirectory link
-    win32_createSymbolicLink link' (normaliseSeparators target) isDir
+    createSymbolicLinkUnpriv link' (normaliseSeparators target) isDir
 
 type Metadata = Win32.BY_HANDLE_FILE_INFORMATION
 
