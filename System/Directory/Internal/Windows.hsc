@@ -497,7 +497,7 @@ createSymbolicLinkUnpriv link _target _isDir =
     call pLink pTarget flags win32_sYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE
   where
     call pLink pTarget flags unpriv = do
-      status <- c_CreateSymbolicLink pLink pTarget flags
+      status <- c_CreateSymbolicLink pLink pTarget (flags .|. unpriv)
       when (status == 0) $ do
         e <- Win32.getLastError
         case () of
