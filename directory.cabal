@@ -67,7 +67,7 @@ Library
 
 test-suite test
     default-language: Haskell2010
-    other-extensions: BangPatterns, CPP
+    other-extensions: BangPatterns, CPP, Safe
     ghc-options:      -Wall
     hs-source-dirs:   tests
     main-is:          Main.hs
