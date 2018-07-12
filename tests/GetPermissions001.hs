@@ -25,6 +25,9 @@ main _t = do
   modifyPermissions foo (\ p -> p { writable = False })
   T(expect) () =<< not . writable <$> getPermissions foo
 
+  -- test empty path
+  modifyPermissions "" id
+
   where
 
     checkCurrentDir = do

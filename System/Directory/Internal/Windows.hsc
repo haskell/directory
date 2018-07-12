@@ -21,17 +21,10 @@ import Data.Time (UTCTime)
 import Data.Time.Clock.POSIX (POSIXTime, posixSecondsToUTCTime)
 import System.FilePath
   ( (</>)
-  , addTrailingPathSeparator
-  , hasTrailingPathSeparator
   , isPathSeparator
   , isRelative
-  , joinDrive
-  , joinPath
-  , normalise
   , pathSeparator
-  , pathSeparators
   , splitDirectories
-  , splitDrive
   , takeExtension
   )
 import qualified Data.List as List
@@ -40,20 +33,20 @@ import qualified System.Win32 as Win32
 createDirectoryInternal :: FilePath -> IO ()
 createDirectoryInternal path =
   (`ioeSetFileName` path) `modifyIOError` do
-    path' <- toExtendedLengthPath <$> prependCurrentDirectory path
+    path' <- furnishPath path
     Win32.createDirectory path' Nothing
 
 removePathInternal :: Bool -> FilePath -> IO ()
 removePathInternal isDir path =
   (`ioeSetFileName` path) `modifyIOError` do
-    toExtendedLengthPath <$> prependCurrentDirectory path
+    furnishPath path
       >>= if isDir then Win32.removeDirectory else Win32.deleteFile
 
 renamePathInternal :: FilePath -> FilePath -> IO ()
 renamePathInternal opath npath =
   (`ioeSetFileName` opath) `modifyIOError` do
-    opath' <- toExtendedLengthPath <$> prependCurrentDirectory opath
-    npath' <- toExtendedLengthPath <$> prependCurrentDirectory npath
+    opath' <- furnishPath opath
+    npath' <- furnishPath npath
 #if MIN_VERSION_Win32(2, 6, 0)
     Win32.moveFileEx opath' (Just npath') Win32.mOVEFILE_REPLACE_EXISTING
 #else
@@ -67,8 +60,8 @@ copyFileWithMetadataInternal :: (Metadata -> FilePath -> IO ())
                              -> IO ()
 copyFileWithMetadataInternal _ _ src dst =
   (`ioeSetFileName` src) `modifyIOError` do
-    src' <- toExtendedLengthPath <$> prependCurrentDirectory src
-    dst' <- toExtendedLengthPath <$> prependCurrentDirectory dst
+    src' <- furnishPath src
+    dst' <- furnishPath dst
     Win32.copyFile src' dst' False
 
 win32_cSIDL_LOCAL_APPDATA :: Win32.CSIDL
@@ -289,7 +282,7 @@ foreign import WINAPI unsafe "windows.h DeviceIoControl"
 readSymbolicLink :: FilePath -> IO FilePath
 readSymbolicLink path =
   (`ioeSetFileName` path) `modifyIOError` do
-    path' <- toExtendedLengthPath <$> prependCurrentDirectory path
+    path' <- furnishPath path
     let open = Win32.createFile path' 0 maxShareMode Nothing Win32.oPEN_EXISTING
                                 (Win32.fILE_FLAG_BACKUP_SEMANTICS .|.
                                 win32_fILE_FLAG_OPEN_REPARSE_POINT) Nothing
@@ -315,60 +308,9 @@ readSymbolicLink path =
   where
     strip sn = fromMaybe sn (List.stripPrefix "\\??\\" sn)
 
--- | Given a list of path segments, expand @.@ and @..@.  The path segments
--- must not contain path separators.
-expandDots :: [FilePath] -> [FilePath]
-expandDots = reverse . go []
-  where
-    go ys' xs' =
-      case xs' of
-        [] -> ys'
-        x : xs ->
-          case x of
-            "." -> go ys' xs
-            ".." ->
-              case ys' of
-                _ : ys -> go ys xs
-                [] -> go (x : ys') xs
-            _ -> go (x : ys') xs
-
--- | Remove redundant trailing slashes and pick the right kind of slash.
-normaliseTrailingSep :: FilePath -> FilePath
-normaliseTrailingSep path = do
-  let path' = reverse path
-  let (sep, path'') = span isPathSeparator path'
-  let addSep = if null sep then id else (pathSeparator :)
-  reverse (addSep path'')
-
--- | A variant of 'normalise' to handle Windows paths a little better.  It
---
--- * deduplicates trailing slashes after the drive,
--- * expands parent dirs (@..@), and
--- * preserves paths with @\\\\?\\@.
-normaliseW :: FilePath -> FilePath
-normaliseW path@('\\' : '\\' : '?' : '\\' : _) = path
-normaliseW path = normalise (joinDrive drive' subpath')
-  where
-    (drive, subpath) = splitDrive path
-    drive' = normaliseTrailingSep drive
-    subpath' = appendSep . prependSep . joinPath .
-               stripPardirs . expandDots . skipSeps .
-               splitDirectories $ subpath
-
-    skipSeps = filter (not . (`elem` (pure <$> pathSeparators)))
-    stripPardirs | not (isRelative path) = dropWhile (== "..")
-                 | otherwise = id
-    prependSep | any isPathSeparator (take 1 subpath) = (pathSeparator :)
-               | otherwise = id
-    appendSep | hasTrailingPathSeparator subpath = addTrailingPathSeparator
-              | otherwise = id
-
--- | Like 'toExtendedLengthPath' but normalises relative paths too.
--- This is needed to make sure e.g. getModificationTime works on empty paths.
-toNormalisedExtendedLengthPath :: FilePath -> FilePath
-toNormalisedExtendedLengthPath path
-  | isRelative path = normalise path
-  | otherwise = toExtendedLengthPath path
+-- | On Windows, equivalent to 'simplifyWindows'.
+simplify :: FilePath -> FilePath
+simplify = simplifyWindows
 
 -- | Normalise the path separators and prepend the @"\\\\?\\"@ prefix if
 -- necessary or possible.  This is used for symbolic links targets because
@@ -379,19 +321,32 @@ normaliseSeparators path
   | otherwise = toExtendedLengthPath path
   where normaliseSep c = if isPathSeparator c then pathSeparator else c
 
--- | Add the @"\\\\?\\"@ prefix if necessary or possible.  The path remains
--- unchanged if the prefix is not added.  This function can sometimes be used
--- to bypass the @MAX_PATH@ length restriction in Windows API calls.
+-- | 'simplify' the path and prepend the @"\\\\?\\"@ if possible.  This
+-- function can sometimes be used to bypass the @MAX_PATH@ length restriction
+-- in Windows API calls.
 toExtendedLengthPath :: FilePath -> FilePath
 toExtendedLengthPath path
-  | isRelative path = path
+  | isRelative path = simplifiedPath
   | otherwise =
-      case normaliseW path of
-        '\\' : '?'  : '?' : '\\' : _ -> path
-        '\\' : '\\' : '?' : '\\' : _ -> path
-        '\\' : '\\' : '.' : '\\' : _ -> path
+      case simplifiedPath of
+        '\\' : '?'  : '?' : '\\' : _ -> simplifiedPath
+        '\\' : '\\' : '?' : '\\' : _ -> simplifiedPath
+        '\\' : '\\' : '.' : '\\' : _ -> simplifiedPath
         '\\' : subpath@('\\' : _) -> "\\\\?\\UNC" <> subpath
-        normalisedPath -> "\\\\?\\" <> normalisedPath
+        _ -> "\\\\?\\" <> simplifiedPath
+  where simplifiedPath = simplify path
+
+-- | Make a path absolute and convert to an extended length path, if possible.
+--
+-- Empty paths are left unchanged.
+--
+-- This function never fails.  If it doesn't understand the path, it just
+-- returns the path unchanged.
+furnishPath :: FilePath -> IO FilePath
+furnishPath path =
+  (toExtendedLengthPath <$> rawPrependCurrentDirectory path)
+    `catchIOError` \ _ ->
+      pure path
 
 -- | Strip the @"\\\\?\\"@ prefix if possible.
 -- The prefix is kept if the meaning of the path would otherwise change.
@@ -438,8 +393,7 @@ canonicalizePathWith attemptRealpath = attemptRealpath getFinalPathName
 
 canonicalizePathSimplify :: FilePath -> IO FilePath
 canonicalizePathSimplify path =
-  (fromExtendedLengthPath <$>
-   Win32.getFullPathName (toExtendedLengthPath path))
+  getFullPathName path
     `catchIOError` \ _ ->
       pure path
 
@@ -460,7 +414,7 @@ exeExtensionInternal = exeExtension
 
 getDirectoryContentsInternal :: FilePath -> IO [FilePath]
 getDirectoryContentsInternal path = do
-  query <- toExtendedLengthPath <$> prependCurrentDirectory (path </> "*")
+  query <- furnishPath (path </> "*")
   bracket
     (Win32.findFirstFile query)
     (\ (h, _) -> Win32.findClose h)
@@ -480,8 +434,30 @@ getDirectoryContentsInternal path = do
 getCurrentDirectoryInternal :: IO FilePath
 getCurrentDirectoryInternal = Win32.getCurrentDirectory
 
+getFullPathName :: FilePath -> IO FilePath
+getFullPathName path =
+  fromExtendedLengthPath <$> Win32.getFullPathName (toExtendedLengthPath path)
+
+-- | Similar to 'prependCurrentDirectory' but fails for empty paths.
+rawPrependCurrentDirectory :: FilePath -> IO FilePath
+rawPrependCurrentDirectory path
+  | isRelative path =
+    ((`ioeAddLocation` "prependCurrentDirectory") .
+     (`ioeSetFileName` path)) `modifyIOError` do
+      getFullPathName path
+  | otherwise = pure path
+
+-- | Convert a path into an absolute path.  If the given path is relative, the
+-- current directory is prepended and the path may or may not be simplified.
+-- If the path is already absolute, the path is returned unchanged.  The
+-- function preserves the presence or absence of the trailing path separator.
+--
+-- If the path is already absolute, the operation never fails.  Otherwise, the
+-- operation may throw exceptions.
+--
+-- Empty paths are treated as the current directory.
 prependCurrentDirectory :: FilePath -> IO FilePath
-prependCurrentDirectory = prependCurrentDirectoryWith getCurrentDirectoryInternal
+prependCurrentDirectory = rawPrependCurrentDirectory . emptyToCurDir
 
 -- SetCurrentDirectory does not support long paths even with the \\?\ prefix
 -- https://ghc.haskell.org/trac/ghc/ticket/13373#comment:6
@@ -539,7 +515,7 @@ createSymbolicLink :: Bool -> FilePath -> FilePath -> IO ()
 createSymbolicLink isDir target link =
   (`ioeSetFileName` link) `modifyIOError` do
     -- normaliseSeparators ensures the target gets normalised properly
-    link' <- toExtendedLengthPath <$> prependCurrentDirectory link
+    link' <- furnishPath link
     createSymbolicLinkUnpriv link' (normaliseSeparators target) isDir
 
 type Metadata = Win32.BY_HANDLE_FILE_INFORMATION
@@ -547,7 +523,7 @@ type Metadata = Win32.BY_HANDLE_FILE_INFORMATION
 getSymbolicLinkMetadata :: FilePath -> IO Metadata
 getSymbolicLinkMetadata path =
   (`ioeSetFileName` path) `modifyIOError` do
-    path' <- toNormalisedExtendedLengthPath <$> prependCurrentDirectory path
+    path' <- furnishPath path
     let open = Win32.createFile path' 0 maxShareMode Nothing Win32.oPEN_EXISTING
                                 (Win32.fILE_FLAG_BACKUP_SEMANTICS .|.
                                  win32_fILE_FLAG_OPEN_REPARSE_POINT) Nothing
@@ -557,7 +533,7 @@ getSymbolicLinkMetadata path =
 getFileMetadata :: FilePath -> IO Metadata
 getFileMetadata path =
   (`ioeSetFileName` path) `modifyIOError` do
-    path' <- toNormalisedExtendedLengthPath <$> prependCurrentDirectory path
+    path' <- furnishPath path
     let open = Win32.createFile path' 0 maxShareMode Nothing Win32.oPEN_EXISTING
                                 Win32.fILE_FLAG_BACKUP_SEMANTICS Nothing
     bracket open Win32.closeHandle $ \ h -> do
@@ -612,7 +588,7 @@ setTimes path' (atime', mtime') =
 openFileHandle :: String -> Win32.AccessMode -> IO Win32.HANDLE
 openFileHandle path mode =
   (`ioeSetFileName` path) `modifyIOError` do
-    path' <- toExtendedLengthPath <$> prependCurrentDirectory path
+    path' <- furnishPath path
     Win32.createFile path' mode maxShareMode Nothing
                      Win32.oPEN_EXISTING flags Nothing
   where flags =  Win32.fILE_ATTRIBUTE_NORMAL
@@ -633,7 +609,7 @@ setWriteMode True  m = m .&. complement Win32.fILE_ATTRIBUTE_READONLY
 setFileMode :: FilePath -> Mode -> IO ()
 setFileMode path mode =
   (`ioeSetFileName` path) `modifyIOError` do
-    path' <- toNormalisedExtendedLengthPath <$> prependCurrentDirectory path
+    path' <- furnishPath path
     Win32.setFileAttributes path' mode
 
 -- | A restricted form of 'setFileMode' that only sets the permission bits.

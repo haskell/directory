@@ -122,7 +122,6 @@ import System.FilePath
   , isAbsolute
   , joinPath
   , makeRelative
-  , normalise
   , splitDirectories
   , takeDirectory
   )
@@ -204,7 +203,7 @@ setOwnerSearchable b p = p { searchable = b }
 getPermissions :: FilePath -> IO Permissions
 getPermissions path =
   (`ioeAddLocation` "getPermissions") `modifyIOError` do
-    getAccessPermissions path
+    getAccessPermissions (emptyToCurDir path)
 
 -- | Set the permissions of a file or directory.
 --
@@ -223,7 +222,7 @@ getPermissions path =
 setPermissions :: FilePath -> Permissions -> IO ()
 setPermissions path p =
   (`ioeAddLocation` "setPermissions") `modifyIOError` do
-    setAccessPermissions path p
+    setAccessPermissions (emptyToCurDir path) p
 
 -- | Copy the permissions of one file to another.  This reproduces the
 -- permissions more accurately than using 'getPermissions' followed by
@@ -297,7 +296,7 @@ createDirectoryIfMissing create_parents path0
   | create_parents = createDirs (parents path0)
   | otherwise      = createDirs (take 1 (parents path0))
   where
-    parents = reverse . scanl1 (</>) . splitDirectories . normalise
+    parents = reverse . scanl1 (</>) . splitDirectories . simplify
 
     createDirs []         = pure ()
     createDirs (dir:[])   = createDir dir ioError
@@ -755,10 +754,10 @@ copyTimesFromMetadata st dst = do
   let mtime = modificationTimeFromMetadata st
   setFileTimes dst (Just atime, Just mtime)
 
--- | Make a path absolute, 'normalise' the path, and remove as many
--- indirections from it as possible.  Any trailing path separators are
--- discarded via 'dropTrailingPathSeparator'.  Additionally, on Windows the
--- letter case of the path is canonicalized.
+-- | Make a path absolute, normalize the path, and remove as many indirections
+-- from it as possible.  Any trailing path separators are discarded via
+-- 'dropTrailingPathSeparator'.  Additionally, on Windows the letter case of
+-- the path is canonicalized.
 --
 -- __Note__: This function is a very big hammer.  If you only need an absolute
 -- path, 'makeAbsolute' is sufficient for removing dependence on the current
@@ -769,7 +768,7 @@ copyTimesFromMetadata st dst = do
 -- not point to an existing file or directory.  Canonicalization is performed
 -- on the longest prefix of the path that points to an existing file or
 -- directory.  The remaining portion of the path that does not point to an
--- existing file or directory will still undergo 'normalise', but case
+-- existing file or directory will still be normalized, but case
 -- canonicalization and indirection removal are skipped as they are impossible
 -- to do on a nonexistent path.
 --
@@ -799,8 +798,8 @@ copyTimesFromMetadata st dst = do
 -- Windows @L\\..@ refers to @.@, whereas on other operating systems @L/..@
 -- refers to @R@.
 --
--- Similar to 'normalise', passing an empty path is equivalent to passing the
--- current directory.
+-- Similar to 'System.FilePath.normalise', passing an empty path is equivalent
+-- to passing the current directory.
 --
 -- @canonicalizePath@ can resolve at least 64 indirections in a single path,
 -- more than what is supported by most operating systems.  Therefore, it may
@@ -822,8 +821,8 @@ canonicalizePath :: FilePath -> IO FilePath
 canonicalizePath = \ path ->
   ((`ioeAddLocation` "canonicalizePath") .
    (`ioeSetFileName` path)) `modifyIOError` do
-    -- normalise does more stuff, like upper-casing the drive letter
-    dropTrailingPathSeparator . normalise <$>
+    -- simplify does more stuff, like upper-casing the drive letter
+    dropTrailingPathSeparator . simplify <$>
       (canonicalizePathWith attemptRealpath =<< prependCurrentDirectory path)
   where
 
@@ -888,10 +887,10 @@ canonicalizePath = \ path ->
                   attemptRealpathWith (n - 1) mFallback' realpath path'
 
 -- | Convert a path into an absolute path.  If the given path is relative, the
--- current directory is prepended and then the combined result is
--- 'normalise'd.  If the path is already absolute, the path is simply
--- 'normalise'd.  The function preserves the presence or absence of the
--- trailing path separator unless the path refers to the root directory @/@.
+-- current directory is prepended and then the combined result is normalized.
+-- If the path is already absolute, the path is simply normalized.  The
+-- function preserves the presence or absence of the trailing path separator
+-- unless the path refers to the root directory @/@.
 --
 -- If the path is already absolute, the operation never fails.  Otherwise, the
 -- operation may fail with the same exceptions as 'getCurrentDirectory'.
@@ -902,7 +901,7 @@ makeAbsolute :: FilePath -> IO FilePath
 makeAbsolute path =
   ((`ioeAddLocation` "makeAbsolute") .
    (`ioeSetFileName` path)) `modifyIOError` do
-    matchTrailingSeparator path . normalise <$> prependCurrentDirectory path
+    matchTrailingSeparator path . simplify <$> prependCurrentDirectory path
 
 -- | Add or remove the trailing path separator in the second path so as to
 -- match its presence in the first path.
@@ -1379,7 +1378,7 @@ getSymbolicLinkTarget path =
 getAccessTime :: FilePath -> IO UTCTime
 getAccessTime path =
   (`ioeAddLocation` "getAccessTime") `modifyIOError` do
-    accessTimeFromMetadata <$> getFileMetadata path
+    accessTimeFromMetadata <$> getFileMetadata (emptyToCurDir path)
 
 -- | Obtain the time at which the file or directory was last modified.
 --
@@ -1397,7 +1396,7 @@ getAccessTime path =
 getModificationTime :: FilePath -> IO UTCTime
 getModificationTime path =
   (`ioeAddLocation` "getModificationTime") `modifyIOError` do
-    modificationTimeFromMetadata <$> getFileMetadata path
+    modificationTimeFromMetadata <$> getFileMetadata (emptyToCurDir path)
 
 -- | Change the time at which the file or directory was last accessed.
 --
@@ -1460,7 +1459,7 @@ setFileTimes _ (Nothing, Nothing) = return ()
 setFileTimes path (atime, mtime) =
   ((`ioeAddLocation` "setFileTimes") .
    (`ioeSetFileName` path)) `modifyIOError` do
-    setTimes (normalise path)           -- handle empty paths
+    setTimes (emptyToCurDir path)
              (utcTimeToPOSIXSeconds <$> atime, utcTimeToPOSIXSeconds <$> mtime)
 
 {- | Returns the current user's home directory.
@@ -1512,7 +1511,7 @@ getXdgDirectory :: XdgDirectory         -- ^ which special directory
                 -> IO FilePath
 getXdgDirectory xdgDir suffix =
   (`ioeAddLocation` "getXdgDirectory") `modifyIOError` do
-    normalise . (</> suffix) <$> getXdgDirectoryInternal getHomeDirectory xdgDir
+    simplify . (</> suffix) <$> getXdgDirectoryInternal getHomeDirectory xdgDir
 
 getXdgDirectoryList :: XdgDirectoryList -- ^ which special directory list
                     -> IO [FilePath]

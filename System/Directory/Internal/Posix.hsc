@@ -13,7 +13,7 @@ import System.Directory.Internal.Common
 import System.Directory.Internal.Config (exeExtension)
 import Data.Time (UTCTime)
 import Data.Time.Clock.POSIX (POSIXTime)
-import System.FilePath ((</>), isRelative, normalise, splitSearchPath)
+import System.FilePath ((</>), isRelative, splitSearchPath)
 import qualified Data.Time.Clock.POSIX as POSIXTime
 import qualified GHC.Foreign as GHC
 import qualified System.Posix as Posix
@@ -27,6 +27,10 @@ removePathInternal False = Posix.removeLink
 
 renamePathInternal :: FilePath -> FilePath -> IO ()
 renamePathInternal = Posix.rename
+
+-- | On POSIX, equivalent to 'simplifyPosix'.
+simplify :: FilePath -> FilePath
+simplify = simplifyPosix
 
 -- we use the 'free' from the standard library here since it's not entirely
 -- clear whether Haskell's 'free' corresponds to the same one
@@ -96,8 +100,22 @@ getDirectoryContentsInternal path =
 getCurrentDirectoryInternal :: IO FilePath
 getCurrentDirectoryInternal = Posix.getWorkingDirectory
 
+-- | Convert a path into an absolute path.  If the given path is relative, the
+-- current directory is prepended and the path may or may not be simplified.
+-- If the path is already absolute, the path is returned unchanged.  The
+-- function preserves the presence or absence of the trailing path separator.
+--
+-- If the path is already absolute, the operation never fails.  Otherwise, the
+-- operation may throw exceptions.
+--
+-- Empty paths are treated as the current directory.
 prependCurrentDirectory :: FilePath -> IO FilePath
-prependCurrentDirectory = prependCurrentDirectoryWith getCurrentDirectoryInternal
+prependCurrentDirectory path
+  | isRelative path =
+    ((`ioeAddLocation` "prependCurrentDirectory") .
+     (`ioeSetFileName` path)) `modifyIOError` do
+      (</> path) <$> getCurrentDirectoryInternal
+  | otherwise = pure path
 
 setCurrentDirectoryInternal :: FilePath -> IO ()
 setCurrentDirectoryInternal = Posix.changeWorkingDirectory
@@ -113,13 +131,11 @@ readSymbolicLink = Posix.readSymbolicLink
 
 type Metadata = Posix.FileStatus
 
--- note: normalise is needed to handle empty paths
-
 getSymbolicLinkMetadata :: FilePath -> IO Metadata
-getSymbolicLinkMetadata = Posix.getSymbolicLinkStatus . normalise
+getSymbolicLinkMetadata = Posix.getSymbolicLinkStatus
 
 getFileMetadata :: FilePath -> IO Metadata
-getFileMetadata = Posix.getFileStatus . normalise
+getFileMetadata = Posix.getFileStatus
 
 fileTypeFromMetadata :: Metadata -> FileType
 fileTypeFromMetadata stat

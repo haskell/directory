@@ -26,6 +26,7 @@ import qualified RenameDirectory
 import qualified RenameFile001
 import qualified RenamePath
 import qualified Safe
+import qualified Simplify
 import qualified T8482
 import qualified WithCurrentDirectory
 import qualified Xdg
@@ -58,6 +59,7 @@ main = T.testMain $ \ _t -> do
   T.isolatedRun _t "RenameFile001" RenameFile001.main
   T.isolatedRun _t "RenamePath" RenamePath.main
   T.isolatedRun _t "Safe" Safe.main
+  T.isolatedRun _t "Simplify" Simplify.main
   T.isolatedRun _t "T8482" T8482.main
   T.isolatedRun _t "WithCurrentDirectory" WithCurrentDirectory.main
   T.isolatedRun _t "Xdg" Xdg.main
