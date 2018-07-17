@@ -149,6 +149,16 @@ are relative to the current directory.
 
 {- $permissions
 
+directory offers a limited (and quirky) interface for reading and setting file
+and directory permissions; see 'getPermissions' and 'setPermissions' for a
+discussion of their limitations.  Because permissions are very difficult to
+implement portably across different platforms, users who wish to do more
+sophisticated things with permissions are advised to use other,
+platform-specific libraries instead.  For example, if you are only interested
+in permissions on POSIX-like platforms,
+<https://hackage.haskell.org/package/unix/docs/System-Posix-Files.html unix>
+offers much more flexibility.
+
  The 'Permissions' type is used to record whether certain operations are
  permissible on a file\/directory. 'getPermissions' and 'setPermissions'
  get and set these permissions, respectively. Permissions apply both to
