@@ -1498,7 +1498,8 @@ getHomeDirectory =
 --
 --   The second argument is usually the name of the application.  Since it
 --   will be integrated into the path, it must consist of valid path
---   characters.
+--   characters.  Note: if the second argument is an absolute path, it will
+--   just return the second argument.
 --
 --   Note: The directory may not actually exist, in which case you would need
 --   to create it with file mode @700@ (i.e. only accessible by the owner).
