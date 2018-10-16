@@ -84,6 +84,11 @@ build() {
                 fi;;
         esac
 
+        case `uname` in
+            # work around buggy utimensat on Travis OS X
+            Darwin) testflags="FileTime.set-atime=False $testflags";;
+        esac
+
         $stack test --haddock --no-haddock-deps \
             --ghc-options "$ghcflags" \
             --test-arguments "$testflags"
