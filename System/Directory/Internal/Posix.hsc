@@ -41,7 +41,9 @@ c_PATH_MAX :: Maybe Int
 c_PATH_MAX | c_PATH_MAX' > toInteger maxValue = Nothing
            | otherwise                        = Just (fromInteger c_PATH_MAX')
   where c_PATH_MAX' = (#const PATH_MAX)
-        maxValue    = maxBound `asTypeOf` case c_PATH_MAX of ~(Just x) -> x
+        maxValue = maxBound `asTypeInMaybe` c_PATH_MAX
+        asTypeInMaybe :: a -> Maybe a -> a
+        asTypeInMaybe = const
 #else
 c_PATH_MAX = Nothing
 #endif
