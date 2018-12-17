@@ -293,10 +293,8 @@ getXdgDirectoryInternal getHomeDirectory xdgDir = do
     get name fallback = do
       env <- lookupEnv name
       case env of
-        Nothing                     -> fallback'
-        Just path | isRelative path -> fallback'
-                  | otherwise       -> pure path
-      where fallback' = (</> fallback) <$> getHomeDirectory
+        Nothing   -> (</> fallback) <$> getHomeDirectory
+        Just path -> pure path
 
 getXdgDirectoryListInternal :: XdgDirectoryList -> IO [FilePath]
 getXdgDirectoryListInternal xdgDirs =

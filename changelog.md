@@ -1,6 +1,12 @@
 Changelog for the [`directory`][1] package
 ==========================================
 
+## 1.3.3.2 (January 2019)
+
+  * `getXdgDirectory` will no longer reject environment variables containing
+    relative paths.
+    ([#87](https://github.com/haskell/directory/issues/87))
+
 ## 1.3.3.1 (August 2018)
 
   * `doesDirectoryExist` and `doesPathExist` reject empty paths once again,
