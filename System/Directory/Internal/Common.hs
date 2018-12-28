@@ -185,7 +185,7 @@ data FileType = File
 
 -- | Check whether the given 'FileType' is considered a directory by the
 -- operating system.  This affects the choice of certain functions
--- e.g. `removeDirectory` vs `removeFile`.
+-- e.g. 'System.Directory.removeDirectory' vs 'System.Directory.removeFile'.
 fileTypeIsDirectory :: FileType -> Bool
 fileTypeIsDirectory Directory     = True
 fileTypeIsDirectory DirectoryLink = True
