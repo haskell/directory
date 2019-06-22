@@ -4,6 +4,14 @@ set -eu
 ghcflags="-rtsopts -threaded -Werror"
 testflags="CreateDirectoryIfMissing001.num-repeats=100000 +RTS -N2"
 
+if [ -z "${STACK_RESOLVER+x}" ]; then
+    if cabal --version | python -c 'import re, sys; sys.exit(1 - (tuple(map(int, re.search("([.0-9]+)", next(sys.stdin)).group(1).split("."))) >= (2,)))'; then
+        v1=v1-
+    else
+        v1=
+    fi
+fi
+
 prepare() {
     eval "${PREBUILD-}"
     if [ -f configure.ac ]; then
@@ -65,8 +73,8 @@ EOF
 
         ghc --version
         cabal --version
-        tools/retry cabal update
-        cabal install --enable-tests --only-dependencies
+        tools/retry cabal "$v1"update
+        cabal "$v1"install --enable-tests --only-dependencies
 
     fi
 }
@@ -97,7 +105,7 @@ build() {
     else
 
         # check if `streaming` is supported (didn't exist until 1.20)
-        if cabal 2>&1 test --show-details=streaming __dummy |
+        if cabal 2>&1 "$v1"test --show-details=streaming __dummy |
                grep >/dev/null 2>&1 "cabal: --show-details flag expects"; then
             streaming=always
         else
@@ -106,7 +114,7 @@ build() {
 
         # check if `--run-tests` is supported (didn't exist until 1.20); tests
         # must be run prior to install as packages may be broken by install
-        if cabal 2>&1 install --run-tests __dummy |
+        if cabal 2>&1 "$v1"install --run-tests __dummy |
            grep >/dev/null 2>&1 "cabal: unrecognized option"; then
             cabal_install_run_tests() {
                 tgz=$1
@@ -116,25 +124,25 @@ build() {
                     cd .cabal_install_run_tests.tmp
                     tar xzf -
                     cd ./*-*
-                    cabal configure --enable-tests
-                    cabal build
-                    cabal test
+                    cabal "$v1"configure --enable-tests
+                    cabal "$v1"build
+                    cabal "$v1"test
                 ) <"$tgz"
-                cabal install "$@" "$tgz"
+                cabal "$v1"install "$@" "$tgz"
             }
         else
             cabal_install_run_tests() {
-                cabal install --run-tests "$@"
+                cabal "$v1"install --run-tests "$@"
             }
         fi
 
         testflags=`printf " %s" "$testflags" | sed "s/ / --test-option=/g"`
-        cabal configure -v2 --enable-tests --ghc-options="$ghcflags"
-        cabal build
-        cabal test --show-details="$streaming" $testflags
+        cabal "$v1"configure -v2 --enable-tests --ghc-options="$ghcflags"
+        cabal "$v1"build
+        cabal "$v1"test --show-details="$streaming" $testflags
         cabal check
-        cabal sdist
-        cabal copy
+        cabal "$v1"sdist
+        cabal "$v1"copy
         cabal_install_run_tests dist/*-*.tar.gz --force-reinstalls
 
     fi
