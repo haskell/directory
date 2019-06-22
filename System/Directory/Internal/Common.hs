@@ -281,13 +281,13 @@ data XdgDirectory
 data XdgDirectoryList
   = XdgDataDirs
     -- ^ For data files (e.g. images).
-    --   Defaults to @/usr/local/share/@ and @/usr/share/@ and can be
+    --   Defaults to @\/usr\/local\/share\/@ and @\/usr\/share\/@ and can be
     --   overridden by the @XDG_DATA_DIRS@ environment variable.
     --   On Windows, it is @%PROGRAMDATA%@ or @%ALLUSERSPROFILE%@
     --   (e.g. @C:\/ProgramData@).
   | XdgConfigDirs
     -- ^ For configuration files.
-    --   Defaults to @/etc/xdg@ and can be
+    --   Defaults to @\/etc\/xdg@ and can be
     --   overridden by the @XDG_CONFIG_DIRS@ environment variable.
     --   On Windows, it is @%PROGRAMDATA%@ or @%ALLUSERSPROFILE%@
     --   (e.g. @C:\/ProgramData@).
