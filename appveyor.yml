@@ -9,16 +9,16 @@ environment:
   matrix:
   - STACK_FLAGS: --skip-msys
     STACK_RESOLVER: lts-9.6
-    STACK_EXTRA_DEPS: Win32-2.8.0.0
+    STACK_EXTRA_DEPS: time-1.6.0.1, Win32-2.8.0.0
   - STACK_FLAGS: --skip-msys
     STACK_RESOLVER: lts-7.24
-    STACK_EXTRA_DEPS: Win32-2.4.0.0
+    STACK_EXTRA_DEPS: time-1.6.0.1, Win32-2.4.0.0
   - STACK_FLAGS: --skip-msys
     STACK_RESOLVER: lts-5.18
-    # STACK_EXTRA_DEPS: Win32-2.3.1.0
+    # STACK_EXTRA_DEPS: time-1.5.0.1, Win32-2.3.1.0
   - STACK_FLAGS: --skip-msys
     STACK_RESOLVER: lts-2.22
-    STACK_EXTRA_DEPS: Win32-2.3.0.1
+    STACK_EXTRA_DEPS: time-1.4.2, Win32-2.3.0.1
     PREBUILD: sed -i.bak -e /CreateSymbolicLinkW/d
                          -e /GetFinalPathNameByHandleW/d configure.ac
 install:
