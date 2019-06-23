@@ -8,7 +8,7 @@ environment:
     STACK_ROOT: C:\sr
   matrix:
   - STACK_FLAGS: --skip-msys
-    STACK_RESOLVER: lts-9.6
+    STACK_RESOLVER: lts-9.21
     STACK_EXTRA_DEPS: time-1.6.0.1, Win32-2.8.0.0
   - STACK_FLAGS: --skip-msys
     STACK_RESOLVER: lts-7.24
