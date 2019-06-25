@@ -283,30 +283,18 @@ getPath = splitSearchPath <$> getEnv "PATH"
 getHomeDirectoryInternal :: IO FilePath
 getHomeDirectoryInternal = getEnv "HOME"
 
-getXdgDirectoryInternal :: IO FilePath -> XdgDirectory -> IO FilePath
-getXdgDirectoryInternal getHomeDirectory xdgDir = do
-  case xdgDir of
-    XdgData   -> get "XDG_DATA_HOME"   ".local/share"
-    XdgConfig -> get "XDG_CONFIG_HOME" ".config"
-    XdgCache  -> get "XDG_CACHE_HOME"  ".cache"
-  where
-    get name fallback = do
-      env <- lookupEnv name
-      case env of
-        Nothing   -> (</> fallback) <$> getHomeDirectory
-        Just path -> pure path
+getXdgDirectoryFallback :: IO FilePath -> XdgDirectory -> IO FilePath
+getXdgDirectoryFallback getHomeDirectory xdgDir = do
+  (<$> getHomeDirectory) $ flip (</>) $ case xdgDir of
+    XdgData   -> ".local/share"
+    XdgConfig -> ".config"
+    XdgCache  -> ".cache"
 
-getXdgDirectoryListInternal :: XdgDirectoryList -> IO [FilePath]
-getXdgDirectoryListInternal xdgDirs =
-  case xdgDirs of
-    XdgDataDirs   -> get "XDG_DATA_DIRS"   ["/usr/local/share/", "/usr/share/"]
-    XdgConfigDirs -> get "XDG_CONFIG_DIRS" ["/etc/xdg"]
-  where
-    get name fallback = do
-      env <- lookupEnv name
-      case env of
-        Nothing    -> pure fallback
-        Just paths -> pure (splitSearchPath paths)
+getXdgDirectoryListFallback :: XdgDirectoryList -> IO [FilePath]
+getXdgDirectoryListFallback xdgDirs =
+  pure $ case xdgDirs of
+    XdgDataDirs   -> ["/usr/local/share/", "/usr/share/"]
+    XdgConfigDirs -> ["/etc/xdg"]
 
 getAppUserDataDirectoryInternal :: FilePath -> IO FilePath
 getAppUserDataDirectoryInternal appName =

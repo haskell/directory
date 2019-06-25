@@ -242,53 +242,59 @@ copyHandleData hFrom hTo =
         go buffer
 
 -- | Special directories for storing user-specific application data,
---   configuration, and cache files, as specified by the
---   <http://standards.freedesktop.org/basedir-spec/basedir-spec-latest.html XDG Base Directory Specification>.
+-- configuration, and cache files, as specified by the
+-- <http://standards.freedesktop.org/basedir-spec/basedir-spec-latest.html XDG Base Directory Specification>.
 --
---   Note: On Windows, 'XdgData' and 'XdgConfig' map to the same directory.
+-- Note: On Windows, 'XdgData' and 'XdgConfig' usually map to the same
+-- directory.
 --
---   @since 1.2.3.0
+-- @since 1.2.3.0
 data XdgDirectory
   = XdgData
     -- ^ For data files (e.g. images).
-    --   Defaults to @~\/.local\/share@ and can be
-    --   overridden by the @XDG_DATA_HOME@ environment variable.
-    --   On Windows, it is @%APPDATA%@
-    --   (e.g. @C:\/Users\//\<user\>/\/AppData\/Roaming@).
-    --   Can be considered as the user-specific equivalent of @\/usr\/share@.
+    -- It uses the @XDG_DATA_HOME@ environment variable.
+    -- On non-Windows systems, the default is @~\/.local\/share@.
+    -- On Windows, the default is @%APPDATA%@
+    -- (e.g. @C:\/Users\//\<user\>/\/AppData\/Roaming@).
+    -- Can be considered as the user-specific equivalent of @\/usr\/share@.
   | XdgConfig
     -- ^ For configuration files.
-    --   Defaults to @~\/.config@ and can be
-    --   overridden by the @XDG_CONFIG_HOME@ environment variable.
-    --   On Windows, it is @%APPDATA%@
-    --   (e.g. @C:\/Users\//\<user\>/\/AppData\/Roaming@).
-    --   Can be considered as the user-specific equivalent of @\/etc@.
+    -- It uses the @XDG_CONFIG_HOME@ environment variable.
+    -- On non-Windows systems, the default is @~\/.config@.
+    -- On Windows, the default is @%APPDATA%@
+    -- (e.g. @C:\/Users\//\<user\>/\/AppData\/Roaming@).
+    -- Can be considered as the user-specific equivalent of @\/etc@.
   | XdgCache
     -- ^ For non-essential files (e.g. cache).
-    --   Defaults to @~\/.cache@ and can be
-    --   overridden by the @XDG_CACHE_HOME@ environment variable.
-    --   On Windows, it is @%LOCALAPPDATA%@
-    --   (e.g. @C:\/Users\//\<user\>/\/AppData\/Local@).
-    --   Can be considered as the user-specific equivalent of @\/var\/cache@.
+    -- It uses the @XDG_CACHE_HOME@ environment variable.
+    -- On non-Windows systems, the default is @~\/.cache@.
+    -- On Windows, the default is @%LOCALAPPDATA%@
+    -- (e.g. @C:\/Users\//\<user\>/\/AppData\/Local@).
+    -- Can be considered as the user-specific equivalent of @\/var\/cache@.
   deriving (Bounded, Enum, Eq, Ord, Read, Show)
 
 -- | Search paths for various application data, as specified by the
---   <http://standards.freedesktop.org/basedir-spec/basedir-spec-latest.html XDG Base Directory Specification>.
+-- <http://standards.freedesktop.org/basedir-spec/basedir-spec-latest.html XDG Base Directory Specification>.
 --
---   Note: On Windows, 'XdgDataDirs' and 'XdgConfigDirs' yield the same result.
+-- The list of paths is split using 'System.FilePath.searchPathSeparator',
+-- which on Windows is a semicolon.
 --
---   @since 1.3.2.0
+-- Note: On Windows, 'XdgDataDirs' and 'XdgConfigDirs' usually yield the same
+-- result.
+--
+-- @since 1.3.2.0
 data XdgDirectoryList
   = XdgDataDirs
     -- ^ For data files (e.g. images).
-    --   Defaults to @\/usr\/local\/share\/@ and @\/usr\/share\/@ and can be
-    --   overridden by the @XDG_DATA_DIRS@ environment variable.
-    --   On Windows, it is @%PROGRAMDATA%@ or @%ALLUSERSPROFILE%@
-    --   (e.g. @C:\/ProgramData@).
+    -- It uses the @XDG_DATA_DIRS@ environment variable.
+    -- On non-Windows systems, the default is @\/usr\/local\/share\/@ and
+    -- @\/usr\/share\/@.
+    -- On Windows, the default is @%PROGRAMDATA%@ or @%ALLUSERSPROFILE%@
+    -- (e.g. @C:\/ProgramData@).
   | XdgConfigDirs
     -- ^ For configuration files.
-    --   Defaults to @\/etc\/xdg@ and can be
-    --   overridden by the @XDG_CONFIG_DIRS@ environment variable.
-    --   On Windows, it is @%PROGRAMDATA%@ or @%ALLUSERSPROFILE%@
-    --   (e.g. @C:\/ProgramData@).
+    -- It uses the @XDG_CONFIG_DIRS@ environment variable.
+    -- On non-Windows systems, the default is @\/etc\/xdg@.
+    -- On Windows, the default is @%PROGRAMDATA%@ or @%ALLUSERSPROFILE%@
+    -- (e.g. @C:\/ProgramData@).
   deriving (Bounded, Enum, Eq, Ord, Read, Show)

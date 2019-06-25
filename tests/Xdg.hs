@@ -1,7 +1,9 @@
 {-# LANGUAGE CPP #-}
 module Xdg where
-#if !defined(mingw32_HOST_OS) && MIN_VERSION_base(4, 7, 0)
+#if MIN_VERSION_base(4, 7, 0)
+import qualified Data.List as List
 import System.Environment (setEnv, unsetEnv)
+import System.FilePath ((</>), searchPathSeparator)
 #endif
 #include "util.inl"
 
@@ -14,20 +16,35 @@ main _t = do
 
   T(expect) () True -- avoid warnings about redundant imports
 
-#if !defined(mingw32_HOST_OS) && MIN_VERSION_base(4, 7, 0)
-  unsetEnv "XDG_DATA_DIRS"
+  -- setEnv, unsetEnv require base 4.7.0.0+
+#if MIN_VERSION_base(4, 7, 0)
+#if !defined(mingw32_HOST_OS)
+  unsetEnv "XDG_CONFIG_HOME"
+  home <- getHomeDirectory
+  T(expectEq) () (home </> ".config/mow") =<< getXdgDirectory XdgConfig "mow"
+#endif
+
+  setEnv "XDG_DATA_HOME"   "ar"
+  setEnv "XDG_CONFIG_HOME" "aw"
+  setEnv "XDG_CACHE_HOME"  "ba"
+  T(expectEq) () ("ar" </> "ff") =<< getXdgDirectory XdgData   "ff"
+  T(expectEq) () ("aw" </> "oo") =<< getXdgDirectory XdgConfig "oo"
+  T(expectEq) () ("ba" </> "rk") =<< getXdgDirectory XdgCache  "rk"
+
   unsetEnv "XDG_CONFIG_DIRS"
-  T(expectEq) () ["/usr/local/share/", "/usr/share/"] =<<
-    getXdgDirectoryList XdgDataDirs
-  T(expectEq) () ["/etc/xdg"] =<< getXdgDirectoryList XdgConfigDirs
+  unsetEnv "XDG_DATA_DIRS"
+  _xdgConfigDirs <- getXdgDirectoryList XdgConfigDirs
+  _xdgDataDirs <- getXdgDirectoryList XdgDataDirs
 
-  setEnv "XDG_DATA_DIRS" "/a:/b:/c"
-  setEnv "XDG_CONFIG_DIRS" "/d:/e:/f"
-  T(expectEq) () ["/a", "/b", "/c"] =<< getXdgDirectoryList XdgDataDirs
-  T(expectEq) () ["/d", "/e", "/f"] =<< getXdgDirectoryList XdgConfigDirs
+#if !defined(mingw32_HOST_OS)
+  T(expectEq) () ["/etc/xdg"] _xdgConfigDirs
+  T(expectEq) () ["/usr/local/share/", "/usr/share/"] _xdgDataDirs
+#endif
 
-  setEnv "XDG_CACHE_HOME" "g"
-  T(expectEq) () "g/h" =<< getXdgDirectory XdgCache "h"
+  setEnv "XDG_DATA_DIRS" (List.intercalate [searchPathSeparator] ["/a", "/b"])
+  setEnv "XDG_CONFIG_DIRS" (List.intercalate [searchPathSeparator] ["/c", "/d"])
+  T(expectEq) () ["/a", "/b"] =<< getXdgDirectoryList XdgDataDirs
+  T(expectEq) () ["/c", "/d"] =<< getXdgDirectoryList XdgConfigDirs
 #endif
 
   return ()

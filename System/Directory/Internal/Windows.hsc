@@ -646,21 +646,21 @@ getHomeDirectoryInternal =
   getFolderPath Win32.cSIDL_PROFILE `catchIOError` \ _ ->
     getFolderPath Win32.cSIDL_WINDOWS
 
-getXdgDirectoryInternal :: IO FilePath -> XdgDirectory -> IO FilePath
-getXdgDirectoryInternal _ xdgDir = do
+getXdgDirectoryFallback :: IO FilePath -> XdgDirectory -> IO FilePath
+getXdgDirectoryFallback _ xdgDir = do
   case xdgDir of
     XdgData   -> getFolderPath Win32.cSIDL_APPDATA
     XdgConfig -> getFolderPath Win32.cSIDL_APPDATA
     XdgCache  -> getFolderPath win32_cSIDL_LOCAL_APPDATA
 
-getXdgDirectoryListInternal :: XdgDirectoryList -> IO [FilePath]
-getXdgDirectoryListInternal _ =
+getXdgDirectoryListFallback :: XdgDirectoryList -> IO [FilePath]
+getXdgDirectoryListFallback _ =
   pure <$> getFolderPath win32_cSIDL_COMMON_APPDATA
 
 getAppUserDataDirectoryInternal :: FilePath -> IO FilePath
 getAppUserDataDirectoryInternal appName =
   (\ appData -> appData <> ('\\' : appName))
-  <$> getXdgDirectoryInternal getHomeDirectoryInternal XdgData
+  <$> getXdgDirectoryFallback getHomeDirectoryInternal XdgData
 
 getUserDocumentsDirectoryInternal :: IO FilePath
 getUserDocumentsDirectoryInternal = getFolderPath Win32.cSIDL_PERSONAL

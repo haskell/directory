@@ -123,6 +123,7 @@ import System.FilePath
   , joinPath
   , makeRelative
   , splitDirectories
+  , splitSearchPath
   , takeDirectory
   )
 import Data.Time (UTCTime)
@@ -1504,8 +1505,10 @@ getHomeDirectory =
 --   Compared with 'getAppUserDataDirectory', this function provides a more
 --   fine-grained hierarchy as well as greater flexibility for the user.
 --
---   It also works on Windows, although in that case 'XdgData' and 'XdgConfig'
---   will map to the same directory.
+--   On Windows, 'XdgData' and 'XdgConfig' usually map to the same directory
+--   unless overridden.
+--
+--   Refer to the docs of 'XdgDirectory' for more details.
 --
 --   The second argument is usually the name of the application.  Since it
 --   will be integrated into the path, it must consist of valid path
@@ -1523,15 +1526,32 @@ getXdgDirectory :: XdgDirectory         -- ^ which special directory
                 -> IO FilePath
 getXdgDirectory xdgDir suffix =
   (`ioeAddLocation` "getXdgDirectory") `modifyIOError` do
-    simplify . (</> suffix) <$> getXdgDirectoryInternal getHomeDirectory xdgDir
+    simplify . (</> suffix) <$> do
+      env <- lookupEnv $ case xdgDir of
+        XdgData   -> "XDG_DATA_HOME"
+        XdgConfig -> "XDG_CONFIG_HOME"
+        XdgCache  -> "XDG_CACHE_HOME"
+      case env of
+        Nothing   -> getXdgDirectoryFallback getHomeDirectory xdgDir
+        Just path -> pure path
 
 -- | Similar to 'getXdgDirectory' but retrieves the entire list of XDG
 -- directories.
+--
+-- On Windows, 'XdgDataDirs' and 'XdgConfigDirs' usually map to the same list
+-- of directories unless overridden.
+--
+-- Refer to the docs of 'XdgDirectoryList' for more details.
 getXdgDirectoryList :: XdgDirectoryList -- ^ which special directory list
                     -> IO [FilePath]
 getXdgDirectoryList xdgDirs =
   (`ioeAddLocation` "getXdgDirectoryList") `modifyIOError` do
-    getXdgDirectoryListInternal xdgDirs
+    env <- lookupEnv $ case xdgDirs of
+      XdgDataDirs   -> "XDG_DATA_DIRS"
+      XdgConfigDirs -> "XDG_CONFIG_DIRS"
+    case env of
+      Nothing    -> getXdgDirectoryListFallback xdgDirs
+      Just paths -> pure (splitSearchPath paths)
 
 -- | Obtain the path to a special directory for storing user-specific
 --   application data (traditional Unix location).  Newer applications may

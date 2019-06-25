@@ -1,6 +1,12 @@
 Changelog for the [`directory`][1] package
 ==========================================
 
+## 1.3.4.0 (July 2019)
+
+  * `getXdgDirectory` and `getXdgDirectoryList` on Windows will now respect
+    the XDG environment variables if present.
+    ([#95](https://github.com/haskell/directory/issues/95))
+
 ## 1.3.3.2 (January 2019)
 
   * `getXdgDirectory` will no longer reject environment variables containing
