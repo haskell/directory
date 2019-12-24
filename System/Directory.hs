@@ -1518,6 +1518,10 @@ getHomeDirectory =
 --   Note: The directory may not actually exist, in which case you would need
 --   to create it with file mode @700@ (i.e. only accessible by the owner).
 --
+--   As of 1.3.5.0, the environment variable is ignored if set to a relative
+--   path, per revised XDG Base Directory Specification.  See
+--   <https://github.com/haskell/directory/issues/100 #100>.
+--
 --   @since 1.2.3.0
 getXdgDirectory :: XdgDirectory         -- ^ which special directory
                 -> FilePath             -- ^ a relative path that is appended

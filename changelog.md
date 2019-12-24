@@ -2,11 +2,10 @@ Changelog for the [`directory`][1] package
 ==========================================
 
 ## 1.3.5.0 (December 2019)
-  
-  * Revert change introduced in the version `1.3.2.2`:
-    Non-absolute `XDG_*` environment variables are ignored.
-    This behavior is according to *XDG Base Directory Specification*
-    version 0.7, https://specifications.freedesktop.org/basedir-spec/0.7/ar01s02.html
+
+  * Revert change introduced in the version `1.3.3.2`: Non-absolute `XDG_*`
+    environment variables are ignored.  This behavior is according to
+    [*XDG Base Directory Specification* version 0.7](https://specifications.freedesktop.org/basedir-spec/0.7/ar01s02.html)
     ([#100](https://github.com/haskell/directory/issues/100))
 
 ## 1.3.4.0 (July 2019)
