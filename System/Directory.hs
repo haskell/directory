@@ -143,6 +143,15 @@ Each file system object is referenced by a /path/.  There is
 normally at least one absolute path to each file system object.  In
 some operating systems, it may also be possible to have paths which
 are relative to the current directory.
+
+Unless otherwise documented:
+
+* 'IO' operations in this package may throw any 'IOError'.  No other types of
+  exceptions shall be thrown.
+
+* The list of possible 'IOErrorType's in the API documentation is not
+  exhaustive.  The full list may vary by platform and/or evolve over time.
+
 -}
 
 -----------------------------------------------------------------------------
@@ -1336,12 +1345,20 @@ removeDirectoryLink path =
   (`ioeAddLocation` "removeDirectoryLink") `modifyIOError` do
     removePathInternal linkToDirectoryIsDirectory path
 
--- | Check whether the path refers to a symbolic link.  An exception is thrown
--- if the path does not exist or is inaccessible.
+-- | Check whether an existing @path@ is a symbolic link.  If @path@ is a
+-- regular file or directory, 'False' is returned.  If @path@ does not exist
+-- or is otherwise inaccessible, an exception is thrown (see below).
 --
 -- On Windows, this checks for @FILE_ATTRIBUTE_REPARSE_POINT@.  In addition to
 -- symbolic links, the function also returns true on junction points.  On
 -- POSIX systems, this checks for @S_IFLNK@.
+--
+-- The operation may fail with:
+--
+-- * 'isDoesNotExistError' if the symbolic link does not exist; or
+--
+-- * 'isPermissionError' if the user is not permitted to read the symbolic
+--   link.
 --
 -- @since 1.3.0.0
 pathIsSymbolicLink :: FilePath -> IO Bool
