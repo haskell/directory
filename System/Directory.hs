@@ -1498,9 +1498,12 @@ but note that it isn't generally considered good practice to store
 application-specific data here; use 'getXdgDirectory' or
 'getAppUserDataDirectory' instead.
 
-On Unix, 'getHomeDirectory' returns the value of the @HOME@
-environment variable.  On Windows, the system is queried for a
-suitable path; a typical path might be @C:\/Users\//\<user\>/@.
+On Unix, 'getHomeDirectory' behaves as follows:
+
+* Returns $HOME env variable if set (including to an empty string).
+* Otherwise uses home directory returned by `getpwuid_r` using the UID of the current proccesses user. This basically reads the /etc/passwd file. An empty home directory field is considered valid.
+
+On Windows, the system is queried for a suitable path; a typical path might be @C:\/Users\//\<user\>/@.
 
 The operation may fail with:
 

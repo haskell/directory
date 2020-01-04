@@ -17,6 +17,7 @@ import System.FilePath ((</>), isRelative, splitSearchPath)
 import qualified Data.Time.Clock.POSIX as POSIXTime
 import qualified GHC.Foreign as GHC
 import qualified System.Posix as Posix
+import qualified System.Posix.User as PU
 
 createDirectoryInternal :: FilePath -> IO ()
 createDirectoryInternal path = Posix.createDirectory path 0o777
@@ -280,8 +281,14 @@ setFileTimes' pth atime' mtime' =
 getPath :: IO [FilePath]
 getPath = splitSearchPath <$> getEnv "PATH"
 
+-- | $HOME is preferred, because the user has control over it. However, POSIX
+-- doesn't define it as a mandatory variable, so fall back to `getpwuid_r`.
 getHomeDirectoryInternal :: IO FilePath
-getHomeDirectoryInternal = getEnv "HOME"
+getHomeDirectoryInternal = do
+  e <- lookupEnv "HOME"
+  case e of
+       Just fp -> pure fp
+       Nothing -> PU.homeDirectory <$> (PU.getEffectiveUserID >>= PU.getUserEntryForID)
 
 getXdgDirectoryFallback :: IO FilePath -> XdgDirectory -> IO FilePath
 getXdgDirectoryFallback getHomeDirectory xdgDir = do

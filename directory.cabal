@@ -96,6 +96,7 @@ test-suite test
         GetDirContents002
         GetFileSize
         GetHomeDirectory001
+        GetHomeDirectory002
         GetPermissions001
         LongPaths
         MakeAbsolute

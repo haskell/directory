@@ -16,6 +16,7 @@ import qualified GetDirContents001
 import qualified GetDirContents002
 import qualified GetFileSize
 import qualified GetHomeDirectory001
+import qualified GetHomeDirectory002
 import qualified GetPermissions001
 import qualified LongPaths
 import qualified MakeAbsolute
@@ -49,6 +50,7 @@ main = T.testMain $ \ _t -> do
   T.isolatedRun _t "GetDirContents002" GetDirContents002.main
   T.isolatedRun _t "GetFileSize" GetFileSize.main
   T.isolatedRun _t "GetHomeDirectory001" GetHomeDirectory001.main
+  T.isolatedRun _t "GetHomeDirectory002" GetHomeDirectory002.main
   T.isolatedRun _t "GetPermissions001" GetPermissions001.main
   T.isolatedRun _t "LongPaths" LongPaths.main
   T.isolatedRun _t "MakeAbsolute" MakeAbsolute.main
