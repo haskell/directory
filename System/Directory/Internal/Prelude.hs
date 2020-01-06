@@ -47,7 +47,7 @@ import Prelude hiding (catch)
 #if MIN_VERSION_base(4, 8, 0)
 import Data.Void (Void)
 #else
-import Control.Applicative (Applicative, (<*>), pure)
+import Control.Applicative (Applicative, (<*>), (*>), pure)
 import Data.Functor ((<$>), (<$))
 #endif
 import Control.Arrow (second)

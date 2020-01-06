@@ -1,10 +1,16 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE CPP #-}
 -- | A rudimentary testing framework
 module Util where
 import Prelude ()
 import System.Directory.Internal.Prelude
 import System.Directory
 import Data.Time.Clock (NominalDiffTime, UTCTime, diffUTCTime)
+#if MIN_VERSION_base(4, 7, 0)
+import System.Environment (getEnvironment, setEnv, unsetEnv)
+#elif !defined(mingw32_HOST_OS)
+import qualified System.Posix as Posix
+#endif
 import System.FilePath ((</>), normalise)
 import qualified Data.List as List
 
@@ -141,6 +147,37 @@ withNewDirectory keep dir action = do
   where cleanup dir' | keep      = return ()
                      | otherwise = removePathForcibly dir'
 
+isolateEnvironment :: IO a -> IO a
+isolateEnvironment = bracket getEnvs setEnvs . const
+  where
+    getEnvs = List.sort . filter (\(k, _) -> k /= "") <$> getEnvironment
+    setEnvs target = do
+      current <- getEnvs
+      updateEnvs current target
+      new <- getEnvs
+      when (target /= new) $ do
+        -- Environment variables may be sensitive, so don't log them.
+        throwIO (userError "isolateEnvironment.setEnvs failed")
+    updateEnvs kvs1@((k1, v1) : kvs1') kvs2@((k2, v2) : kvs2') =
+      case compare k1 k2 of
+        LT -> unsetEnv k1 *> updateEnvs kvs1' kvs2
+        EQ | v1 == v2 -> updateEnvs kvs1' kvs2'
+           | otherwise -> setEnv k1 v2 *> updateEnvs kvs1' kvs2'
+        GT -> setEnv k2 v2 *> updateEnvs kvs1 kvs2'
+    updateEnvs [] [] = pure ()
+    updateEnvs kvs1 [] = for_ kvs1 (unsetEnv . fst)
+    updateEnvs [] kvs2 = for_ kvs2 (uncurry setEnv)
+#if MIN_VERSION_base(4, 7, 0)
+#elif !defined(mingw32_HOST_OS)
+    getEnvironment = Posix.getEnvironment
+    setEnv k v = Posix.setEnv k v True
+    unsetEnv = Posix.unsetEnv
+#else
+    getEnvironment = pure []
+    setEnv _ _ = pure ()
+    unsetEnv _ = pure ()
+#endif
+
 isolateWorkingDirectory :: Bool -> FilePath -> IO a -> IO a
 isolateWorkingDirectory keep dir action = do
   when (normalise dir `List.elem` [".", "./"]) $
@@ -160,9 +197,11 @@ run t name action = do
     Right () -> return ()
 
 isolatedRun :: TestEnv -> String -> (TestEnv -> IO ()) -> IO ()
-isolatedRun t@TestEnv{testKeepDirs = keep} name =
-  run t name .
-  (isolateWorkingDirectory keep ("dist/test-" <> name <> ".tmp") .)
+isolatedRun t@TestEnv{testKeepDirs = keep} name = run t name . (isolate .)
+  where
+    isolate =
+      isolateEnvironment .
+      isolateWorkingDirectory keep ("dist/test-" <> name <> ".tmp")
 
 tryRead :: Read a => String -> Maybe a
 tryRead s =
