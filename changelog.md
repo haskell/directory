@@ -1,7 +1,7 @@
 Changelog for the [`directory`][1] package
 ==========================================
 
-## 1.3.6.0 (January 2019)
+## 1.3.6.0 (January 2020)
 
   * On non-Windows platforms, `getHomeDirectory` will fall back to
     `getpwuid_r` if `HOME` is not set.
