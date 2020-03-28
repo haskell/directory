@@ -1,6 +1,10 @@
 Changelog for the [`directory`][1] package
 ==========================================
 
+## 1.3.6.1 (March 2020)
+
+  * Relax `time` version bounds to support 1.10.
+
 ## 1.3.6.0 (January 2020)
 
   * On non-Windows platforms, `getHomeDirectory` will fall back to
