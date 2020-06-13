@@ -401,7 +401,9 @@ removeDirectory = removePathInternal True
 -- together with its contents and subdirectories. Within this directory,
 -- symbolic links are removed without affecting their targets.
 --
--- On Windows, the operation fails if /dir/ is a directory symbolic link.
+-- On Windows, the operation fails if /dir/ is a directory symbolic link. 
+-- Rarely, the operation may also fail on Windows if a directory is removed 
+-- immediately after a child directory.
 removeDirectoryRecursive :: FilePath -> IO ()
 removeDirectoryRecursive path =
   (`ioeAddLocation` "removeDirectoryRecursive") `modifyIOError` do
@@ -418,6 +420,9 @@ removeDirectoryRecursive path =
 -- | @removePathRecursive path@ removes an existing file or directory at
 -- /path/ together with its contents and subdirectories. Symbolic links are
 -- removed without affecting their the targets.
+--
+-- Rarely, the operation may also fail on Windows if a directory is removed 
+-- immediately after a child directory.
 removePathRecursive :: FilePath -> IO ()
 removePathRecursive path =
   (`ioeAddLocation` "removePathRecursive") `modifyIOError` do
@@ -430,6 +435,9 @@ removePathRecursive path =
 -- | @removeContentsRecursive dir@ removes the contents of the directory
 -- /dir/ recursively. Symbolic links are removed without affecting their the
 -- targets.
+--
+-- Rarely, the operation may also fail on Windows if a directory is removed 
+-- immediately after a child directory.
 removeContentsRecursive :: FilePath -> IO ()
 removeContentsRecursive path =
   (`ioeAddLocation` "removeContentsRecursive") `modifyIOError` do
