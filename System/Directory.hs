@@ -401,9 +401,8 @@ removeDirectory = removePathInternal True
 -- together with its contents and subdirectories. Within this directory,
 -- symbolic links are removed without affecting their targets.
 --
--- On Windows, the operation fails if /dir/ is a directory symbolic link. 
--- Rarely, the operation may also fail on Windows if a directory is removed 
--- immediately after a child directory.
+-- This operation is reported to be flaky on Windows so retry logic may be advisable.
+-- See: [github.com/haskell/directory/pull/108](https://github.com/haskell/directory/pull/108)
 removeDirectoryRecursive :: FilePath -> IO ()
 removeDirectoryRecursive path =
   (`ioeAddLocation` "removeDirectoryRecursive") `modifyIOError` do
@@ -421,8 +420,8 @@ removeDirectoryRecursive path =
 -- /path/ together with its contents and subdirectories. Symbolic links are
 -- removed without affecting their the targets.
 --
--- Rarely, the operation may also fail on Windows if a directory is removed 
--- immediately after a child directory.
+-- This operation is reported to be flaky on Windows so retry logic may be advisable.
+-- See: [github.com/haskell/directory/pull/108](https://github.com/haskell/directory/pull/108)
 removePathRecursive :: FilePath -> IO ()
 removePathRecursive path =
   (`ioeAddLocation` "removePathRecursive") `modifyIOError` do
@@ -436,8 +435,8 @@ removePathRecursive path =
 -- /dir/ recursively. Symbolic links are removed without affecting their the
 -- targets.
 --
--- Rarely, the operation may also fail on Windows if a directory is removed 
--- immediately after a child directory.
+-- This operation is reported to be flaky on Windows so retry logic may be advisable.
+-- See: [github.com/haskell/directory/pull/108](https://github.com/haskell/directory/pull/108)
 removeContentsRecursive :: FilePath -> IO ()
 removeContentsRecursive path =
   (`ioeAddLocation` "removeContentsRecursive") `modifyIOError` do
