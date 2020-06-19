@@ -401,6 +401,8 @@ removeDirectory = removePathInternal True
 -- together with its contents and subdirectories. Within this directory,
 -- symbolic links are removed without affecting their targets.
 --
+-- On Windows, the operation fails if /dir/ is a directory symbolic link.
+--
 -- This operation is reported to be flaky on Windows so retry logic may be advisable.
 -- See: [github.com/haskell/directory/pull/108](https://github.com/haskell/directory/pull/108)
 removeDirectoryRecursive :: FilePath -> IO ()
