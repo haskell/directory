@@ -1,3 +1,5 @@
+{-# LANGUAGE Safe #-}
+
 module System.Directory.Internal.Posix where
 #include <HsDirectoryConfig.h>
 #if !defined(mingw32_HOST_OS)
