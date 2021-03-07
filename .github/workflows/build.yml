@@ -1,0 +1,54 @@
+name: build
+on:
+  pull_request:
+  push:
+  schedule:
+    - cron: 35 8 3 * *
+  workflow_dispatch:
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: macos-latest, stack: lts-5.18 }
+          - { os: macos-latest, stack: lts-17.5 }
+            # cabal-1.16 is the earliest available in the ppa:hvr/ghc for ubuntu-16.04
+          - { os: ubuntu-16.04, ghc: 7.4.2, cabal: "1.16", prebuild: "sed -i.bak /utimensat/d configure.ac" }
+          - { os: ubuntu-16.04, ghc: 7.4.2, cabal: "1.16" }
+          - { os: ubuntu-16.04, ghc: 7.6.3, cabal: "1.16" }
+          - { os: ubuntu-16.04, ghc: 7.8.4, cabal: "1.18" }
+          - { os: ubuntu-16.04, ghc: 7.10.1, cabal: "1.22" }
+          - { os: ubuntu-16.04, ghc: 8.0.1, cabal: "1.24" }
+          - { os: ubuntu-latest, ghc: 9.0.1, cabal: 3.4.0.0 }
+          - { os: ubuntu-18.04, ghc: head, cabal: head }
+          - { os: windows-latest, stack: lts-4.2, stack-extra-deps: "time-1.5.0.1, Win32-2.3.0.1", prebuild: "sed -i.bak -e /CreateSymbolicLinkW/d -e /GetFinalPathNameByHandleW/d configure.ac" }
+          - { os: windows-latest, stack: lts-5.18 } # time-1.5.0.1, Win32-2.3.1.0
+          - { os: windows-latest, stack: lts-7.24, stack-extra-deps: "time-1.6.0.1, Win32-2.4.0.0" }
+          - { os: windows-latest, stack: lts-9.21, stack-extra-deps: "time-1.6.0.1, Win32-2.8.0.0" }
+          - { os: windows-latest, stack: lts-17.5 } # time-1.9.3, Win32-2.6.1.0
+    runs-on: ${{ matrix.os }}
+    env:
+      PREBUILD: ${{ matrix.prebuild }}
+      STACK_EXTRA_DEPS: ${{ matrix.stack-extra-deps }}
+      STACK_RESOLVER: ${{ matrix.stack }}
+    steps:
+      - uses: actions/checkout@v2
+      - if: startsWith(matrix.os, 'ubuntu-')
+        # required since https://github.com/actions/virtual-environments/pull/3268
+        run: |
+          sudo add-apt-repository ppa:hvr/ghc
+          sudo apt-get update
+      - uses: haskell/actions/setup@08912e20a8af878df22339ad2e149b05aaa5cab9
+        with:
+          ghc-version: ${{ matrix.ghc }}
+          cabal-version: ${{ matrix.cabal }}
+          enable-stack: ${{ matrix.stack != null }}
+      - if: startsWith(matrix.os, 'macos-')
+        run: brew install automake
+      - if: startsWith(matrix.os, 'windows-')
+        run: |
+          Add-Content $Env:GITHUB_ENV STACK_FLAGS=--skip-msys
+          Add-Content $Env:GITHUB_PATH C:\msys64\usr\bin
+      - run: sh tools/testscript prepare
+      - run: sh tools/testscript build

@@ -4,7 +4,7 @@ Contributions and bug reports are welcome!
 
   * **Size of changes:** If the change is minor, feel free to just send a pull request.  Otherwise, please discuss on the issue tracker first.
 
-  * **Continuous integration (CI):** Please make sure all AppVeyor and Travis CI tests pass on your pull request.
+  * **Continuous integration (CI):** Please make sure all CI checks pass on your pull request.
 
   * **New tests:**
 
