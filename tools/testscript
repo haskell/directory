@@ -12,6 +12,13 @@ if [ -z "${STACK_RESOLVER+x}" ]; then
     fi
 fi
 
+relocate_v1_sdist_to_v2_dir() {
+    if [ -f dist/*-*.tar.gz ]; then
+        mkdir -p dist-newstyle/sdist
+        mv dist/*-*.tar.gz dist-newstyle/sdist
+    fi
+}
+
 prepare() {
     eval "${PREBUILD-}"
     if [ -f configure.ac ]; then
@@ -141,9 +148,10 @@ build() {
         cabal "$v1"build
         cabal "$v1"test --show-details="$streaming" $testflags
         cabal check
-        cabal "$v1"sdist
+        cabal sdist
+        relocate_v1_sdist_to_v2_dir
         cabal "$v1"copy
-        cabal_install_run_tests dist/*-*.tar.gz --force-reinstalls
+        cabal_install_run_tests dist-newstyle/sdist/*-*.tar.gz --force-reinstalls
 
     fi
 
