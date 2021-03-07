@@ -1,6 +1,7 @@
 {-# LANGUAGE CPP #-}
 module CreateDirectoryIfMissing001 where
 #include "util.inl"
+import Data.Either (lefts)
 import System.FilePath ((</>), addTrailingPathSeparator)
 
 main :: TestEnv -> IO ()
@@ -48,28 +49,29 @@ main _t = do
     numRepeats = T.readArg _t testname "num-repeats" 10000
     numThreads = T.readArg _t testname "num-threads" 4
 
+    forkPut mvar action = () <$ forkFinally action (putMVar mvar)
+
     -- Look for race conditions (bug #2808 on GHC Trac).  This fails with
     -- +RTS -N2 and directory 1.0.0.2.
     raceCheck1 = do
       m <- newEmptyMVar
-      _ <- forkIO $ do
+      forkPut m $ do
         replicateM_ numRepeats create
-        putMVar m ()
-      _ <- forkIO $ do
+      forkPut m $ do
         replicateM_ numRepeats cleanup
-        putMVar m ()
-      replicateM_ 2 (takeMVar m)
+      results <- replicateM 2 (takeMVar m)
+      T(expectEq) () [] (show <$> lefts results)
 
     -- This test fails on Windows (see bug #2924 on GHC Trac):
     raceCheck2 = do
       m <- newEmptyMVar
       replicateM_ numThreads $
-        forkIO $ do
+        forkPut m $ do
           replicateM_ numRepeats $ do
             create
             cleanup
-          putMVar m ()
-      replicateM_ numThreads (takeMVar m)
+      results <- replicateM numThreads (takeMVar m)
+      T(expectEq) () [] (show <$> lefts results)
 
     -- createDirectoryIfMissing is allowed to fail with isDoesNotExistError if
     -- another process/thread removes one of the directories during the process

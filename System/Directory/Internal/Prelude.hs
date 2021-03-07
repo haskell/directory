@@ -8,6 +8,7 @@
 module System.Directory.Internal.Prelude
   ( module Prelude
 #if !MIN_VERSION_base(4, 6, 0)
+  , forkFinally
   , lookupEnv
 #endif
 #if !MIN_VERSION_base(4, 8, 0)
@@ -58,6 +59,11 @@ import Control.Concurrent
   , putMVar
   , readMVar
   , takeMVar
+#if MIN_VERSION_base(4, 6, 0)
+  , forkFinally
+#else
+  , ThreadId
+#endif
   )
 import Control.Exception
   ( SomeException
@@ -70,7 +76,7 @@ import Control.Exception
   , throwIO
   , try
   )
-import Control.Monad ((>=>), (<=<), unless, when, replicateM_)
+import Control.Monad ((>=>), (<=<), unless, when, replicateM, replicateM_)
 import Data.Bits ((.&.), (.|.), complement)
 import Data.Char (isAlpha, isAscii, toLower, toUpper)
 import Data.Foldable (for_, traverse_)
@@ -176,6 +182,11 @@ lookupEnv name = do
     Left err | isDoesNotExistError err -> pure Nothing
              | otherwise               -> throwIO err
     Right value -> pure (Just value)
+
+forkFinally :: IO a -> (Either SomeException a -> IO ()) -> IO ThreadId
+forkFinally action and_then =
+  mask $ \restore ->
+    forkIO $ try (restore action) >>= and_then
 #endif
 
 #if !MIN_VERSION_base(4, 8, 0)
