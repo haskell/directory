@@ -3,7 +3,6 @@
 
 [![Hackage][hi]][hl]
 [![Build status][bi]][bl]
-[![Windows build status][wi]][wl]
 [![Dependencies status][di]][dl]
 
 Documentation can be found on [Hackage][hl].
@@ -24,10 +23,8 @@ configure` does that automatically.
 
 [hi]: https://img.shields.io/hackage/v/directory.svg
 [hl]: https://hackage.haskell.org/package/directory
-[bi]: https://travis-ci.org/haskell/directory.svg?branch=master
-[bl]: https://travis-ci.org/haskell/directory
-[wi]: https://ci.appveyor.com/api/projects/status/github/haskell/directory?branch=master&svg=true
-[wl]: https://ci.appveyor.com/project/hvr/directory
+[bi]: https://github.com/haskell/directory/actions/workflows/build.yml/badge.svg
+[bl]: https://github.com/haskell/directory/actions
 [di]: https://img.shields.io/hackage-deps/v/directory.svg
 [dl]: http://packdeps.haskellers.com/feed?needle=directory
 [ac]: https://gnu.org/software/autoconf
