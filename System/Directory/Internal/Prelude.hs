@@ -129,6 +129,7 @@ import Foreign.C
 import GHC.IO.Exception
   ( IOErrorType
     ( InappropriateType
+    , InvalidArgument
     , OtherError
     , UnsupportedOperation
     )
