@@ -579,10 +579,14 @@ setTimes :: FilePath -> (Maybe POSIXTime, Maybe POSIXTime) -> IO ()
 setTimes path' (atime', mtime') =
   bracket (openFileHandle path' Win32.gENERIC_WRITE)
           Win32.closeHandle $ \ handle ->
+#if MIN_VERSION_Win32(2,12,0)
+  Win32.setFileTime handle Nothing (posixToWindowsTime <$> atime') (posixToWindowsTime <$> mtime')
+#else
   maybeWith with (posixToWindowsTime <$> atime') $ \ atime'' ->
   maybeWith with (posixToWindowsTime <$> mtime') $ \ mtime'' ->
   Win32.failIf_ not "" $
     Win32.c_SetFileTime handle nullPtr atime'' mtime''
+#endif
 
 -- | Open the handle of an existing file or directory.
 openFileHandle :: String -> Win32.AccessMode -> IO Win32.HANDLE

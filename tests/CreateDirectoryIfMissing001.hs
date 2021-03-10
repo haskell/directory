@@ -81,7 +81,10 @@ main _t = do
     -- (see bug #2924 on GHC Trac)
     create =
       createDirectoryIfMissing True testdir_a `catch` \ e ->
-      if isDoesNotExistError e || isPermissionError e || isInappropriateTypeError e
+      if isDoesNotExistError e
+         || isPermissionError e
+         || isInappropriateTypeError e
+         || ioeGetErrorType e == InvalidArgument
       then return ()
       else ioError e
 
