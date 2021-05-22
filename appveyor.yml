@@ -1,3 +1,0 @@
-# AppVeyor is no longer being used. However, this placeholder needs to be kept
-# until the GitHub hook for AppVeyor is removed.
-build: false
