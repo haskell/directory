@@ -5,6 +5,9 @@ on:
   schedule:
     - cron: 35 8 3 * *
   workflow_dispatch:
+defaults:
+  run:
+    shell: bash
 jobs:
   build:
     strategy:
@@ -42,13 +45,13 @@ jobs:
           sudo apt-get update
       - if: startsWith(matrix.os, 'windows-')
         run: |
-          Add-Content $Env:GITHUB_ENV STACK_FLAGS=--skip-msys
-          Add-Content $Env:GITHUB_PATH C:\msys64\usr\bin
+          echo STACK_FLAGS=--skip-msys >> $GITHUB_ENV
+          echo 'C:\msys64\usr\bin' >> $GITHUB_PATH
       - uses: haskell/actions/setup@08912e20a8af878df22339ad2e149b05aaa5cab9
         with:
           ghc-version: ${{ matrix.ghc }}
           cabal-version: ${{ matrix.cabal }}
           enable-stack: ${{ matrix.stack != null }}
       - uses: actions/checkout@v2
-      - run: sh tools/testscript prepare
-      - run: sh tools/testscript build
+      - run: tools/testscript prepare
+      - run: tools/testscript build
