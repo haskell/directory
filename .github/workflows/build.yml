@@ -33,22 +33,22 @@ jobs:
       STACK_EXTRA_DEPS: ${{ matrix.stack-extra-deps }}
       STACK_RESOLVER: ${{ matrix.stack }}
     steps:
-      - uses: actions/checkout@v2
+      - if: startsWith(matrix.os, 'macos-')
+        run: brew install automake
       - if: startsWith(matrix.os, 'ubuntu-')
         # required since https://github.com/actions/virtual-environments/pull/3268
         run: |
           sudo add-apt-repository ppa:hvr/ghc
           sudo apt-get update
+      - if: startsWith(matrix.os, 'windows-')
+        run: |
+          Add-Content $Env:GITHUB_ENV STACK_FLAGS=--skip-msys
+          Add-Content $Env:GITHUB_PATH C:\msys64\usr\bin
       - uses: haskell/actions/setup@08912e20a8af878df22339ad2e149b05aaa5cab9
         with:
           ghc-version: ${{ matrix.ghc }}
           cabal-version: ${{ matrix.cabal }}
           enable-stack: ${{ matrix.stack != null }}
-      - if: startsWith(matrix.os, 'macos-')
-        run: brew install automake
-      - if: startsWith(matrix.os, 'windows-')
-        run: |
-          Add-Content $Env:GITHUB_ENV STACK_FLAGS=--skip-msys
-          Add-Content $Env:GITHUB_PATH C:\msys64\usr\bin
+      - uses: actions/checkout@v2
       - run: sh tools/testscript prepare
       - run: sh tools/testscript build
