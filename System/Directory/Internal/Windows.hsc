@@ -656,6 +656,7 @@ getXdgDirectoryFallback _ xdgDir = do
     XdgData   -> getFolderPath Win32.cSIDL_APPDATA
     XdgConfig -> getFolderPath Win32.cSIDL_APPDATA
     XdgCache  -> getFolderPath win32_cSIDL_LOCAL_APPDATA
+    XdgState  -> getFolderPath win32_cSIDL_LOCAL_APPDATA
 
 getXdgDirectoryListFallback :: XdgDirectoryList -> IO [FilePath]
 getXdgDirectoryListFallback _ =
