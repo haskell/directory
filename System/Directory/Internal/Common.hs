@@ -271,6 +271,14 @@ data XdgDirectory
     -- On Windows, the default is @%LOCALAPPDATA%@
     -- (e.g. @C:\/Users\//\<user\>/\/AppData\/Local@).
     -- Can be considered as the user-specific equivalent of @\/var\/cache@.
+  | XdgState
+   -- ^ For data that should persist between (application) restarts,
+   -- but that is not important or portable enough to the user that it
+   -- should be stored in 'XdgData'.
+   -- It uses the @XDG_STATE_HOME@ environment variable.
+   -- On non-Windows sytems, the default is @~\/.local\/state@.  On
+   -- Windows, the default is @%LOCALAPPDATA%@
+   -- (e.g. @C:\/Users\//\<user\>/\/AppData\/Local@).
   deriving (Bounded, Enum, Eq, Ord, Read, Show)
 
 -- | Search paths for various application data, as specified by the

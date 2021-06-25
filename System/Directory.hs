@@ -1569,6 +1569,7 @@ getXdgDirectory xdgDir suffix =
         XdgData   -> "XDG_DATA_HOME"
         XdgConfig -> "XDG_CONFIG_HOME"
         XdgCache  -> "XDG_CACHE_HOME"
+        XdgState  -> "XDG_STATE_HOME"
       case env of
         Just path | isAbsolute path -> pure path
         _                           -> getXdgDirectoryFallback getHomeDirectory xdgDir

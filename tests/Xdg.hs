@@ -31,17 +31,21 @@ main _t = do
   unsetEnv "XDG_DATA_HOME"
   unsetEnv "XDG_CONFIG_HOME"
   unsetEnv "XDG_CACHE_HOME"
+  unsetEnv "XDG_STATE_HOME"
   xdgData   <- getXdgDirectory XdgData   "ff"
   xdgConfig <- getXdgDirectory XdgConfig "oo"
   xdgCache  <- getXdgDirectory XdgCache  "rk"
+  xdgState  <- getXdgDirectory XdgState  "aa"
 
   -- non-absolute paths are ignored, and the fallback is used
   setEnv "XDG_DATA_HOME"   "ar"
   setEnv "XDG_CONFIG_HOME" "aw"
   setEnv "XDG_CACHE_HOME"  "ba"
+  setEnv "XDG_STATE_HOME"  "uw"
   T(expectEq) () xdgData   =<< getXdgDirectory XdgData   "ff"
   T(expectEq) () xdgConfig =<< getXdgDirectory XdgConfig "oo"
   T(expectEq) () xdgCache  =<< getXdgDirectory XdgCache  "rk"
+  T(expectEq) () xdgState  =<< getXdgDirectory XdgState  "aa"
 
   unsetEnv "XDG_CONFIG_DIRS"
   unsetEnv "XDG_DATA_DIRS"
