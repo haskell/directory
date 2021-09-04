@@ -279,6 +279,8 @@ data XdgDirectory
    -- On non-Windows sytems, the default is @~\/.local\/state@.  On
    -- Windows, the default is @%LOCALAPPDATA%@
    -- (e.g. @C:\/Users\//\<user\>/\/AppData\/Local@).
+   --
+   -- @since 1.3.7.0
   deriving (Bounded, Enum, Eq, Ord, Read, Show)
 
 -- | Search paths for various application data, as specified by the
