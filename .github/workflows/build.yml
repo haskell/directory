@@ -17,12 +17,12 @@ jobs:
           - { os: macos-latest, stack: lts-5.18 }
           - { os: macos-latest, stack: lts-17.5 }
             # cabal-1.16 is the earliest available in the ppa:hvr/ghc for ubuntu-16.04
-          - { os: ubuntu-16.04, ghc: 7.4.2, cabal: "1.16", prebuild: "sed -i.bak /utimensat/d configure.ac" }
-          - { os: ubuntu-16.04, ghc: 7.4.2, cabal: "1.16" }
-          - { os: ubuntu-16.04, ghc: 7.6.3, cabal: "1.16" }
-          - { os: ubuntu-16.04, ghc: 7.8.4, cabal: "1.18" }
-          - { os: ubuntu-16.04, ghc: 7.10.1, cabal: "1.22" }
-          - { os: ubuntu-16.04, ghc: 8.0.1, cabal: "1.24" }
+          - { os: ubuntu-20.04, ghc: 7.4.2, cabal: "2.4", prebuild: "sed -i.bak /utimensat/d configure.ac" }
+          - { os: ubuntu-20.04, ghc: 7.4.2, cabal: "2.4" }
+          - { os: ubuntu-18.04, ghc: 7.6.3, cabal: "2.4" }
+          - { os: ubuntu-18.04, ghc: 7.8.4, cabal: "2.4" }
+          - { os: ubuntu-latest, ghc: 7.10.3, cabal: "2.4" }
+          - { os: ubuntu-latest, ghc: 8.0.2, cabal: "2.4" }
           - { os: ubuntu-latest, ghc: 9.0.1, cabal: 3.4.0.0 }
           - { os: ubuntu-18.04, ghc: head, cabal: head }
           - { os: windows-latest, stack: lts-4.2, stack-extra-deps: "time-1.5.0.1, Win32-2.3.0.1", prebuild: "sed -i.bak -e /CreateSymbolicLinkW/d -e /GetFinalPathNameByHandleW/d configure.ac" }
@@ -47,7 +47,7 @@ jobs:
         run: |
           echo STACK_FLAGS=--skip-msys >> $GITHUB_ENV
           echo 'C:\msys64\usr\bin' >> $GITHUB_PATH
-      - uses: haskell/actions/setup@08912e20a8af878df22339ad2e149b05aaa5cab9
+      - uses: haskell/actions/setup@v1
         with:
           ghc-version: ${{ matrix.ghc }}
           cabal-version: ${{ matrix.cabal }}
