@@ -19,8 +19,13 @@ relocate_v1_sdist_to_v2_dir() {
     fi
 }
 
+# overridable hook
+before_prepare() {
+    :
+}
+
 prepare() {
-    eval "${PREBUILD-}"
+    before_prepare
     if [ -f configure.ac ]; then
         autoreconf -i
     fi
@@ -162,4 +167,5 @@ build() {
     }
 }
 
+eval "${TESTSCRIPT_OVERRIDES-}"
 "$@"
