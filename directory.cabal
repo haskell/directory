@@ -100,6 +100,7 @@ test-suite test
         GetPermissions001
         LongPaths
         MakeAbsolute
+        MinimizeNameConflicts
         PathIsSymbolicLink
         RemoveDirectoryRecursive001
         RemovePathForcibly

@@ -20,6 +20,7 @@ import qualified GetHomeDirectory002
 import qualified GetPermissions001
 import qualified LongPaths
 import qualified MakeAbsolute
+import qualified MinimizeNameConflicts
 import qualified PathIsSymbolicLink
 import qualified RemoveDirectoryRecursive001
 import qualified RemovePathForcibly
@@ -54,6 +55,7 @@ main = T.testMain $ \ _t -> do
   T.isolatedRun _t "GetPermissions001" GetPermissions001.main
   T.isolatedRun _t "LongPaths" LongPaths.main
   T.isolatedRun _t "MakeAbsolute" MakeAbsolute.main
+  T.isolatedRun _t "MinimizeNameConflicts" MinimizeNameConflicts.main
   T.isolatedRun _t "PathIsSymbolicLink" PathIsSymbolicLink.main
   T.isolatedRun _t "RemoveDirectoryRecursive001" RemoveDirectoryRecursive001.main
   T.isolatedRun _t "RemovePathForcibly" RemovePathForcibly.main
