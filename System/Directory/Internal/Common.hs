@@ -281,6 +281,20 @@ data XdgDirectory
    -- (e.g. @C:\/Users\//\<user\>/\/AppData\/Local@).
    --
    -- @since 1.3.7.0
+  | XdgBin
+    -- ^ For user-specific executable files.
+    -- At the moment there is no environment variable to override this value
+    -- specifically. Some applications use currently non-standard
+    -- @XDG_BIN_HOME@ for this purpose. If this is your use case then lookup
+    -- @XDG_BIN_HOME@ environment variable first and call `getXdgDirectory` if
+    -- it's not defined.
+    -- On non-Windows systems, the default is @~\/.local\/bin@.
+    -- On Windows, the default is @%APPDATA%@
+    -- (e.g. @C:\/Users\//\<user\>/\/AppData\/Roaming@).
+    -- Can be considered as the user-specific equivalent of @\/usr\/bin@ or
+    -- @\/usr\/local\/bin@.
+    --
+    -- @since 1.3.8.0
   deriving (Bounded, Enum, Eq, Ord, Read, Show)
 
 -- | Search paths for various application data, as specified by the

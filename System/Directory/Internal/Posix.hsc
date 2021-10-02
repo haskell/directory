@@ -297,6 +297,7 @@ getXdgDirectoryFallback getHomeDirectory xdgDir = do
     XdgConfig -> ".config"
     XdgCache  -> ".cache"
     XdgState  -> ".local/state"
+    XdgBin    -> ".local/bin"
 
 getXdgDirectoryListFallback :: XdgDirectoryList -> IO [FilePath]
 getXdgDirectoryListFallback xdgDirs =

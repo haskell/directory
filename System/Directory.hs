@@ -1565,11 +1565,12 @@ getXdgDirectory :: XdgDirectory         -- ^ which special directory
 getXdgDirectory xdgDir suffix =
   (`ioeAddLocation` "getXdgDirectory") `modifyIOError` do
     simplify . (</> suffix) <$> do
-      env <- lookupEnv $ case xdgDir of
-        XdgData   -> "XDG_DATA_HOME"
-        XdgConfig -> "XDG_CONFIG_HOME"
-        XdgCache  -> "XDG_CACHE_HOME"
-        XdgState  -> "XDG_STATE_HOME"
+      env <- case xdgDir of
+        XdgData   -> lookupEnv "XDG_DATA_HOME"
+        XdgConfig -> lookupEnv "XDG_CONFIG_HOME"
+        XdgCache  -> lookupEnv "XDG_CACHE_HOME"
+        XdgState  -> lookupEnv "XDG_STATE_HOME"
+        XdgBin    -> pure Nothing
       case env of
         Just path | isAbsolute path -> pure path
         _                           -> getXdgDirectoryFallback getHomeDirectory xdgDir
