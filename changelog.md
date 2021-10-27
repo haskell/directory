@@ -1,6 +1,10 @@
 Changelog for the [`directory`][1] package
 ==========================================
 
+## 1.3.7.1 (May 2021)
+
+  * Relax `time` version bounds to support 1.12.
+
 ## 1.3.7.0 (Sep 2021)
 
   * `getXdgDirectory` now supports `XdgState` (`XDG_STATE_HOME`).
