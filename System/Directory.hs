@@ -403,7 +403,7 @@ removeDirectory = removePathInternal True
 --
 -- On Windows, the operation fails if /dir/ is a directory symbolic link.
 --
--- This operation is reported to be flaky on Windows so retry logic may 
+-- This operation is reported to be flaky on Windows so retry logic may
 -- be advisable. See: https://github.com/haskell/directory/pull/108
 removeDirectoryRecursive :: FilePath -> IO ()
 removeDirectoryRecursive path =
@@ -422,7 +422,7 @@ removeDirectoryRecursive path =
 -- /path/ together with its contents and subdirectories. Symbolic links are
 -- removed without affecting their the targets.
 --
--- This operation is reported to be flaky on Windows so retry logic may 
+-- This operation is reported to be flaky on Windows so retry logic may
 -- be advisable. See: https://github.com/haskell/directory/pull/108
 removePathRecursive :: FilePath -> IO ()
 removePathRecursive path =
@@ -437,7 +437,7 @@ removePathRecursive path =
 -- /dir/ recursively. Symbolic links are removed without affecting their the
 -- targets.
 --
--- This operation is reported to be flaky on Windows so retry logic may 
+-- This operation is reported to be flaky on Windows so retry logic may
 -- be advisable. See: https://github.com/haskell/directory/pull/108
 removeContentsRecursive :: FilePath -> IO ()
 removeContentsRecursive path =
@@ -1150,6 +1150,12 @@ listDirectory path = filter f <$> getDirectoryContents path
 -- shared among all threads of the process.  Therefore, when performing
 -- filesystem operations from multiple threads, it is highly recommended to
 -- use absolute rather than relative paths (see: 'makeAbsolute').
+--
+-- Note that 'getCurrentDirectory' is not guaranteed to return the same path
+-- received by 'setCurrentDirectory'. On POSIX systems, the path returned will
+-- always be fully dereferenced (not contain any symbolic links). For more
+-- information, refer to the documentation of
+-- <https://pubs.opengroup.org/onlinepubs/9699919799/functions/getcwd.html getcwd>.
 --
 -- The operation may fail with:
 --
