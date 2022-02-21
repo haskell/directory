@@ -30,6 +30,7 @@ jobs:
           - { os: windows-latest, stack: lts-7.24, stack-extra-deps: "time-1.6.0.1, Win32-2.4.0.0" }
           - { os: windows-latest, stack: lts-9.21, stack-extra-deps: "time-1.6.0.1, Win32-2.8.0.0" }
           - { os: windows-latest, stack: lts-17.5 } # time-1.9.3, Win32-2.6.1.0
+          - { os: windows-latest, stack: lts-18.26, stack-extra-deps: "time-1.12.1, Win32-2.13.2.0" }
     runs-on: ${{ matrix.os }}
     env:
       TESTSCRIPT_OVERRIDES: ${{ matrix.overrides }}
