@@ -24,7 +24,7 @@ jobs:
           - { os: ubuntu-latest, ghc: 7.10.3, cabal: "2.4", overrides: 'before_prepare() { [ -f ~/.cabal/config ] || cabal user-config init; sed -i "s/-- ghc-options:.*/ghc-options: -optl-no-pie/" ~/.cabal/config; }' }
           - { os: ubuntu-latest, ghc: 8.0.2, cabal: "2.4" }
           - { os: ubuntu-latest, ghc: 9.0.1, cabal: 3.4.0.0 }
-          - { os: ubuntu-18.04, ghc: head, cabal: head }
+          - { os: ubuntu-latest, ghc: latest, cabal: latest }
           - { os: windows-latest, stack: lts-4.2, stack-extra-deps: "time-1.5.0.1, Win32-2.3.0.1", overrides: "before_prepare() { sed -i.bak -e /CreateSymbolicLinkW/d -e /GetFinalPathNameByHandleW/d configure.ac; }" }
           - { os: windows-latest, stack: lts-5.18 } # time-1.5.0.1, Win32-2.3.1.0
           - { os: windows-latest, stack: lts-7.24, stack-extra-deps: "time-1.6.0.1, Win32-2.4.0.0" }
@@ -47,6 +47,9 @@ jobs:
         run: |
           echo STACK_FLAGS=--skip-msys >> $GITHUB_ENV
           echo 'C:\msys64\usr\bin' >> $GITHUB_PATH
+      - if: startsWith(matrix.os, 'windows-')
+        run: |
+          pacman -S --needed --noconfirm autoconf automake
       - uses: haskell/actions/setup@v1
         with:
           ghc-version: ${{ matrix.ghc }}

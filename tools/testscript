@@ -85,7 +85,7 @@ EOF
 
         ghc --version
         cabal --version
-        tools/retry cabal "$v1"update
+        tools/retry cabal update
         cabal "$v1"install --enable-tests --only-dependencies
 
     fi
