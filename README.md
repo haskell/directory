@@ -26,5 +26,5 @@ configure` does that automatically.
 [bi]: https://github.com/haskell/directory/actions/workflows/build.yml/badge.svg
 [bl]: https://github.com/haskell/directory/actions
 [di]: https://img.shields.io/hackage-deps/v/directory.svg
-[dl]: http://packdeps.haskellers.com/feed?needle=directory
+[dl]: http://packdeps.haskellers.com/feed?needle=exact:directory
 [ac]: https://gnu.org/software/autoconf
