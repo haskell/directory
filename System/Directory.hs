@@ -985,7 +985,7 @@ findExecutable binary =
 -- | Search for executable files in a list of system-defined locations, which
 -- generally includes @PATH@ and possibly more.
 --
--- On Windows, this /only returns the first ocurrence/, if any.  Its behavior
+-- On Windows, this /only returns the first occurrence/, if any.  Its behavior
 -- is therefore equivalent to 'findExecutable'.
 --
 -- On non-Windows platforms, the behavior is equivalent to
@@ -1055,7 +1055,7 @@ findFileWith f ds name = listTHead (findFilesWithLazy f ds name)
 
 -- | @findFilesWith predicate dirs name@ searches through the list of
 -- directories (@dirs@) for files that have the given @name@ and satisfy the
--- given @predicate@ ands return the paths of those files.  The directories
+-- given @predicate@ and returns the paths of those files.  The directories
 -- are checked in a left-to-right order and the paths are returned in the same
 -- order.
 --
