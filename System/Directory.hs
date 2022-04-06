@@ -334,7 +334,7 @@ createDirectoryIfMissing create_parents path0
           -- createDirectory (and indeed POSIX mkdir) does not distinguish
           -- between a dir already existing and a file already existing. So we
           -- check for it here. Unfortunately there is a slight race condition
-          -- here, but we think it is benign. It could report an exeption in
+          -- here, but we think it is benign. It could report an exception in
           -- the case that the dir did exist but another process deletes the
           -- directory and creates a file in its place before we can check
           -- that the directory did indeed exist.
