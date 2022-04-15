@@ -49,7 +49,16 @@ c_PATH_MAX | c_PATH_MAX' > toInteger maxValue = Nothing
 c_PATH_MAX = Nothing
 #endif
 
+#if !defined(HAVE_REALPATH)
+
+c_realpath :: CString -> CString -> IO CString
+c_realpath _ _ = throwIO (mkIOError UnsupportedOperation "platform does not support realpath" Nothing Nothing)
+
+#else
+
 foreign import ccall "realpath" c_realpath :: CString -> CString -> IO CString
+
+#endif
 
 withRealpath :: CString -> (CString -> IO a) -> IO a
 withRealpath path action = case c_PATH_MAX of
