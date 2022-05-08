@@ -1,6 +1,7 @@
 {-# LANGUAGE CPP #-}
 module CopyFileWithMetadata where
 #include "util.inl"
+import System.Directory.Internal
 import qualified Data.List as List
 
 main :: TestEnv -> IO ()
@@ -25,7 +26,7 @@ main _t = (`finally` cleanup) $ do
   for_ ["b", "c"] $ \ f -> do
     T(expectEq) f perm =<< getPermissions f
     T(expectEq) f mtime =<< getModificationTime f
-    T(expectEq) f contents =<< readFile f
+    T(expectEq) f contents =<< readFile (so f)
 
   where
     contents = "This is the data\n"

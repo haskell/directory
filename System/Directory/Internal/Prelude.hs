@@ -27,12 +27,10 @@ module System.Directory.Internal.Prelude
   , module System.Exit
   , module System.IO
   , module System.IO.Error
-  , module System.Posix.Internals
   , module System.Posix.Types
   , module System.Timeout
   , Void
   ) where
-import System.Environment (lookupEnv)
 import Data.Void (Void)
 import Control.Arrow (second)
 import Control.Concurrent
@@ -49,6 +47,7 @@ import Control.Exception
   , SomeException
   , bracket
   , bracket_
+  , bracketOnError
   , catch
   , finally
   , mask
@@ -97,14 +96,9 @@ import Foreign.C
   , CUShort(..)
   , CWString
   , CWchar(..)
-  , peekCString
-  , peekCWStringLen
   , throwErrnoIfMinus1Retry_
   , throwErrnoIfMinus1_
   , throwErrnoIfNull
-  , throwErrnoPathIfMinus1_
-  , withCString
-  , withCWString
   )
 import GHC.IO.Exception
   ( IOErrorType
@@ -115,7 +109,7 @@ import GHC.IO.Exception
     )
   )
 import GHC.IO.Encoding (getFileSystemEncoding)
-import System.Environment (getArgs, getEnv)
+import System.Environment (getArgs)
 import System.Exit (exitFailure)
 import System.IO
   ( Handle
@@ -129,11 +123,11 @@ import System.IO
   , openBinaryTempFile
   , stderr
   , stdout
-  , withBinaryFile
   )
 import System.IO.Error
   ( IOError
   , catchIOError
+  , doesNotExistErrorType
   , illegalOperationErrorType
   , ioeGetErrorString
   , ioeGetErrorType
@@ -151,6 +145,5 @@ import System.IO.Error
   , tryIOError
   , userError
   )
-import System.Posix.Internals (withFilePath)
 import System.Posix.Types (EpochTime)
 import System.Timeout (timeout)

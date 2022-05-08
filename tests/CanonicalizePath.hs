@@ -1,8 +1,9 @@
 {-# LANGUAGE CPP #-}
 module CanonicalizePath where
 #include "util.inl"
-import System.FilePath ((</>), dropFileName, dropTrailingPathSeparator,
-                        normalise, takeFileName)
+import System.Directory.Internal
+import System.OsPath ((</>), dropFileName, dropTrailingPathSeparator,
+                      normalise, takeFileName)
 import TestUtils
 
 main :: TestEnv -> IO ()
@@ -141,9 +142,9 @@ main _t = do
     T(expectEq) () fooNon fooNon13
     T(expectEq) () fooNon fooNon14
     T(expectEq) () fooNon (dropFileName cfooNon15 <>
-                           (toLower <$> takeFileName cfooNon15))
+                           (os (toLower <$> so (takeFileName cfooNon15))))
     T(expectEq) () fooNon (dropFileName cfooNon16 <>
-                           (toLower <$> takeFileName cfooNon16))
+                           (os (toLower <$> so (takeFileName cfooNon16))))
     T(expectNe) () fooNon cfooNon15
     T(expectNe) () fooNon cfooNon16
 

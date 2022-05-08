@@ -1,9 +1,10 @@
 {-# LANGUAGE CPP #-}
 module RemovePathForcibly where
 #include "util.inl"
-import System.FilePath ((</>), normalise)
+import System.Directory.Internal
+import System.OsPath ((</>), normalise)
 import qualified Data.List as List
-import TestUtils
+import TestUtils (modifyPermissions, symlinkOrCopy)
 
 main :: TestEnv -> IO ()
 main _t = do
@@ -25,9 +26,9 @@ main _t = do
   createDirectoryIfMissing True (tmp "b")
   createDirectoryIfMissing True (tmp "c")
   createDirectoryIfMissing True (tmp "f")
-  writeFile (tmp "a/x/w/u") "foo"
-  writeFile (tmp "a/t")     "bar"
-  writeFile (tmp "f/s")     "qux"
+  writeFile (so (tmp "a/x/w/u")) "foo"
+  writeFile (so (tmp "a/t"))     "bar"
+  writeFile (so (tmp "f/s"))     "qux"
   symlinkOrCopy (normalise "../a") (tmp "b/g")
   symlinkOrCopy (normalise "../b") (tmp "c/h")
   symlinkOrCopy (normalise "a")    (tmp "d")
@@ -84,5 +85,5 @@ main _t = do
     getDirectoryContents  tmpD
 
   where testName = "removePathForcibly"
-        tmpD  = testName ++ ".tmp"
+        tmpD  = testName <> ".tmp"
         tmp s = tmpD </> normalise s

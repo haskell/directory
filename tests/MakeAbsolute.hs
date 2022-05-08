@@ -1,10 +1,11 @@
 {-# LANGUAGE CPP #-}
 module MakeAbsolute where
 #include "util.inl"
-import System.FilePath ((</>), addTrailingPathSeparator,
-                        dropTrailingPathSeparator, normalise)
+import System.OsPath ((</>), addTrailingPathSeparator,
+                      dropTrailingPathSeparator, normalise)
 #if defined(mingw32_HOST_OS)
-import System.FilePath (takeDrive)
+import System.Directory.Internal
+import System.OsPath (takeDrive, toChar, unpack)
 #endif
 
 main :: TestEnv -> IO ()
@@ -37,10 +38,10 @@ main _t = do
 
 #if defined(mingw32_HOST_OS)
   cwd <- getCurrentDirectory
-  let driveLetter = toUpper (head (takeDrive cwd))
+  let driveLetter = toUpper (toChar (head (unpack (takeDrive cwd))))
   let driveLetter' = if driveLetter == 'Z' then 'A' else succ driveLetter
-  drp1 <- makeAbsolute (driveLetter : ":foobar")
-  drp2 <- makeAbsolute (driveLetter' : ":foobar")
+  drp1 <- makeAbsolute (os (driveLetter : ":foobar"))
+  drp2 <- makeAbsolute (os (driveLetter' : ":foobar"))
   T(expectEq) () drp1 =<< makeAbsolute "foobar"
-  T(expectEq) () drp2 (driveLetter' : ":\\foobar")
+  T(expectEq) () drp2 (os (driveLetter' : ":\\foobar"))
 #endif

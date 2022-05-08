@@ -1,7 +1,7 @@
 {-# LANGUAGE CPP #-}
 module MinimizeNameConflicts
   ( main
-  , module System.Directory
+  , module System.Directory.OsPath
 #if defined(mingw32_HOST_OS)
   , module System.Win32
 #else
@@ -31,4 +31,4 @@ import System.Posix hiding
 -- https://github.com/haskell/directory/issues/52
 main :: TestEnv -> IO ()
 main _t = do
-  T(expect) "no-op" True
+  T(expect) ("no-op" :: String) True

@@ -1,6 +1,7 @@
 {-# LANGUAGE CPP #-}
 module RenamePath where
 #include "util.inl"
+import System.Directory.Internal
 
 main :: TestEnv -> IO ()
 main _t = do
@@ -11,10 +12,10 @@ main _t = do
   T(expectEq) () ["b"] =<< listDirectory "."
 
   writeFile tmp1 contents1
-  renamePath tmp1 tmp2
+  renamePath (os tmp1) (os tmp2)
   T(expectEq) () contents1 =<< readFile tmp2
   writeFile tmp1 contents2
-  renamePath tmp2 tmp1
+  renamePath (os tmp2) (os tmp1)
   T(expectEq) () contents1 =<< readFile tmp1
 
   where

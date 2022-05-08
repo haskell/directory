@@ -2,7 +2,7 @@
 module LongPaths where
 #include "util.inl"
 import TestUtils
-import System.FilePath ((</>))
+import System.OsPath ((</>))
 
 main :: TestEnv -> IO ()
 main _t = do

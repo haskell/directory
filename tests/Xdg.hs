@@ -4,7 +4,7 @@ import qualified Data.List as List
 import System.Environment (setEnv, unsetEnv)
 import System.FilePath (searchPathSeparator)
 #if !defined(mingw32_HOST_OS)
-import System.FilePath ((</>))
+import System.OsPath ((</>))
 #endif
 #include "util.inl"
 

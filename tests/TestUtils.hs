@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
 -- | Utility functions specific to 'directory' tests
 module TestUtils
   ( copyPathRecursive
@@ -8,10 +9,11 @@ module TestUtils
   ) where
 import Prelude ()
 import System.Directory.Internal.Prelude
-import System.Directory
-import System.FilePath ((</>), normalise, takeDirectory)
+import System.Directory.Internal
+import System.Directory.OsPath
+import Data.String (IsString(fromString))
+import System.OsPath ((</>), normalise, takeDirectory)
 #if defined(mingw32_HOST_OS)
-import System.Directory.Internal (win32_getFinalPathNameByHandle)
 import qualified System.Win32 as Win32
 #endif
 
@@ -19,7 +21,7 @@ import qualified System.Win32 as Win32
 --   /path/ together with its contents and subdirectories.
 --
 --   Warning: mostly untested and might not handle symlinks correctly.
-copyPathRecursive :: FilePath -> FilePath -> IO ()
+copyPathRecursive :: OsPath -> OsPath -> IO ()
 copyPathRecursive source dest =
   (`ioeSetLocation` "copyPathRecursive") `modifyIOError` do
     dirExists <- doesDirectoryExist source
@@ -31,7 +33,7 @@ copyPathRecursive source dest =
           [(source </> x, dest </> x) | x <- contents]
       else copyFile source dest
 
-modifyPermissions :: FilePath -> (Permissions -> Permissions) -> IO ()
+modifyPermissions :: OsPath -> (Permissions -> Permissions) -> IO ()
 modifyPermissions path modify = do
   permissions <- getPermissions path
   setPermissions path (modify permissions)
@@ -56,7 +58,7 @@ handleSymlinkUnavail _handler action = action
 -- forbidden by Group Policy or is not supported.  On other platforms, there
 -- is no fallback.  Also, automatically detect if the source is a file or a
 -- directory and create the appropriate type of link.
-symlinkOrCopy :: FilePath -> FilePath -> IO ()
+symlinkOrCopy :: OsPath -> OsPath -> IO ()
 symlinkOrCopy target link = do
   let fullTarget = takeDirectory link </> target
   handleSymlinkUnavail (copyPathRecursive fullTarget link) $ do
@@ -76,7 +78,7 @@ supportsSymlinks = do
 -- returns 'True'.
 supportsLinkCreation :: IO Bool
 supportsLinkCreation = do
-  let path = "_symlink_test.tmp"
+  let path = os "_symlink_test.tmp"
   isSupported <- handleSymlinkUnavail (return False) $ do
     True <$ createFileLink path path
   when isSupported $ do
@@ -94,3 +96,6 @@ supportsLinkDeref = do
 #else
     return True
 #endif
+
+instance IsString OsString where
+  fromString = os

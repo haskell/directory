@@ -2,7 +2,8 @@
 module CreateDirectoryIfMissing001 where
 #include "util.inl"
 import Data.Either (lefts)
-import System.FilePath ((</>), addTrailingPathSeparator)
+import System.Directory.Internal
+import System.OsPath ((</>), addTrailingPathSeparator)
 
 main :: TestEnv -> IO ()
 main _t = do
@@ -27,13 +28,13 @@ main _t = do
   T(inform) "done."
   cleanup
 
-  writeFile testdir testdir
+  writeFile (so testdir) (so testdir)
   T(expectIOErrorType) () isAlreadyExistsError $
     createDirectoryIfMissing False testdir
   removeFile testdir
   cleanup
 
-  writeFile testdir testdir
+  writeFile (so testdir) (so testdir)
   T(expectIOErrorType) () isNotADirectoryError $
     createDirectoryIfMissing True testdir_a
   removeFile testdir
@@ -43,7 +44,7 @@ main _t = do
 
     testname = "CreateDirectoryIfMissing001"
 
-    testdir = testname <> ".d"
+    testdir = os (testname <> ".d")
     testdir_a = testdir </> "a"
 
     numRepeats = T.readArg _t testname "num-repeats" 10000

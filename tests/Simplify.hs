@@ -2,7 +2,7 @@
 module Simplify where
 #include "util.inl"
 import System.Directory.Internal (simplifyWindows)
-import System.FilePath (normalise)
+import System.OsPath (normalise)
 
 main :: TestEnv -> IO ()
 main _t = do

@@ -5,10 +5,8 @@ module GetFileSize where
 main :: TestEnv -> IO ()
 main _t = do
 
-  withBinaryFile "emptyfile" WriteMode $ \ _ -> do
-    return ()
-  withBinaryFile "testfile" WriteMode $ \ h -> do
-    hPutStr h string
+  writeFile "emptyfile" ""
+  writeFile "testfile" string
 
   T(expectEq) () 0 =<< getFileSize "emptyfile"
   T(expectEq) () (fromIntegral (length string)) =<< getFileSize "testfile"
