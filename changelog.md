@@ -1,10 +1,11 @@
 Changelog for the [`directory`][1] package
 ==========================================
 
-## 1.3.7.1 (May 2021)
+## 1.3.7.1 (Jul 2022)
 
   * Relax `time` version bounds to support 1.12.
   * Relax `Win32` version bounds to support 2.13.
+  * Relax `base` version bounds to support 4.17.
 
 ## 1.3.7.0 (Sep 2021)
 

@@ -51,11 +51,12 @@ jobs:
       - if: startsWith(matrix.os, 'windows-')
         run: |
           pacman -S --needed --noconfirm autoconf automake
-      - uses: haskell/actions/setup@v1
+      - uses: haskell/actions/setup@v2
         with:
           ghc-version: ${{ matrix.ghc }}
           cabal-version: ${{ matrix.cabal }}
-          enable-stack: ${{ matrix.stack != null }}
+          enable-stack: ${{ matrix.stack }}
+          stack-no-global: ${{ matrix.stack }}
       - uses: actions/checkout@v2
       - run: tools/testscript prepare
       - run: tools/testscript build
