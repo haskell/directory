@@ -1,12 +1,10 @@
 {-# LANGUAGE CPP #-}
 module Xdg where
-#if MIN_VERSION_base(4, 7, 0)
 import qualified Data.List as List
 import System.Environment (setEnv, unsetEnv)
 import System.FilePath (searchPathSeparator)
 #if !defined(mingw32_HOST_OS)
 import System.FilePath ((</>))
-#endif
 #endif
 #include "util.inl"
 
@@ -20,7 +18,6 @@ main _t = do
   T(expect) () True -- avoid warnings about redundant imports
 
   -- setEnv, unsetEnv require base 4.7.0.0+
-#if MIN_VERSION_base(4, 7, 0)
 #if !defined(mingw32_HOST_OS)
   unsetEnv "XDG_CONFIG_HOME"
   home <- getHomeDirectory
@@ -61,6 +58,5 @@ main _t = do
   setEnv "XDG_CONFIG_DIRS" (List.intercalate [searchPathSeparator] ["/c", "/d"])
   T(expectEq) () ["/a", "/b"] =<< getXdgDirectoryList XdgDataDirs
   T(expectEq) () ["/c", "/d"] =<< getXdgDirectoryList XdgConfigDirs
-#endif
 
   return ()

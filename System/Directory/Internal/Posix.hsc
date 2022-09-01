@@ -163,21 +163,11 @@ fileSizeFromMetadata = fromIntegral . Posix.fileSize
 
 accessTimeFromMetadata :: Metadata -> UTCTime
 accessTimeFromMetadata =
-  POSIXTime.posixSecondsToUTCTime . posix_accessTimeHiRes
+  POSIXTime.posixSecondsToUTCTime . Posix.accessTimeHiRes
 
 modificationTimeFromMetadata :: Metadata -> UTCTime
 modificationTimeFromMetadata =
-  POSIXTime.posixSecondsToUTCTime . posix_modificationTimeHiRes
-
-posix_accessTimeHiRes, posix_modificationTimeHiRes
-  :: Posix.FileStatus -> POSIXTime
-#if MIN_VERSION_unix(2, 6, 0)
-posix_accessTimeHiRes = Posix.accessTimeHiRes
-posix_modificationTimeHiRes = Posix.modificationTimeHiRes
-#else
-posix_accessTimeHiRes = realToFrac . Posix.accessTime
-posix_modificationTimeHiRes = realToFrac . Posix.modificationTime
-#endif
+  POSIXTime.posixSecondsToUTCTime . Posix.modificationTimeHiRes
 
 type Mode = Posix.FileMode
 
@@ -266,24 +256,14 @@ setTimes path' (atime', mtime') =
   throwErrnoPathIfMinus1_ "" path' $
     c_utimensat c_AT_FDCWD path'' times 0
 #else
-setTimes path' (Just atime', Just mtime') = setFileTimes' path' atime' mtime'
+setTimes path' (Just atime', Just mtime') = Posix.setFileTimesHiRes path' atime' mtime'
 setTimes path' (atime', mtime') = do
   m <- getFileMetadata path'
   let atimeOld = accessTimeFromMetadata m
   let mtimeOld = modificationTimeFromMetadata m
-  setFileTimes' path'
+  Posix.setFileTimesHiRes path'
     (fromMaybe (POSIXTime.utcTimeToPOSIXSeconds atimeOld) atime')
     (fromMaybe (POSIXTime.utcTimeToPOSIXSeconds mtimeOld) mtime')
-
-setFileTimes' :: FilePath -> POSIXTime -> POSIXTime -> IO ()
-# if MIN_VERSION_unix(2, 7, 0)
-setFileTimes' = Posix.setFileTimesHiRes
-#  else
-setFileTimes' pth atime' mtime' =
-  Posix.setFileTimes pth
-    (fromInteger (truncate atime'))
-    (fromInteger (truncate mtime'))
-# endif
 #endif
 
 -- | Get the contents of the @PATH@ environment variable.

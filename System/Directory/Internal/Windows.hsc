@@ -47,11 +47,7 @@ renamePathInternal opath npath =
   (`ioeSetFileName` opath) `modifyIOError` do
     opath' <- furnishPath opath
     npath' <- furnishPath npath
-#if MIN_VERSION_Win32(2, 6, 0)
     Win32.moveFileEx opath' (Just npath') Win32.mOVEFILE_REPLACE_EXISTING
-#else
-    Win32.moveFileEx opath' npath' Win32.mOVEFILE_REPLACE_EXISTING
-#endif
 
 copyFileWithMetadataInternal :: (Metadata -> FilePath -> IO ())
                              -> (Metadata -> FilePath -> IO ())
@@ -63,13 +59,6 @@ copyFileWithMetadataInternal _ _ src dst =
     src' <- furnishPath src
     dst' <- furnishPath dst
     Win32.copyFile src' dst' False
-
-win32_cSIDL_LOCAL_APPDATA :: Win32.CSIDL
-#if MIN_VERSION_Win32(2, 3, 1)
-win32_cSIDL_LOCAL_APPDATA = Win32.cSIDL_LOCAL_APPDATA
-#else
-win32_cSIDL_LOCAL_APPDATA = (#const CSIDL_LOCAL_APPDATA)
-#endif
 
 win32_cSIDL_COMMON_APPDATA :: Win32.CSIDL
 win32_cSIDL_COMMON_APPDATA = (#const CSIDL_COMMON_APPDATA)
@@ -89,57 +78,11 @@ win32_sYMBOLIC_LINK_FLAG_DIRECTORY = 0x1
 win32_sYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE :: Win32.DWORD
 win32_sYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE = 0x2
 
-win32_fILE_ATTRIBUTE_REPARSE_POINT :: Win32.FileAttributeOrFlag
-#if MIN_VERSION_Win32(2, 4, 0)
-win32_fILE_ATTRIBUTE_REPARSE_POINT = Win32.fILE_ATTRIBUTE_REPARSE_POINT
-#else
-win32_fILE_ATTRIBUTE_REPARSE_POINT = (#const FILE_ATTRIBUTE_REPARSE_POINT)
-#endif
-
-win32_fILE_SHARE_DELETE :: Win32.ShareMode
-#if MIN_VERSION_Win32(2, 3, 1)
-win32_fILE_SHARE_DELETE = Win32.fILE_SHARE_DELETE -- added in 2.3.0.2
-#else
-win32_fILE_SHARE_DELETE = (#const FILE_SHARE_DELETE)
-#endif
-
 maxShareMode :: Win32.ShareMode
 maxShareMode =
-  win32_fILE_SHARE_DELETE .|.
+  Win32.fILE_SHARE_DELETE .|.
   Win32.fILE_SHARE_READ   .|.
   Win32.fILE_SHARE_WRITE
-
-win32_getLongPathName, win32_getShortPathName :: FilePath -> IO FilePath
-#if MIN_VERSION_Win32(2, 4, 0)
-win32_getLongPathName = Win32.getLongPathName
-win32_getShortPathName = Win32.getShortPathName
-#else
-win32_getLongPathName path =
-  ((`ioeSetLocation` "GetLongPathName") .
-   (`ioeSetFileName` path)) `modifyIOError` do
-    withCWString path $ \ ptrPath -> do
-      getPathNameWith (c_GetLongPathName ptrPath)
-
-win32_getShortPathName path =
-  ((`ioeSetLocation` "GetShortPathName") .
-   (`ioeSetFileName` path)) `modifyIOError` do
-    withCWString path $ \ ptrPath -> do
-      getPathNameWith (c_GetShortPathName ptrPath)
-
-foreign import WINAPI unsafe "windows.h GetLongPathNameW"
-  c_GetLongPathName
-    :: Ptr CWchar
-    -> Ptr CWchar
-    -> Win32.DWORD
-    -> IO Win32.DWORD
-
-foreign import WINAPI unsafe "windows.h GetShortPathNameW"
-  c_GetShortPathName
-    :: Ptr CWchar
-    -> Ptr CWchar
-    -> Win32.DWORD
-    -> IO Win32.DWORD
-#endif
 
 win32_getFinalPathNameByHandle :: Win32.HANDLE -> Win32.DWORD -> IO FilePath
 win32_getFinalPathNameByHandle _h _flags =
@@ -173,7 +116,7 @@ getFinalPathName =
       bracket open Win32.closeHandle $ \ h -> do
         win32_getFinalPathNameByHandle h 0
 #else
-    rawGetFinalPathName = win32_getLongPathName <=< win32_getShortPathName
+    rawGetFinalPathName = Win32.getLongPathName <=< Win32.getShortPathName
 #endif
 
 win32_fILE_FLAG_OPEN_REPARSE_POINT :: Win32.FileAttributeOrFlag
@@ -398,11 +341,7 @@ canonicalizePathSimplify path =
       pure path
 
 searchPathEnvForExes :: String -> IO (Maybe FilePath)
-searchPathEnvForExes binary = Win32.searchPath Nothing binary $
-#if MIN_VERSION_Win32(2, 6, 0)
-  Just
-#endif
-  exeExtension
+searchPathEnvForExes binary = Win32.searchPath Nothing binary (Just exeExtension)
 
 findExecutablesLazyInternal :: ([FilePath] -> String -> ListT IO FilePath)
                             -> String
@@ -545,7 +484,7 @@ fileTypeFromMetadata info
   | isDir     = Directory
   | otherwise = File
   where
-    isLink = attrs .&. win32_fILE_ATTRIBUTE_REPARSE_POINT /= 0
+    isLink = attrs .&. Win32.fILE_ATTRIBUTE_REPARSE_POINT /= 0
     isDir  = attrs .&. Win32.fILE_ATTRIBUTE_DIRECTORY /= 0
     attrs  = Win32.bhfiFileAttributes info
 
@@ -579,14 +518,7 @@ setTimes :: FilePath -> (Maybe POSIXTime, Maybe POSIXTime) -> IO ()
 setTimes path' (atime', mtime') =
   bracket (openFileHandle path' Win32.gENERIC_WRITE)
           Win32.closeHandle $ \ handle ->
-#if MIN_VERSION_Win32(2,12,0)
   Win32.setFileTime handle Nothing (posixToWindowsTime <$> atime') (posixToWindowsTime <$> mtime')
-#else
-  maybeWith with (posixToWindowsTime <$> atime') $ \ atime'' ->
-  maybeWith with (posixToWindowsTime <$> mtime') $ \ mtime'' ->
-  Win32.failIf_ not "" $
-    Win32.c_SetFileTime handle nullPtr atime'' mtime''
-#endif
 
 -- | Open the handle of an existing file or directory.
 openFileHandle :: String -> Win32.AccessMode -> IO Win32.HANDLE
@@ -655,8 +587,8 @@ getXdgDirectoryFallback _ xdgDir = do
   case xdgDir of
     XdgData   -> getFolderPath Win32.cSIDL_APPDATA
     XdgConfig -> getFolderPath Win32.cSIDL_APPDATA
-    XdgCache  -> getFolderPath win32_cSIDL_LOCAL_APPDATA
-    XdgState  -> getFolderPath win32_cSIDL_LOCAL_APPDATA
+    XdgCache  -> getFolderPath Win32.cSIDL_LOCAL_APPDATA
+    XdgState  -> getFolderPath Win32.cSIDL_LOCAL_APPDATA
 
 getXdgDirectoryListFallback :: XdgDirectoryList -> IO [FilePath]
 getXdgDirectoryListFallback _ =

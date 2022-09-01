@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# OPTIONS_HADDOCK hide #-}
 -- |
 -- Stability: unstable
@@ -8,14 +7,6 @@
 
 module System.Directory.Internal.Prelude
   ( module Prelude
-#if !MIN_VERSION_base(4, 6, 0)
-  , forkFinally
-  , lookupEnv
-#endif
-#if !MIN_VERSION_base(4, 8, 0)
-  , module Control.Applicative
-  , module Data.Functor
-#endif
   , module Control.Arrow
   , module Control.Concurrent
   , module Control.Exception
@@ -41,17 +32,8 @@ module System.Directory.Internal.Prelude
   , module System.Timeout
   , Void
   ) where
-#if MIN_VERSION_base(4, 6, 0)
 import System.Environment (lookupEnv)
-#else
-import Prelude hiding (catch)
-#endif
-#if MIN_VERSION_base(4, 8, 0)
 import Data.Void (Void)
-#else
-import Control.Applicative (Applicative, (<*>), (*>), pure)
-import Data.Functor ((<$>), (<$))
-#endif
 import Control.Arrow (second)
 import Control.Concurrent
   ( forkIO
@@ -60,11 +42,7 @@ import Control.Concurrent
   , putMVar
   , readMVar
   , takeMVar
-#if MIN_VERSION_base(4, 6, 0)
   , forkFinally
-#else
-  , ThreadId
-#endif
   )
 import Control.Exception
   ( SomeException
@@ -175,25 +153,3 @@ import System.IO.Error
 import System.Posix.Internals (withFilePath)
 import System.Posix.Types (EpochTime)
 import System.Timeout (timeout)
-
-#if !MIN_VERSION_base(4, 6, 0)
-lookupEnv :: String -> IO (Maybe String)
-lookupEnv name = do
-  env <- tryIOError (getEnv name)
-  case env of
-    Left err | isDoesNotExistError err -> pure Nothing
-             | otherwise               -> throwIO err
-    Right value -> pure (Just value)
-
-forkFinally :: IO a -> (Either SomeException a -> IO ()) -> IO ThreadId
-forkFinally action and_then =
-  mask $ \restore ->
-    forkIO $ try (restore action) >>= and_then
-#endif
-
-#if !MIN_VERSION_base(4, 8, 0)
-data Void = Void
-
-_unusedVoid :: Void
-_unusedVoid = Void
-#endif

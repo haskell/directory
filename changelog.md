@@ -1,6 +1,14 @@
 Changelog for the [`directory`][1] package
 ==========================================
 
+## 1.3.8.0 (Jul 2022)
+
+  * Drop support for `base` older than 4.11.0.
+  * Drop support for `filepath` older than 1.4.100.
+  * Drop support for `time` older than 1.8.0.
+  * Drop support for `unix` older than 2.8.0.
+  * Drop support for `Win32` older than 2.13.3.
+
 ## 1.3.7.1 (Jul 2022)
 
   * Relax `time` version bounds to support 1.12.

@@ -14,23 +14,14 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: macos-latest, stack: lts-5.18 }
-          - { os: macos-latest, stack: lts-17.5 }
-            # cabal-1.16 is the earliest available in the ppa:hvr/ghc for ubuntu-16.04
-          - { os: ubuntu-20.04, ghc: 7.4.2, cabal: "2.4", overrides: "before_prepare() { sed -i.bak /utimensat/d configure.ac; }" }
-          - { os: ubuntu-20.04, ghc: 7.4.2, cabal: "2.4" }
-          - { os: ubuntu-18.04, ghc: 7.6.3, cabal: "2.4" }
-          - { os: ubuntu-18.04, ghc: 7.8.4, cabal: "2.4" }
-          - { os: ubuntu-latest, ghc: 7.10.3, cabal: "2.4", overrides: 'before_prepare() { [ -f ~/.cabal/config ] || cabal user-config init; sed -i "s/-- ghc-options:.*/ghc-options: -optl-no-pie/" ~/.cabal/config; }' }
-          - { os: ubuntu-latest, ghc: 8.0.2, cabal: "2.4" }
+          - { os: macos-latest, stack: lts-12.26, stack-extra-deps: "bytestring-0.11.3.0, filepath-1.4.100.0, unix-2.8.0.0" }
+          - { os: macos-latest, stack: lts-19.21, stack-extra-deps: "bytestring-0.11.3.0, filepath-1.4.100.0, unix-2.8.0.0" }
+          - { os: ubuntu-latest, ghc: 8.4.4, cabal: "2.4", overrides: "before_prepare() { sed -i.bak /utimensat/d configure.ac; }" }
           - { os: ubuntu-latest, ghc: 9.0.1, cabal: 3.4.0.0 }
           - { os: ubuntu-latest, ghc: latest, cabal: latest }
-          - { os: windows-latest, stack: lts-4.2, stack-extra-deps: "time-1.5.0.1, Win32-2.3.0.1", overrides: "before_prepare() { sed -i.bak -e /CreateSymbolicLinkW/d -e /GetFinalPathNameByHandleW/d configure.ac; }" }
-          - { os: windows-latest, stack: lts-5.18 } # time-1.5.0.1, Win32-2.3.1.0
-          - { os: windows-latest, stack: lts-7.24, stack-extra-deps: "time-1.6.0.1, Win32-2.4.0.0" }
-          - { os: windows-latest, stack: lts-9.21, stack-extra-deps: "time-1.6.0.1, Win32-2.8.0.0" }
-          - { os: windows-latest, stack: lts-17.5 } # time-1.9.3, Win32-2.6.1.0
-          - { os: windows-latest, stack: lts-18.26, stack-extra-deps: "time-1.12.1, Win32-2.13.2.0" }
+          - { os: windows-latest, stack: lts-12.26, stack-extra-deps: "bytestring-0.11.3.0, filepath-1.4.100.0, time-1.8.0.2, Win32-2.13.3.0", overrides: "before_prepare() { sed -i.bak -e /CreateSymbolicLinkW/d -e /GetFinalPathNameByHandleW/d configure.ac; }" }
+          - { os: windows-latest, stack: lts-17.5, stack-extra-deps: "bytestring-0.11.3.0, filepath-1.4.100.0, time-1.9.3, Win32-2.13.3.0" }
+          - { os: windows-latest, stack: lts-19.21, stack-extra-deps: "bytestring-0.11.3.0, filepath-1.4.100.0, time-1.12.1, Win32-2.13.3.0" }
     runs-on: ${{ matrix.os }}
     env:
       TESTSCRIPT_OVERRIDES: ${{ matrix.overrides }}

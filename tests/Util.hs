@@ -6,11 +6,7 @@ import Prelude ()
 import System.Directory.Internal.Prelude
 import System.Directory
 import Data.Time.Clock (NominalDiffTime, UTCTime, diffUTCTime)
-#if MIN_VERSION_base(4, 7, 0)
 import System.Environment (getEnvironment, setEnv, unsetEnv)
-#elif !defined(mingw32_HOST_OS)
-import qualified System.Posix as Posix
-#endif
 import System.FilePath ((</>), normalise)
 import qualified Data.List as List
 
@@ -167,16 +163,6 @@ isolateEnvironment = bracket getEnvs setEnvs . const
     updateEnvs [] [] = pure ()
     updateEnvs kvs1 [] = for_ kvs1 (unsetEnv . fst)
     updateEnvs [] kvs2 = for_ kvs2 (uncurry setEnv)
-#if MIN_VERSION_base(4, 7, 0)
-#elif !defined(mingw32_HOST_OS)
-    getEnvironment = Posix.getEnvironment
-    setEnv k v = Posix.setEnv k v True
-    unsetEnv = Posix.unsetEnv
-#else
-    getEnvironment = pure []
-    setEnv _ _ = pure ()
-    unsetEnv _ = pure ()
-#endif
 
 isolateWorkingDirectory :: Bool -> FilePath -> IO a -> IO a
 isolateWorkingDirectory keep dir action = do
