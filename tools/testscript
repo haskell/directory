@@ -31,25 +31,22 @@ EOF
         ghc --version
         cabal --version
         tools/retry cabal update
-        cabal v1-install --enable-tests --only-dependencies
+        cabal v2-configure -v2 --enable-tests --ghc-options="$ghcflags"
 
     fi
 }
 
 build() {
     if [ "${STACK_RESOLVER-}" ]; then
-        $stack test --haddock --no-haddock-deps \
+        $stack test --haddock --no-haddock-deps --keep-going \
             --ghc-options "$ghcflags" \
             --test-arguments "$testflags"
         $stack sdist
     else
         testflags=`printf " %s" "$testflags" | sed "s/ / --test-option=/g"`
-        cabal v1-configure -v2 --enable-tests --ghc-options="$ghcflags"
-        cabal v1-build
-        cabal v1-test --show-details=streaming $testflags
+        cabal v2-test --keep-going --test-show-details=streaming $testflags
         cabal check
         cabal v2-sdist
-        cabal v1-copy
         cabal v1-install --force-reinstalls --run-tests dist-newstyle/sdist/*-*.tar.gz
     fi
 
