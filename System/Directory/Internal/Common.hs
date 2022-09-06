@@ -1,4 +1,8 @@
-module System.Directory.Internal.Common where
+module System.Directory.Internal.Common
+  ( module System.Directory.Internal.Common
+  , OsPath
+  , OsString
+  ) where
 import Prelude ()
 import System.Directory.Internal.Prelude
 import System.FilePath
@@ -14,6 +18,7 @@ import System.FilePath
   , splitDirectories
   , splitDrive
   )
+import System.OsPath (OsPath, OsString, decodeUtf, encodeUtf)
 
 -- | A generator with side-effects.
 newtype ListT m a = ListT { unListT :: m (Maybe (a, ListT m a)) }
@@ -94,6 +99,18 @@ ioeAddLocation e loc = do
   where
     newLoc = loc <> if null oldLoc then "" else ":" <> oldLoc
     oldLoc = ioeGetLocation e
+
+rightOrError :: Exception e => Either e a -> a
+rightOrError (Left e)  = error (displayException e)
+rightOrError (Right a) = a
+
+-- | Fallibly converts String to OsString. Only intended to be used on literals.
+os :: String -> OsString
+os = rightOrError . encodeUtf
+
+-- | Fallibly converts OsString to String. Only intended to be used on literals.
+so :: OsString -> String
+so = rightOrError . decodeUtf
 
 -- | Given a list of path segments, expand @.@ and @..@.  The path segments
 -- must not contain path separators.

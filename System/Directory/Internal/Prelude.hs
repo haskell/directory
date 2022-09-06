@@ -45,7 +45,8 @@ import Control.Concurrent
   , forkFinally
   )
 import Control.Exception
-  ( SomeException
+  ( Exception(displayException)
+  , SomeException
   , bracket
   , bracket_
   , catch
