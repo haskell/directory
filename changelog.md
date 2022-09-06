@@ -8,6 +8,9 @@ Changelog for the [`directory`][1] package
   * Drop support for `time` older than 1.8.0.
   * Drop support for `unix` older than 2.8.0.
   * Drop support for `Win32` older than 2.13.3.
+  * Modules in `directory` are no longer considered
+    [Safe](https://downloads.haskell.org/ghc/latest/docs/users_guide/exts/safe_haskell.html)
+    because the `System.OsPath` dependency is no longer Safe.
 
 ## 1.3.7.1 (Jul 2022)
 

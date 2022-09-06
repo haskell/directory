@@ -36,9 +36,7 @@ source-repository head
 
 Library
     default-language: Haskell2010
-    other-extensions:
-        CPP
-        Trustworthy
+    other-extensions: CPP
 
     exposed-modules:
         System.Directory
@@ -66,7 +64,7 @@ Library
 
 test-suite test
     default-language: Haskell2010
-    other-extensions: BangPatterns, CPP, Safe
+    other-extensions: BangPatterns, CPP
     ghc-options:      -Wall
     hs-source-dirs:   tests
     main-is:          Main.hs
@@ -107,7 +105,6 @@ test-suite test
         RenameDirectory
         RenameFile001
         RenamePath
-        Safe
         Simplify
         T8482
         WithCurrentDirectory
