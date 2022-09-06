@@ -712,6 +712,15 @@ copyFile fromFPath toFPath =
     atomicCopyFileContents fromFPath toFPath
       (ignoreIOExceptions . copyPermissions fromFPath)
 
+-- | Copy all data from a file to a handle.
+copyFileToHandle :: FilePath            -- ^ Source file
+                 -> Handle              -- ^ Destination handle
+                 -> IO ()
+copyFileToHandle fromFPath hTo =
+  (`ioeAddLocation` "copyFileToHandle") `modifyIOError` do
+    withBinaryFile fromFPath ReadMode $ \ hFrom ->
+      copyHandleData hFrom hTo
+
 -- | Copy the contents of a source file to a destination file, replacing the
 -- destination file atomically via @withReplacementFile@, resetting the
 -- attributes of the destination file to the defaults.

@@ -222,27 +222,6 @@ data Permissions
   , searchable :: Bool
   } deriving (Eq, Ord, Read, Show)
 
--- | Truncate the destination file and then copy the contents of the source
--- file to the destination file.  If the destination file already exists, its
--- attributes shall remain unchanged.  Otherwise, its attributes are reset to
--- the defaults.
-copyFileContents :: FilePath            -- ^ Source filename
-                 -> FilePath            -- ^ Destination filename
-                 -> IO ()
-copyFileContents fromFPath toFPath =
-  (`ioeAddLocation` "copyFileContents") `modifyIOError` do
-    withBinaryFile toFPath WriteMode $ \ hTo ->
-      copyFileToHandle fromFPath hTo
-
--- | Copy all data from a file to a handle.
-copyFileToHandle :: FilePath            -- ^ Source file
-                 -> Handle              -- ^ Destination handle
-                 -> IO ()
-copyFileToHandle fromFPath hTo =
-  (`ioeAddLocation` "copyFileToHandle") `modifyIOError` do
-    withBinaryFile fromFPath ReadMode $ \ hFrom ->
-      copyHandleData hFrom hTo
-
 -- | Copy data from one handle to another until end of file.
 copyHandleData :: Handle                -- ^ Source handle
                -> Handle                -- ^ Destination handle

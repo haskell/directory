@@ -232,6 +232,19 @@ tryCopyOwnerAndGroupFromStatus st dst = do
   ignoreIOExceptions (copyOwnerFromStatus st dst)
   ignoreIOExceptions (copyGroupFromStatus st dst)
 
+-- | Truncate the destination file and then copy the contents of the source
+-- file to the destination file.  If the destination file already exists, its
+-- attributes shall remain unchanged.  Otherwise, its attributes are reset to
+-- the defaults.
+copyFileContents :: FilePath            -- ^ Source filename
+                 -> FilePath            -- ^ Destination filename
+                 -> IO ()
+copyFileContents fromFPath toFPath =
+  (`ioeAddLocation` "copyFileContents") `modifyIOError` do
+    withBinaryFile toFPath WriteMode $ \ hTo -> do
+      withBinaryFile fromFPath ReadMode $ \ hFrom -> do
+        copyHandleData hFrom hTo
+
 copyFileWithMetadataInternal :: (Metadata -> FilePath -> IO ())
                              -> (Metadata -> FilePath -> IO ())
                              -> FilePath
