@@ -43,6 +43,7 @@ Library
         System.Directory.Internal
         System.Directory.Internal.Prelude
     other-modules:
+        System.Directory.OsPath
         System.Directory.Internal.C_utimensat
         System.Directory.Internal.Common
         System.Directory.Internal.Config

@@ -8,11 +8,11 @@
 -- Stability   :  stable
 -- Portability :  portable
 --
--- System-independent interface to directory manipulation (FilePath API).
+-- System-independent interface to directory manipulation.
 --
 -----------------------------------------------------------------------------
 
-module System.Directory
+module System.Directory.OsPath
    (
     -- $intro
 
