@@ -85,11 +85,13 @@ maxShareMode =
   Win32.fILE_SHARE_WRITE
 
 win32_getFinalPathNameByHandle :: Win32.HANDLE -> Win32.DWORD -> IO FilePath
-win32_getFinalPathNameByHandle _h _flags =
-  (`ioeSetLocation` "GetFinalPathNameByHandle") `modifyIOError` do
 #ifdef HAVE_GETFINALPATHNAMEBYHANDLEW
-    getPathNameWith $ \ ptr len -> do
-      c_GetFinalPathNameByHandle _h ptr len _flags
+win32_getFinalPathNameByHandle h flags = do
+  result <- peekTStringWith (#const MAX_PATH) $ \ ptr len -> do
+    c_GetFinalPathNameByHandle h ptr len flags
+  case result of
+    Left errCode -> Win32.failWith "GetFinalPathNameByHandle" errCode
+    Right path -> pure path
 
 foreign import WINAPI unsafe "windows.h GetFinalPathNameByHandleW"
   c_GetFinalPathNameByHandle
@@ -100,9 +102,12 @@ foreign import WINAPI unsafe "windows.h GetFinalPathNameByHandleW"
     -> IO Win32.DWORD
 
 #else
-    throwIO (mkIOError UnsupportedOperation
-             "platform does not support GetFinalPathNameByHandle"
-             Nothing Nothing)
+win32_getFinalPathNameByHandle _ _ = throwIO $
+  mkIOError
+    UnsupportedOperation
+    "platform does not support GetFinalPathNameByHandle"
+    Nothing
+    Nothing
 #endif
 
 getFinalPathName :: FilePath -> IO FilePath
@@ -311,23 +316,40 @@ fromExtendedLengthPath ePath =
            "." `elem` splitDirectories path ||
            ".." `elem` splitDirectories path)
 
-getPathNameWith :: (Ptr CWchar -> Win32.DWORD -> IO Win32.DWORD) -> IO FilePath
-getPathNameWith cFunc = do
-  let getPathNameWithLen len = do
-        allocaArray (fromIntegral len) $ \ ptrPathOut -> do
-          len' <- Win32.failIfZero "" (cFunc ptrPathOut len)
-          if len' <= len
-            then Right <$> peekCWStringLen (ptrPathOut, fromIntegral len')
-            else pure (Left len')
-  r <- getPathNameWithLen ((#const MAX_PATH) * (#size wchar_t))
-  case r of
-    Right s -> pure s
-    Left len -> do
-      r' <- getPathNameWithLen len
-      case r' of
-        Right s -> pure s
-        Left _ -> throwIO (mkIOError OtherError "" Nothing Nothing
-                           `ioeSetErrorString` "path changed unexpectedly")
+saturatingDouble :: Win32.DWORD -> Win32.DWORD
+saturatingDouble s | s > maxBound `div` 2 = maxBound
+                   | otherwise            = s * 2
+
+-- Handles Windows APIs that write strings through a user-provided buffer and
+-- can propose a new length when it isn't big enough. This is similar to
+-- Win32.try, but also returns the precise error code.
+peekTStringWith :: Win32.DWORD
+                -> (Win32.LPTSTR -> Win32.DWORD -> IO Win32.DWORD)
+                -- ^ Must accept a buffer and its size in TCHARs. If the
+                --   buffer is large enough for the function, it must write a
+                --   string to it, which need not be null-terminated, and
+                --   return the length of the string, not including the null
+                --   terminator if present. If the buffer is too small, it
+                --   must return a proposed buffer size in TCHARs, although it
+                --   need not guarantee success with the proposed size if,
+                --   say, the underlying data changes in the interim. If it
+                --   fails for any other reason, it must return zero and
+                --   communicate the error code through GetLastError.
+                -> IO (Either Win32.ErrCode FilePath)
+peekTStringWith bufferSize cFunc = do
+  outcome <- do
+    allocaArray (fromIntegral bufferSize) $ \ ptr -> do
+      size <- cFunc ptr bufferSize
+      case size of
+        0 -> Right . Left <$> Win32.getLastError
+        _ | size <= bufferSize ->
+              Right . Right <$> Win32.peekTStringLen (ptr, fromIntegral size)
+          | otherwise ->
+              -- At least double the size to ensure fast termination.
+              pure (Left (max size (saturatingDouble bufferSize)))
+  case outcome of
+    Left proposedSize -> peekTStringWith proposedSize cFunc
+    Right result      -> pure result
 
 canonicalizePathWith :: ((FilePath -> IO FilePath) -> FilePath -> IO FilePath)
                      -> FilePath
