@@ -132,7 +132,7 @@ preprocessPathRecursive f path = do
       f path
       when (not isLink) $ do
         names <- listDirectory path
-        traverse_ (preprocessPathRecursive f) ((path </>) <$> names)
+        for_ ((path </>) <$> names) (preprocessPathRecursive f)
     else do
       f path
 

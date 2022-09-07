@@ -436,7 +436,7 @@ removeContentsRecursive :: FilePath -> IO ()
 removeContentsRecursive path =
   (`ioeAddLocation` "removeContentsRecursive") `modifyIOError` do
     cont <- listDirectory path
-    traverse_ removePathRecursive [path </> x | x <- cont]
+    for_ [path </> x | x <- cont] removePathRecursive
     removeDirectory path
 
 -- | Removes a file or directory at /path/ together with its contents and
