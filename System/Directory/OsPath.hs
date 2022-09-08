@@ -1258,7 +1258,9 @@ getFileSize path =
 
 -- | Test whether the given path points to an existing filesystem object.  If
 -- the user lacks necessary permissions to search the parent directories, this
--- function may return false even if the file does actually exist.
+-- function may return false even if the file does actually exist.  This
+-- operation traverses symbolic links, so it can return either True or False
+-- for them.
 --
 -- @since 1.2.7.0
 doesPathExist :: OsPath -> IO Bool
@@ -1267,21 +1269,19 @@ doesPathExist path = do
     `catchIOError` \ _ ->
       pure False
 
-{- |The operation 'doesDirectoryExist' returns 'True' if the argument file
-exists and is either a directory or a symbolic link to a directory,
-and 'False' otherwise.
--}
-
+-- | The operation 'doesDirectoryExist' returns 'True' if the argument file
+-- exists and is either a directory or a symbolic link to a directory, and
+-- 'False' otherwise.  This operation traverses symbolic links, so it can
+-- return either True or False for them.
 doesDirectoryExist :: OsPath -> IO Bool
 doesDirectoryExist path = do
   pathIsDirectory path
     `catchIOError` \ _ ->
       pure False
 
-{- |The operation 'doesFileExist' returns 'True'
-if the argument file exists and is not a directory, and 'False' otherwise.
--}
-
+-- | The operation 'doesFileExist' returns 'True' if the argument file exists
+-- and is not a directory, and 'False' otherwise.  This operation traverses
+-- symbolic links, so it can return either True or False for them.
 doesFileExist :: OsPath -> IO Bool
 doesFileExist path = do
   (not <$> pathIsDirectory path)
