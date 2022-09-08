@@ -11,6 +11,11 @@ Changelog for the [`directory`][1] package
   * Modules in `directory` are no longer considered
     [Safe](https://downloads.haskell.org/ghc/latest/docs/users_guide/exts/safe_haskell.html)
     because the `System.OsPath` dependency is no longer Safe.
+  * A new module, `System.Directory.OsPath`, has been introduced to support
+    AFPP (`OsPath` and `OsString`) with an analogous API. The old module,
+    `System.Directory`, shall be in maintenance mode as new features will no
+    longer be accepted there.
+    ([#136](https://github.com/haskell/directory/pull/136))
 
 ## 1.3.7.1 (Jul 2022)
 
