@@ -252,7 +252,6 @@ defaultOpenFlags =
   Posix.defaultFileFlags
   { Posix.noctty = True
   , Posix.nonBlock = True
-  , Posix.creat = Just 0o666
   }
 
 openFileForRead :: OsPath -> IO Handle
@@ -262,7 +261,8 @@ openFileForRead (OsString p) =
 openFileForWrite :: OsPath -> IO Handle
 openFileForWrite (OsString p) =
   Posix.fdToHandle =<<
-    Posix.openFd p Posix.WriteOnly defaultOpenFlags { Posix.trunc = True }
+    Posix.openFd p Posix.WriteOnly
+      defaultOpenFlags { Posix.creat = Just 0o666, Posix.trunc = True }
 
 -- | Truncate the destination file and then copy the contents of the source
 -- file to the destination file.  If the destination file already exists, its
