@@ -1,7 +1,7 @@
 Changelog for the [`directory`][1] package
 ==========================================
 
-## 1.3.8.0 (Jul 2022)
+## 1.3.8.0 (Sep 2022)
 
   * Drop support for `base` older than 4.11.0.
   * Drop support for `filepath` older than 1.4.100.
