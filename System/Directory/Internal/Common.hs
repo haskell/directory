@@ -76,13 +76,7 @@ sequenceWithIOErrors_ actions = go (Right ()) actions
     go (Right ()) []       = pure ()
     go s          (m : ms) = s `seq` do
       r <- tryIOError m
-      go (thenEither s r) ms
-
-    -- equivalent to (*>) for Either, defined here to retain compatibility
-    -- with base prior to 4.3
-    thenEither :: Either b a -> Either b a -> Either b a
-    thenEither x@(Left _) _ = x
-    thenEither _          y = y
+      go (s *> r) ms
 
 -- | Similar to 'try' but only catches a specify kind of 'IOError' as
 --   specified by the predicate.
