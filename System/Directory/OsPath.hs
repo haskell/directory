@@ -459,17 +459,21 @@ removeContentsRecursive path =
 removePathForcibly :: OsPath -> IO ()
 removePathForcibly path =
   (`ioeAddLocation` "removePathForcibly") `modifyIOError` do
-    makeRemovable path `catchIOError` \ _ -> pure ()
     ignoreDoesNotExistError $ do
       m <- getSymbolicLinkMetadata path
       case fileTypeFromMetadata m of
-        DirectoryLink -> removeDirectory path
-        Directory     -> do
+        DirectoryLink -> do
+          makeRemovable path
+          removeDirectory path
+        Directory -> do
+          makeRemovable path
           names <- listDirectory path
           sequenceWithIOErrors_ $
             [ removePathForcibly (path </> name) | name <- names ] ++
             [ removeDirectory path ]
-        _             -> removeFile path
+        _ -> do
+          unless filesAlwaysRemovable (makeRemovable path)
+          removeFile path
   where
 
     ignoreDoesNotExistError :: IO () -> IO ()
@@ -477,7 +481,7 @@ removePathForcibly path =
       () <$ tryIOErrorType isDoesNotExistError action
 
     makeRemovable :: OsPath -> IO ()
-    makeRemovable p = do
+    makeRemovable p = (`catchIOError` \ _ -> pure ()) $ do
       perms <- getPermissions p
       setPermissions path perms{ readable = True
                                , searchable = True

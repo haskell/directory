@@ -62,6 +62,11 @@ renamePathInternal opath npath =
     npath' <- furnishPath npath
     Win32.moveFileEx opath' (Just npath') Win32.mOVEFILE_REPLACE_EXISTING
 
+-- On Windows, the removability of a file may be affected by the attributes of
+-- the file itself.
+filesAlwaysRemovable :: Bool
+filesAlwaysRemovable = False
+
 copyFileWithMetadataInternal :: (Metadata -> OsPath -> IO ())
                              -> (Metadata -> OsPath -> IO ())
                              -> OsPath

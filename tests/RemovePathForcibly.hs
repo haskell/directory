@@ -4,7 +4,7 @@ module RemovePathForcibly where
 import System.Directory.Internal
 import System.OsPath ((</>), normalise)
 import qualified Data.List as List
-import TestUtils (modifyPermissions, symlinkOrCopy)
+import TestUtils (hardLinkOrCopy, modifyPermissions, symlinkOrCopy)
 
 main :: TestEnv -> IO ()
 main _t = do
@@ -83,6 +83,16 @@ main _t = do
 
   T(expectEq) () [".", ".."] . List.sort =<<
     getDirectoryContents  tmpD
+
+  ----------------------------------------------------------------------
+  -- regression test for https://github.com/haskell/directory/issues/135
+  
+  writeFile "hl1" "hardlinked"
+  setPermissions "hl1" emptyPermissions
+  origPermissions <- getPermissions "hl1"
+  hardLinkOrCopy "hl1" "hl2"
+  removePathForcibly "hl2"
+  T(expectEq) () origPermissions =<< getPermissions "hl1"
 
   where testName = "removePathForcibly"
         tmpD  = testName <> ".tmp"

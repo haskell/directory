@@ -3,6 +3,7 @@
 -- | Utility functions specific to 'directory' tests
 module TestUtils
   ( copyPathRecursive
+  , hardLinkOrCopy
   , modifyPermissions
   , symlinkOrCopy
   , supportsSymlinks
@@ -52,6 +53,14 @@ handleSymlinkUnavail _handler action = action
       UnsupportedOperation -> _handler
       _ | isIllegalOperation e || isPermissionError e -> _handler
       _ -> ioError e
+#endif
+
+-- | Create a hard link on Posix. On Windows, it just copies.
+hardLinkOrCopy :: OsPath -> OsPath -> IO ()
+#if defined(mingw32_HOST_OS)
+hardLinkOrCopy = copyPathRecursive
+#else
+hardLinkOrCopy = createHardLink
 #endif
 
 -- | Create a symbolic link.  On Windows, this falls back to copying if

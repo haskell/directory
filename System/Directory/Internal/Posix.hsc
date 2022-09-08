@@ -34,6 +34,11 @@ removePathInternal False = Posix.removeLink . getOsString
 renamePathInternal :: OsPath -> OsPath -> IO ()
 renamePathInternal (OsString p1) (OsString p2) = Posix.rename p1 p2
 
+-- On POSIX, the removability of a file is only affected by the attributes of
+-- the containing directory.
+filesAlwaysRemovable :: Bool
+filesAlwaysRemovable = True
+
 -- | On POSIX, equivalent to 'simplifyPosix'.
 simplify :: OsPath -> OsPath
 simplify = simplifyPosix
@@ -139,6 +144,9 @@ setCurrentDirectoryInternal = Posix.changeWorkingDirectory . getOsString
 
 linkToDirectoryIsDirectory :: Bool
 linkToDirectoryIsDirectory = False
+
+createHardLink :: OsPath -> OsPath -> IO ()
+createHardLink (OsString p1) (OsString p2) = Posix.createLink p1 p2
 
 createSymbolicLink :: Bool -> OsPath -> OsPath -> IO ()
 createSymbolicLink _ (OsString p1) (OsString p2) =
