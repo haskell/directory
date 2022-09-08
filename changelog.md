@@ -16,6 +16,8 @@ Changelog for the [`directory`][1] package
     `System.Directory`, shall be in maintenance mode as new features will no
     longer be accepted there.
     ([#136](https://github.com/haskell/directory/pull/136))
+  * `removePathForcibly` no longer changes permissions of files on non-Windows
+    systems.  ([#135](https://github.com/haskell/directory/issues/135))
 
 ## 1.3.7.1 (Jul 2022)
 
