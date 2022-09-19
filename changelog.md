@@ -5,6 +5,9 @@ Changelog for the [`directory`][1] package
 
   * Rely on `file-io` for file I/O.
   * Drop support for `base` older than 4.12.0.
+  * Resolve TOCTOU issue with `removeDirectoryRecursive` and
+    `removePathForcibly` on POSIX systems.
+    (part of [#97](https://github.com/haskell/directory/issues/97))
 
 ## 1.3.8.5 (May 2024)
 

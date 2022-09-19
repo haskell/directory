@@ -392,6 +392,42 @@ The operand refers to an existing non-directory object.
 removeDirectory :: OsPath -> IO ()
 removeDirectory = removePathInternal True
 
+type Preremover = Maybe RawHandle -> OsPath -> Metadata -> IO ()
+
+noPreremover :: Preremover
+noPreremover _ _ _ = pure ()
+
+forcePreremover :: Preremover
+forcePreremover dir path metadata = do
+  when (fileTypeIsDirectory (fileTypeFromMetadata metadata)
+        || not filesAlwaysRemovable) $ do
+    setModeAt NoFollow dir path mode
+      `catchIOError` \ _ -> pure ()
+  where
+    mode = setForceRemoveMode (modeFromMetadata metadata)
+
+removeRecursivelyAt
+  :: (IO () -> IO ())
+  -> ([IO ()] -> IO ())
+  -> Preremover
+  -> Maybe RawHandle
+  -> OsPath
+  -> IO ()
+removeRecursivelyAt catcher sequencer preremover dir name = catcher $ do
+  metadata <- getMetadataAt NoFollow dir name
+  preremover dir name metadata
+  let
+    fileType = fileTypeFromMetadata metadata
+    subremovals = do
+      when (fileType == Directory) $ do
+        bracket (openRaw NoFollow dir name) closeRaw $ \ handle -> do
+          -- dropSpecialDotDirs is extremely important! Otherwise it will
+          -- recurse into the parent directory and wreak havoc.
+          names <- dropSpecialDotDirs <$> readDirToEnd handle
+          sequencer (recurse (Just handle) <$> names)
+  sequencer [subremovals, removePathAt fileType dir name]
+  where recurse = removeRecursivelyAt catcher sequencer preremover
+
 -- | @'removeDirectoryRecursive' dir@ removes an existing directory /dir/
 -- together with its contents and subdirectories. Within this directory,
 -- symbolic links are removed without affecting their targets.
@@ -406,40 +442,12 @@ removeDirectoryRecursive path =
     m <- getSymbolicLinkMetadata path
     case fileTypeFromMetadata m of
       Directory ->
-        removeContentsRecursive path
+        removeRecursivelyAt id sequenceA_ noPreremover Nothing path
       DirectoryLink ->
         ioError (err `ioeSetErrorString` "is a directory symbolic link")
       _ ->
         ioError (err `ioeSetErrorString` "not a directory")
   where err = mkIOError InappropriateType "" Nothing Nothing `ioeSetOsPath` path
-
--- | @removePathRecursive path@ removes an existing file or directory at
--- /path/ together with its contents and subdirectories. Symbolic links are
--- removed without affecting their the targets.
---
--- This operation is reported to be flaky on Windows so retry logic may
--- be advisable. See: https://github.com/haskell/directory/pull/108
-removePathRecursive :: OsPath -> IO ()
-removePathRecursive path =
-  (`ioeAddLocation` "removePathRecursive") `modifyIOError` do
-    m <- getSymbolicLinkMetadata path
-    case fileTypeFromMetadata m of
-      Directory     -> removeContentsRecursive path
-      DirectoryLink -> removeDirectory path
-      _             -> removeFile path
-
--- | @removeContentsRecursive dir@ removes the contents of the directory
--- /dir/ recursively. Symbolic links are removed without affecting their the
--- targets.
---
--- This operation is reported to be flaky on Windows so retry logic may
--- be advisable. See: https://github.com/haskell/directory/pull/108
-removeContentsRecursive :: OsPath -> IO ()
-removeContentsRecursive path =
-  (`ioeAddLocation` "removeContentsRecursive") `modifyIOError` do
-    cont <- listDirectory path
-    for_ [path </> x | x <- cont] removePathRecursive
-    removeDirectory path
 
 -- | Removes a file or directory at /path/ together with its contents and
 -- subdirectories. Symbolic links are removed without affecting their
@@ -460,33 +468,18 @@ removeContentsRecursive path =
 removePathForcibly :: OsPath -> IO ()
 removePathForcibly path =
   (`ioeAddLocation` "removePathForcibly") `modifyIOError` do
-    ignoreDoesNotExistError $ do
-      m <- getSymbolicLinkMetadata path
-      case fileTypeFromMetadata m of
-        DirectoryLink -> do
-          makeRemovable path
-          removeDirectory path
-        Directory -> do
-          makeRemovable path
-          names <- listDirectory path
-          sequenceWithIOErrors_ $
-            [ removePathForcibly (path </> name) | name <- names ] ++
-            [ removeDirectory path ]
-        _ -> do
-          unless filesAlwaysRemovable (makeRemovable path)
-          removeFile path
+    removeRecursivelyAt
+      ignoreDoesNotExistError
+      sequenceWithIOErrors_
+      forcePreremover
+      Nothing
+      path
+
   where
 
     ignoreDoesNotExistError :: IO () -> IO ()
     ignoreDoesNotExistError action =
       () <$ tryIOErrorType isDoesNotExistError action
-
-    makeRemovable :: OsPath -> IO ()
-    makeRemovable p = (`catchIOError` \ _ -> pure ()) $ do
-      perms <- getPermissions p
-      setPermissions path perms{ readable = True
-                               , searchable = True
-                               , writable = True }
 
 {- |'removeFile' /file/ removes the directory entry for an existing file
 /file/, where /file/ is not itself a directory. The
@@ -1140,8 +1133,7 @@ getDirectoryContents path =
 --   @[ENOTDIR]@
 --
 listDirectory :: OsPath -> IO [OsPath]
-listDirectory path = filter f <$> getDirectoryContents path
-  where f filename = filename /= os "." && filename /= os ".."
+listDirectory path = dropSpecialDotDirs <$> getDirectoryContents path
 
 -- | Obtain the current working directory as an absolute path.
 --

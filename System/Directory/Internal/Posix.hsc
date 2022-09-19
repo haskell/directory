@@ -1,8 +1,13 @@
+{-# LANGUAGE CApiFFI #-}
 module System.Directory.Internal.Posix where
 #include <HsDirectoryConfig.h>
 #if !defined(mingw32_HOST_OS)
+#include <fcntl.h>
 #ifdef HAVE_LIMITS_H
 # include <limits.h>
+#endif
+#ifdef HAVE_SYS_STAT_H
+# include <sys/stat.h>
 #endif
 import Prelude ()
 import System.Directory.Internal.Prelude
@@ -17,15 +22,61 @@ import System.OsPath ((</>), isRelative, splitSearchPath)
 import System.OsString.Internal.Types (OsString(OsString, getOsString))
 import qualified Data.Time.Clock.POSIX as POSIXTime
 import qualified System.OsPath.Internal as OsPath
+import qualified System.Posix.Directory.Fd as Posix
 import qualified System.Posix.Directory.PosixPath as Posix
 import qualified System.Posix.Env.PosixString as Posix
+import qualified System.Posix.Files as Posix (FileStatus(..))
 import qualified System.Posix.Files.PosixString as Posix
+import qualified System.Posix.Internals as Posix (CStat)
+import qualified System.Posix.IO.PosixString as Posix
 import qualified System.Posix.PosixPath.FilePath as Posix
 import qualified System.Posix.Types as Posix
 import qualified System.Posix.User.ByteString as Posix
 
+c_AT_FDCWD :: Posix.Fd
+c_AT_FDCWD = Posix.Fd (#const AT_FDCWD)
+
+c_AT_SYMLINK_NOFOLLOW :: CInt
+c_AT_SYMLINK_NOFOLLOW = (#const AT_SYMLINK_NOFOLLOW)
+
+atWhetherFollow :: WhetherFollow -> CInt
+atWhetherFollow NoFollow    = c_AT_SYMLINK_NOFOLLOW
+atWhetherFollow FollowLinks = 0
+
+defaultOpenFlags :: Posix.OpenFileFlags
+defaultOpenFlags =
+  Posix.defaultFileFlags
+  { Posix.noctty = True
+  , Posix.nonBlock = True
+  , Posix.cloexec = True
+  }
+
+type RawHandle = Posix.Fd
+
+openRaw :: WhetherFollow -> Maybe RawHandle -> OsPath -> IO RawHandle
+openRaw whetherFollow dir (OsString path) =
+  Posix.openFdAt dir path Posix.ReadOnly flags
+  where
+    flags = defaultOpenFlags { Posix.nofollow = isNoFollow whetherFollow }
+
+closeRaw :: RawHandle -> IO ()
+closeRaw = Posix.closeFd
+
 createDirectoryInternal :: OsPath -> IO ()
 createDirectoryInternal (OsString path) = Posix.createDirectory path 0o777
+
+foreign import ccall "unistd.h unlinkat" c_unlinkat
+  :: Posix.Fd -> CString -> CInt -> IO CInt
+
+removePathAt :: FileType -> Maybe RawHandle -> OsPath -> IO ()
+removePathAt ty dir (OsString path) =
+  Posix.withFilePath path $ \ pPath -> do
+    Posix.throwErrnoPathIfMinus1_ "unlinkat" path
+      (c_unlinkat (fromMaybe c_AT_FDCWD dir) pPath flag)
+    pure ()
+  where
+    flag | fileTypeIsDirectory ty = (#const AT_REMOVEDIR)
+         | otherwise              = 0
 
 removePathInternal :: Bool -> OsPath -> IO ()
 removePathInternal True  = Posix.removeDirectory . getOsString
@@ -100,20 +151,25 @@ findExecutablesLazyInternal findExecutablesInDirectoriesLazy binary =
 exeExtensionInternal :: OsString
 exeExtensionInternal = exeExtension
 
+openDirFromFd :: Posix.Fd -> IO Posix.DirStream
+openDirFromFd fd = Posix.unsafeOpenDirStreamFd =<< Posix.dup fd
+
+readDirStreamToEnd :: Posix.DirStream -> IO [OsPath]
+readDirStreamToEnd stream = loop id
+  where
+    loop acc = do
+      e <- Posix.readDirStream stream
+      if e == mempty
+        then pure (acc [])
+        else loop (acc . (OsString e :))
+
+readDirToEnd :: RawHandle -> IO [OsPath]
+readDirToEnd fd =
+  bracket (openDirFromFd fd) Posix.closeDirStream readDirStreamToEnd
+
 getDirectoryContentsInternal :: OsPath -> IO [OsPath]
 getDirectoryContentsInternal (OsString path) =
-  bracket
-    (Posix.openDirStream path)
-    Posix.closeDirStream
-    start
-  where
-    start dirp = loop id
-      where
-        loop acc = do
-          e <- Posix.readDirStream dirp
-          if e == mempty
-            then pure (acc [])
-            else loop (acc . (OsString e :))
+  bracket (Posix.openDirStream path) Posix.closeDirStream readDirStreamToEnd
 
 getCurrentDirectoryInternal :: IO OsPath
 getCurrentDirectoryInternal = OsString <$> Posix.getWorkingDirectory
@@ -152,6 +208,20 @@ readSymbolicLink :: OsPath -> IO OsPath
 readSymbolicLink = (OsString <$>) . Posix.readSymbolicLink . getOsString
 
 type Metadata = Posix.FileStatus
+
+foreign import capi "sys/stat.h fstatat" c_fstatat
+  :: Posix.Fd -> CString -> Ptr Posix.CStat -> CInt -> IO CInt
+
+getMetadataAt :: WhetherFollow -> Maybe RawHandle -> OsPath -> IO Metadata
+getMetadataAt whetherFollow dir (OsString path) =
+  Posix.withFilePath path $ \ pPath -> do
+    stat <- mallocForeignPtrBytes (#const sizeof(struct stat))
+    withForeignPtr stat $ \ pStat -> do
+      Posix.throwErrnoPathIfMinus1_ "fstatat" path $ do
+        c_fstatat (fromMaybe c_AT_FDCWD dir) pPath pStat flags
+    pure (Posix.FileStatus stat)
+  where
+    flags = atWhetherFollow whetherFollow
 
 getSymbolicLinkMetadata :: OsPath -> IO Metadata
 getSymbolicLinkMetadata = Posix.getSymbolicLinkStatus . getOsString
@@ -196,6 +266,20 @@ hasWriteMode m = m .&. allWriteMode /= 0
 setWriteMode :: Bool -> Mode -> Mode
 setWriteMode False m = m .&. complement allWriteMode
 setWriteMode True  m = m .|. allWriteMode
+
+setForceRemoveMode :: Mode -> Mode
+setForceRemoveMode m = m .|. Posix.ownerModes
+
+foreign import capi "sys/stat.h fchmodat" c_fchmodat
+  :: Posix.Fd -> CString -> Posix.FileMode -> CInt -> IO CInt
+
+setModeAt :: WhetherFollow -> Maybe RawHandle -> OsPath -> Mode -> IO ()
+setModeAt whetherFollow dir (OsString path) mode = do
+  Posix.withFilePath path $ \ pPath ->
+    Posix.throwErrnoPathIfMinus1_ "fchmodat" path $ do
+      c_fchmodat (fromMaybe c_AT_FDCWD dir) pPath mode flags
+  where
+    flags = atWhetherFollow whetherFollow
 
 setFileMode :: OsPath -> Mode -> IO ()
 setFileMode = Posix.setFileMode . getOsString

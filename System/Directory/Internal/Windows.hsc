@@ -42,11 +42,26 @@ import qualified System.Win32.WindowsString.Shell as Win32
 import qualified System.Win32.WindowsString.Time as Win32
 import qualified System.Win32.WindowsString.Types as Win32
 
+type RawHandle = OsPath
+
+pathAt :: Maybe RawHandle -> OsPath -> OsPath
+pathAt dir path = fromMaybe mempty dir </> path
+
+openRaw :: WhetherFollow -> Maybe RawHandle -> OsPath -> IO RawHandle
+openRaw _ dir path = pure (pathAt dir path)
+
+closeRaw :: RawHandle -> IO ()
+closeRaw _ = pure ()
+
 createDirectoryInternal :: OsPath -> IO ()
 createDirectoryInternal path =
   (`ioeSetOsPath` path) `modifyIOError` do
     path' <- furnishPath path
     Win32.createDirectory path' Nothing
+
+removePathAt :: FileType -> Maybe RawHandle -> OsPath -> IO ()
+removePathAt ty dir path = removePathInternal isDir (pathAt dir path)
+  where isDir = fileTypeIsDirectory ty
 
 removePathInternal :: Bool -> OsPath -> IO ()
 removePathInternal isDir path =
@@ -406,6 +421,9 @@ findExecutablesLazyInternal _ = maybeToListT . searchPathEnvForExes
 exeExtensionInternal :: OsString
 exeExtensionInternal = exeExtension
 
+readDirToEnd :: RawHandle -> IO [OsPath]
+readDirToEnd = getDirectoryContentsInternal
+
 getDirectoryContentsInternal :: OsPath -> IO [OsPath]
 getDirectoryContentsInternal path = do
   query <- furnishPath (path </> os "*")
@@ -520,6 +538,10 @@ createSymbolicLink isDir target link =
 
 type Metadata = Win32.BY_HANDLE_FILE_INFORMATION
 
+getMetadataAt :: WhetherFollow -> Maybe RawHandle -> OsPath -> IO Metadata
+getMetadataAt NoFollow    dir path = getSymbolicLinkMetadata (pathAt dir path)
+getMetadataAt FollowLinks dir path = getFileMetadata         (pathAt dir path)
+
 getSymbolicLinkMetadata :: OsPath -> IO Metadata
 getSymbolicLinkMetadata path =
   (`ioeSetOsPath` path) `modifyIOError` do
@@ -602,6 +624,12 @@ hasWriteMode m = m .&. Win32.fILE_ATTRIBUTE_READONLY == 0
 setWriteMode :: Bool -> Mode -> Mode
 setWriteMode False m = m .|. Win32.fILE_ATTRIBUTE_READONLY
 setWriteMode True  m = m .&. complement Win32.fILE_ATTRIBUTE_READONLY
+
+setForceRemoveMode :: Mode -> Mode
+setForceRemoveMode m = m .&. complement Win32.fILE_ATTRIBUTE_READONLY
+
+setModeAt :: WhetherFollow -> Maybe RawHandle -> OsPath -> Mode -> IO ()
+setModeAt _ dir path = setFileMode (pathAt dir path)
 
 setFileMode :: OsPath -> Mode -> IO ()
 setFileMode path mode =

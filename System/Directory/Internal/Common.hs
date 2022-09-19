@@ -126,6 +126,10 @@ ioeSetOsPath err =
     (mkUTF8 TransliterateCodingFailure)
     (mkUTF16le TransliterateCodingFailure)
 
+dropSpecialDotDirs :: [OsPath] -> [OsPath]
+dropSpecialDotDirs = filter f
+  where f filename = filename /= os "." && filename /= os ".."
+
 -- | Given a list of path segments, expand @.@ and @..@.  The path segments
 -- must not contain path separators.
 expandDots :: [OsPath] -> [OsPath]
@@ -214,6 +218,12 @@ simplifyWindows path
     pathIsAbsolute = not (isRelative path)
     subpathIsAbsolute = any isPathSeparator (take 1 (unpack subpath))
     hasTrailingPathSep = hasTrailingPathSeparator subpath
+
+data WhetherFollow = NoFollow | FollowLinks deriving (Show)
+
+isNoFollow :: WhetherFollow -> Bool
+isNoFollow NoFollow    = True
+isNoFollow FollowLinks = False
 
 data FileType = File
               | SymbolicLink -- ^ POSIX: either file or directory link; Windows: file link

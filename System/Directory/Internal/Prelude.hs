@@ -58,7 +58,7 @@ import Control.Exception
 import Control.Monad ((>=>), (<=<), unless, when, replicateM, replicateM_)
 import Data.Bits ((.&.), (.|.), complement)
 import Data.Char (isAlpha, isAscii, toLower, toUpper)
-import Data.Foldable (for_)
+import Data.Foldable (for_, sequenceA_)
 import Data.Function (on)
 import Data.Maybe (catMaybes, fromMaybe, maybeToList)
 import Data.Monoid ((<>), mconcat, mempty)
@@ -80,11 +80,13 @@ import Foreign
   , allocaArray
   , allocaBytes
   , allocaBytesAligned
+  , mallocForeignPtrBytes
   , maybeWith
   , nullPtr
   , plusPtr
   , with
   , withArray
+  , withForeignPtr
   )
 import Foreign.C
   ( CInt(..)
