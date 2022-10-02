@@ -1,3 +1,5 @@
+{-# LANGUAGE CApiFFI #-}
+
 module System.Directory.Internal.C_utimensat where
 #include <HsDirectoryConfig.h>
 #ifdef HAVE_UTIMENSAT
@@ -41,7 +43,7 @@ toCTimeSpec t = CTimeSpec (CTime sec) (truncate $ 10 ^ (9 :: Int) * frac)
     (sec,  frac)  = if frac' < 0 then (sec' - 1, frac' + 1) else (sec', frac')
     (sec', frac') = properFraction (toRational t)
 
-foreign import ccall "utimensat" c_utimensat
+foreign import capi "sys/stat.h utimensat" c_utimensat
   :: CInt -> CString -> Ptr CTimeSpec -> CInt -> IO CInt
 
 #endif
