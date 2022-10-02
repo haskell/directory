@@ -36,7 +36,7 @@ source-repository head
 
 Library
     default-language: Haskell2010
-    other-extensions: CPP
+    other-extensions: CApiFFI, CPP
 
     exposed-modules:
         System.Directory
