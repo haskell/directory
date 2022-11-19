@@ -120,6 +120,7 @@ import System.OsPath
   , splitSearchPath
   , takeDirectory
   )
+import qualified Data.List.NonEmpty as NE
 import Data.Time (UTCTime)
 import Data.Time.Clock.POSIX (utcTimeToPOSIXSeconds)
 
@@ -890,7 +891,7 @@ canonicalizePath = \ path ->
 
         segments = splitDirectories path
         prefixes = scanl1 (</>) segments
-        suffixes = tail (scanr (</>) mempty segments)
+        suffixes = NE.tail (NE.scanr (</>) mempty segments)
 
         -- try to call realpath on the largest possible prefix
         realpathPrefix candidates =

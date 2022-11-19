@@ -330,7 +330,7 @@ toExtendedLengthPath path =
       '\\' : '\\' : '?' : '\\' : _ -> simplifiedPath
       '\\' : '\\' : '.' : '\\' : _ -> simplifiedPath
       '\\' : '\\' : _ ->
-        os "\\\\?\\UNC" <> pack (tail simplifiedPath')
+        os "\\\\?\\UNC" <> pack (drop 1 simplifiedPath')
       _ -> os "\\\\?\\" <> simplifiedPath
   where simplifiedPath = simplify path
         simplifiedPath' = unpack simplifiedPath
