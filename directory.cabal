@@ -1,6 +1,7 @@
+cabal-version:  2.2
 name:           directory
 version:        1.3.8.0
-license:        BSD3
+license:        BSD-3-Clause
 license-file:   LICENSE
 maintainer:     libraries@haskell.org
 bug-reports:    https://github.com/haskell/directory/issues
@@ -10,8 +11,7 @@ description:
   directories in a portable way.
 category:       System
 build-type:     Configure
-cabal-version:  >= 1.10
-tested-with:    GHC>=7.4.1
+tested-with:    GHC == 8.6.5 || == 8.10.7 || == 9.0.2 || == 9.2.4 || == 9.4.3
 
 extra-tmp-files:
     autom4te.cache
