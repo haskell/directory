@@ -35,9 +35,7 @@ jobs:
       - if: startsWith(matrix.os, 'macos-')
         run: brew install automake
       - if: startsWith(matrix.os, 'ubuntu-')
-        # required since https://github.com/actions/virtual-environments/pull/3268
         run: |
-          sudo add-apt-repository ppa:hvr/ghc
           sudo apt-get update
       - if: startsWith(matrix.os, 'windows-')
         run: |
