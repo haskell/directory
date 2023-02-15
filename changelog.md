@@ -1,8 +1,12 @@
 Changelog for the [`directory`][1] package
 ==========================================
 
+## 1.3.8.1 (Feb 2023)
+
   * Use CApiFFI for utimensat.
     ([#145](https://github.com/haskell/directory/pull/145))
+  * Relax `base` version bounds to support 4.18.
+    ([#151](https://github.com/haskell/directory/pull/151))
 
 ## 1.3.8.0 (Sep 2022)
 
