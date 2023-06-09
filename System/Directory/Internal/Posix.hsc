@@ -146,7 +146,13 @@ linkToDirectoryIsDirectory :: Bool
 linkToDirectoryIsDirectory = False
 
 createHardLink :: OsPath -> OsPath -> IO ()
+#ifdef haiku_HOST_OS
+-- Haiku's default file system, BFS, does not support hard links
+createHardLink (OsString p1) (OsString p2) =
+  Posix.createSymbolicLink p1 p2
+#else
 createHardLink (OsString p1) (OsString p2) = Posix.createLink p1 p2
+#endif
 
 createSymbolicLink :: Bool -> OsPath -> OsPath -> IO ()
 createSymbolicLink _ (OsString p1) (OsString p2) =
@@ -348,22 +354,46 @@ getHomeDirectoryInternal = do
            (Posix.getEffectiveUserID >>= Posix.getUserEntryForID)
 
 getXdgDirectoryFallback :: IO OsPath -> XdgDirectory -> IO OsPath
+#ifdef haiku_HOST_OS
+  (<$> getHomeDirectory) $ flip (</>) $ case xdgDir of
+    XdgData   -> os "/boot/home/config/non-packaged/data"
+    XdgConfig -> os "/boot/home/config/settings"
+    XdgCache  -> os "/boot/home/config/cache"
+    XdgState  -> os "/boot/home/config/var"
+#else
 getXdgDirectoryFallback getHomeDirectory xdgDir = do
   (<$> getHomeDirectory) $ flip (</>) $ case xdgDir of
     XdgData   -> os ".local/share"
     XdgConfig -> os ".config"
     XdgCache  -> os ".cache"
     XdgState  -> os ".local/state"
+#endif
 
 getXdgDirectoryListFallback :: XdgDirectoryList -> IO [OsPath]
+#ifdef haiku_HOST_OS
+  pure $ case xdgDirs of
+    XdgDataDirs   -> [os "/boot/home/config/non-packaged/data",
+                      os "/boot/home/config/data",
+                      os "/boot/system/non-packaged/data",
+                      os "/boot/system/data"]
+    XdgConfigDirs -> [os "/boot/home/config/non-packaged/settings",
+                      os "/boot/home/config/settings",
+                      os "/boot/system/non-packaged/settings",
+                      os "/boot/system/settings"]
+#else
 getXdgDirectoryListFallback xdgDirs =
   pure $ case xdgDirs of
     XdgDataDirs   -> [os "/usr/local/share/", os "/usr/share/"]
     XdgConfigDirs -> [os "/etc/xdg"]
+#endif
 
 getAppUserDataDirectoryInternal :: OsPath -> IO OsPath
 getAppUserDataDirectoryInternal appName =
+#ifdef haiku_HOST_OS
+  (\ home -> home <> (os "/config/settings/" <> appName)) <$> Posix.getHomeDirectoryInternal
+#else
   (\ home -> home <> (os "/" <> os "." <> appName)) <$> getHomeDirectoryInternal
+#endif
 
 getUserDocumentsDirectoryInternal :: IO OsPath
 getUserDocumentsDirectoryInternal = getHomeDirectoryInternal
