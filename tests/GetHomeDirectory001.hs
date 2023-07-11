@@ -10,7 +10,7 @@ main _t = do
   _ <- getXdgDirectory XdgCache  "test"
   _ <- getXdgDirectory XdgConfig "test"
   _ <- getXdgDirectory XdgData   "test"
-  _ <- getXdgDirectory XdgCache  "test"
+  _ <- getXdgDirectory XdgState  "test"
   _ <- getUserDocumentsDirectory
   _ <- getTemporaryDirectory
   return ()
