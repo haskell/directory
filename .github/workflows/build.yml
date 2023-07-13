@@ -50,7 +50,7 @@ jobs:
           cabal-version: ${{ matrix.cabal }}
           enable-stack: ${{ matrix.stack }}
           stack-no-global: ${{ matrix.stack }}
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - run: tools/testscript prepare
       - run: tools/testscript build
       - uses: actions/upload-artifact@v3
