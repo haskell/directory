@@ -28,10 +28,15 @@ EOF
 
     else
 
+        cat >cabal.project <<EOF
+packages: *.cabal
+package directory
+  ghc-options: $ghcflags
+EOF
         ghc --version
         cabal --version
         tools/retry cabal update
-        cabal v2-configure -v2 --enable-tests --ghc-options="$ghcflags"
+        cabal v2-configure -v2 --enable-tests
 
     fi
 }
