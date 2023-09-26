@@ -458,9 +458,13 @@ renameDirectory opath npath = do
 {- |@'renameFile' old new@ changes the name of an existing file system
 object from /old/ to /new/.  If the /new/ object already exists, it is
 replaced by the /old/ object.  Neither path may refer to an existing
-directory.  A conformant implementation need not support renaming files
-in all situations (e.g. renaming across different physical devices), but
-the constraints must be documented.
+directory.
+
+A conformant implementation need not support renaming files in all situations
+(e.g. renaming across different physical devices), but the constraints must be
+documented. On Windows, this does not support renaming across different physical
+devices; if you are looking to do so, consider using 'copyFileWithMetadata' and
+'removeFile'.
 
 On Windows, this calls @MoveFileEx@ with @MOVEFILE_REPLACE_EXISTING@ set,
 which is not guaranteed to be atomic
