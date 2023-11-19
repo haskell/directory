@@ -1166,6 +1166,9 @@ setAccessTime path atime = encodeFS path >>= (`D.setAccessTime` atime)
 --
 -- * 'isDoesNotExistError' if the file or directory does not exist.
 --
+-- * 'InvalidArgument' on FAT32 file system if the time is before
+--   DOS Epoch (1 January 1980).
+--
 -- Some caveats for POSIX systems:
 --
 -- * Not all systems support @utimensat@, in which case the function can only
