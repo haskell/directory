@@ -25,7 +25,7 @@ jobs:
           - { os: ubuntu-latest, ghc: latest, cabal: latest }
           - { os: windows-latest, stack: lts-12.26, stack-extra-deps: "bytestring-0.11.3.0, filepath-1.4.100.0, time-1.8.0.2, Win32-2.13.3.0", overrides: "before_prepare() { sed -i.bak -e /CreateSymbolicLinkW/d -e /GetFinalPathNameByHandleW/d configure.ac; }" }
           - { os: windows-latest, stack: lts-17.5, stack-extra-deps: "bytestring-0.11.3.0, filepath-1.4.100.0, time-1.9.3, Win32-2.13.3.0" }
-          - { os: windows-latest, stack: lts-19.21, stack-extra-deps: "bytestring-0.11.3.0, filepath-1.4.100.0, time-1.12.1, Win32-2.13.3.0" }
+          - { os: windows-latest, stack: lts-22.7, stack-extra-deps: "bytestring-0.11.5.3, filepath-1.4.100.0, time-1.12.2, Win32-2.14.0.0" }
     runs-on: ${{ matrix.os }}
     env:
       TESTSCRIPT_OVERRIDES: ${{ matrix.overrides }}

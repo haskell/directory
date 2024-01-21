@@ -1,6 +1,11 @@
 Changelog for the [`directory`][1] package
 ==========================================
 
+## 1.3.8.3 (TBD)
+
+  * Relax `Win32` version bounds to support 2.14.0.0.
+    ([#166](https://github.com/haskell/directory/issues/166))
+
 ## 1.3.8.2 (Dec 2023)
 
   * Relax `base` version bounds to support 4.19.
