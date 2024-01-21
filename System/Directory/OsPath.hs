@@ -10,7 +10,7 @@
 --
 -- System-independent interface to directory manipulation.
 --
--- @since 1.2.8.0
+-- @since 1.3.8.0
 --
 -----------------------------------------------------------------------------
 
