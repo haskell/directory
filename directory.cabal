@@ -19,11 +19,13 @@ extra-tmp-files:
     config.status
     HsDirectoryConfig.h
 
+extra-doc-files:
+    README.md
+    changelog.md
+
 extra-source-files:
     HsDirectoryConfig.h.in
-    README.md
     System/Directory/Internal/*.h
-    changelog.md
     configure
     configure.ac
     directory.buildinfo
