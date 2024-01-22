@@ -44,7 +44,7 @@ jobs:
       - if: startsWith(matrix.os, 'windows-')
         run: |
           pacman -S --needed --noconfirm autoconf automake
-      - uses: haskell/actions/setup@v2
+      - uses: haskell-actions/setup@v2
         with:
           ghc-version: ${{ matrix.ghc }}
           cabal-version: ${{ matrix.cabal }}
