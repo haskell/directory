@@ -28,13 +28,15 @@ main _t = do
   for_ (List.permutations ["qux", "bar", "."]) $ \ ds -> do
 
     let (match, noMatch) = List.partition (== "qux") ds
+    match0 : _ <- pure match
+    noMatch0 : _ <- pure noMatch
 
-    T(expectEq) ds (Just (List.head match </> "foo")) =<<
+    T(expectEq) ds (Just (match0 </> "foo")) =<<
       findFileWith f ds "foo"
 
     T(expectEq) ds ((</> "foo") <$> match) =<< findFilesWith f ds "foo"
 
-    T(expectEq) ds (Just (List.head noMatch </> "foo")) =<<
+    T(expectEq) ds (Just (noMatch0 </> "foo")) =<<
       findFileWith ((not <$>) . f) ds "foo"
 
     T(expectEq) ds ((</> "foo") <$> noMatch) =<<
