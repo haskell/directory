@@ -160,3 +160,14 @@ main _t = do
     vldn <- canonicalizePath "verylongdirectoryname"
     vldn2 <- canonicalizePath "VERYLONGDIRECTORYNAME"
     T(expectEq) () vldn vldn2
+
+  let isWindows =
+#if defined(mingw32_HOST_OS)
+        True
+#else
+        False
+#endif
+
+  when isWindows $ do
+    -- https://github.com/haskell/directory/issues/170
+    T(expectEq) () "\\\\localhost" =<< canonicalizePath "\\\\localhost"

@@ -1,10 +1,12 @@
 Changelog for the [`directory`][1] package
 ==========================================
 
-## 1.3.8.3 (TBD)
+## 1.3.8.3 (Jan 2024)
 
   * Relax `Win32` version bounds to support 2.14.0.0.
     ([#166](https://github.com/haskell/directory/issues/166))
+  * Fix regression in `canonicalizePath` on Windows UNC paths.
+    ([#170](https://github.com/haskell/directory/issues/170))
 
 ## 1.3.8.2 (Dec 2023)
 

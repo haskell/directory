@@ -356,7 +356,8 @@ fromExtendedLengthPath ePath' =
       | (toChar <$> [c1, c2, c3, c4]) == "\\\\?\\" ->
       case path of
         c5 : c6 : c7 : subpath@(c8 : _)
-          | (toChar <$> [c5, c6, c7, c8]) == "UNC\\" -> pack subpath
+          | (toChar <$> [c5, c6, c7, c8]) == "UNC\\" ->
+            os "\\" <> pack subpath
         drive : col : subpath
           -- if the path is not "regular", then the prefix is necessary
           -- to ensure the path is interpreted literally
