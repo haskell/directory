@@ -407,10 +407,8 @@ peekTStringWith bufferSize cFunc = do
     Left proposedSize -> peekTStringWith proposedSize cFunc
     Right result      -> pure result
 
-canonicalizePathWith :: ((OsPath -> IO OsPath) -> OsPath -> IO OsPath)
-                     -> OsPath
-                     -> IO OsPath
-canonicalizePathWith attemptRealpath = attemptRealpath getFinalPathName
+realPath :: OsPath -> IO OsPath
+realPath = getFinalPathName
 
 canonicalizePathSimplify :: OsPath -> IO OsPath
 canonicalizePathSimplify path =

@@ -81,14 +81,10 @@ withRealpath path action = case c_PATH_MAX of
     allocaBytes (pathMax + 1) (realpath >=> action)
   where realpath = throwErrnoIfNull "" . c_realpath path
 
-canonicalizePathWith :: ((OsPath -> IO OsPath) -> OsPath -> IO OsPath)
-                     -> OsPath
-                     -> IO OsPath
-canonicalizePathWith attemptRealpath path = do
-  let realpath (OsString path') =
-        Posix.withFilePath path'
-          (`withRealpath` ((OsString <$>) . Posix.peekFilePath))
-  attemptRealpath realpath path
+realPath :: OsPath -> IO OsPath
+realPath (OsString path') =
+  Posix.withFilePath path'
+    (`withRealpath` ((OsString <$>) . Posix.peekFilePath))
 
 canonicalizePathSimplify :: OsPath -> IO OsPath
 canonicalizePathSimplify = pure

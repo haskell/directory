@@ -872,7 +872,7 @@ canonicalizePath = \ path ->
    (`ioeSetOsPath` path)) `modifyIOError` do
     -- simplify does more stuff, like upper-casing the drive letter
     dropTrailingPathSeparator . simplify <$>
-      (canonicalizePathWith attemptRealpath =<< prependCurrentDirectory path)
+      (attemptRealpath realPath =<< prependCurrentDirectory path)
   where
 
     -- allow up to 64 cycles before giving up
