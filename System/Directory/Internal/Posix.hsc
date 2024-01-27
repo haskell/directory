@@ -13,16 +13,17 @@ import System.Directory.Internal.Common
 import System.Directory.Internal.Config (exeExtension)
 import Data.Time (UTCTime)
 import Data.Time.Clock.POSIX (POSIXTime)
-import System.OsPath ((</>), encodeFS, isRelative, splitSearchPath)
+import System.OsPath ((</>), isRelative, splitSearchPath)
 import System.OsString.Internal.Types (OsString(OsString, getOsString))
 import qualified Data.Time.Clock.POSIX as POSIXTime
+import qualified System.OsPath.Internal as OsPath
 import qualified System.Posix.Directory.PosixPath as Posix
 import qualified System.Posix.Env.PosixString as Posix
 import qualified System.Posix.Files.PosixString as Posix
 import qualified System.Posix.IO.PosixString as Posix
 import qualified System.Posix.PosixPath.FilePath as Posix
 import qualified System.Posix.Types as Posix
-import qualified System.Posix.User as Posix
+import qualified System.Posix.User.ByteString as Posix
 
 createDirectoryInternal :: OsPath -> IO ()
 createDirectoryInternal (OsString path) = Posix.createDirectory path 0o777
@@ -335,13 +336,11 @@ getHomeDirectoryInternal :: IO OsPath
 getHomeDirectoryInternal = do
   e <- lookupEnvOs (os "HOME")
   case e of
-       Just fp -> pure fp
-       -- TODO: os here is bad, but unix's System.Posix.User.UserEntry does not
-       -- have ByteString/OsString variants
-       Nothing ->
-         encodeFS =<<
-         Posix.homeDirectory <$>
-           (Posix.getEffectiveUserID >>= Posix.getUserEntryForID)
+    Just fp -> pure fp
+    Nothing ->
+      OsPath.fromBytes . Posix.homeDirectory =<<
+        Posix.getUserEntryForID =<<
+        Posix.getEffectiveUserID
 
 getXdgDirectoryFallback :: IO OsPath -> XdgDirectory -> IO OsPath
 getXdgDirectoryFallback getHomeDirectory xdgDir = do
