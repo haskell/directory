@@ -37,6 +37,8 @@ EOF
         cabal --version
         tools/retry cabal update
         cabal v2-configure -v2 --enable-tests
+        cabal v2-freeze
+        cat cabal.project.freeze
 
     fi
 }
