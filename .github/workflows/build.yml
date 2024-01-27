@@ -15,7 +15,7 @@ jobs:
       matrix:
         include:
           - { os: macos-latest, stack: lts-12.26, stack-extra-deps: "bytestring-0.11.3.0, filepath-1.4.100.0, unix-2.8.0.0" }
-          - { os: macos-latest, stack: lts-19.21, stack-extra-deps: "bytestring-0.11.3.0, filepath-1.4.100.0, unix-2.8.0.0" }
+          - { os: macos-latest, stack: lts-22.7, stack-extra-deps: "bytestring-0.11.5.3, filepath-1.5.2.0, os-string-2.0.2, unix-2.8.5.0", stack-package-flags: "{directory: {os-string: true}, unix: {os-string: true}}" }
           - { os: ubuntu-latest, ghc: 8.4.4, cabal: 3.0.0.0, overrides: "before_prepare() { sed -i.bak /utimensat/d configure.ac; }" }
           - { os: ubuntu-latest, ghc: 8.6.5, cabal: 3.0.0.0, overrides: "before_prepare() { sed -i.bak /utimensat/d configure.ac; }" }
           - { os: ubuntu-latest, ghc: 8.10.7, cabal: 3.8.1.0 }
@@ -25,11 +25,12 @@ jobs:
           - { os: ubuntu-latest, ghc: latest, cabal: latest }
           - { os: windows-latest, stack: lts-12.26, stack-extra-deps: "bytestring-0.11.3.0, filepath-1.4.100.0, time-1.8.0.2, Win32-2.13.3.0", overrides: "before_prepare() { sed -i.bak -e /CreateSymbolicLinkW/d -e /GetFinalPathNameByHandleW/d configure.ac; }" }
           - { os: windows-latest, stack: lts-17.5, stack-extra-deps: "bytestring-0.11.3.0, filepath-1.4.100.0, time-1.9.3, Win32-2.13.3.0" }
-          - { os: windows-latest, stack: lts-22.7, stack-extra-deps: "bytestring-0.11.5.3, filepath-1.4.100.0, time-1.12.2, Win32-2.14.0.0" }
+          - { os: windows-latest, stack: lts-22.7, stack-extra-deps: "bytestring-0.11.5.3, filepath-1.5.2.0, os-string-2.0.2, time-1.12.2, Win32-2.14.0.0", stack-package-flags: "{directory: {os-string: true}, Win32: {os-string: true}}" }
     runs-on: ${{ matrix.os }}
     env:
       TESTSCRIPT_OVERRIDES: ${{ matrix.overrides }}
       STACK_EXTRA_DEPS: ${{ matrix.stack-extra-deps }}
+      STACK_PACKAGE_FLAGS: ${{ matrix.stack-package-flags }}
       STACK_RESOLVER: ${{ matrix.stack }}
     steps:
       - if: startsWith(matrix.os, 'macos-')

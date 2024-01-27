@@ -21,6 +21,7 @@ prepare() {
 resolver: $STACK_RESOLVER
 packages: [.]
 extra-deps: [${STACK_EXTRA_DEPS-}]
+flags: ${STACK_PACKAGE_FLAGS-}
 EOF
         $stack ghc -- --version
         $stack --version
