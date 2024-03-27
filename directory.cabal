@@ -61,7 +61,7 @@ Library
 
     build-depends:
         base     >= 4.11.0 && < 4.21,
-        time     >= 1.8.0 && < 1.13
+        time     >= 1.8.0 && < 1.15
     if os(windows)
         build-depends: Win32 >= 2.13.3 && < 2.15
     else
