@@ -5,6 +5,8 @@ Changelog for the [`directory`][1] package
 
   * Relax `time` version bounds to support 1.14.
     ([#171](https://github.com/haskell/directory/issues/171))
+  * Relax `base` version bounds to support 4.20.
+    ([#173](https://github.com/haskell/directory/issues/173))
 
 ## 1.3.8.3 (Jan 2024)
 
