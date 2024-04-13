@@ -7,6 +7,9 @@ Changelog for the [`directory`][1] package
     ([#171](https://github.com/haskell/directory/issues/171))
   * Relax `base` version bounds to support 4.20.
     ([#173](https://github.com/haskell/directory/issues/173))
+  * Relax `filepath` version bounds to support 1.4.300 when `os-string` is
+    unavailable.
+    ([#175](https://github.com/haskell/directory/issues/175))
 
 ## 1.3.8.3 (Jan 2024)
 

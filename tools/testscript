@@ -1,11 +1,7 @@
 #!/bin/sh
 set -eux
 
-# directory-1.3.8.3 supports both filepath 1.4 and 1.5
-# However, filepath 1.4.300.1 added a deprecation warning
-# for some imports that were removed in filepath 1.5
-# We disable -Werror for deprecations for this reason
-ghcflags="-rtsopts -threaded -Werror -Wwarn=deprecations"
+ghcflags="-rtsopts -threaded -Werror -Wwarn=deprecations ${GHC_FLAGS-}"
 testflags="CreateDirectoryIfMissing001.num-repeats=100000 +RTS -N2"
 stack="stack --no-terminal ${STACK_FLAGS-}"
 
@@ -37,6 +33,7 @@ EOF
 packages: *.cabal
 package directory
   ghc-options: $ghcflags
+  flags: ${CABAL_PACKAGE_FLAGS-}
 EOF
         ghc --version
         cabal --version
