@@ -1,7 +1,7 @@
 Changelog for the [`directory`][1] package
 ==========================================
 
-## 1.3.8.4 (unreleased)
+## 1.3.8.4 (Apr 2024)
 
   * Relax `time` version bounds to support 1.14.
     ([#171](https://github.com/haskell/directory/issues/171))
