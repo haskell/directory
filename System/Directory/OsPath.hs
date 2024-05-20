@@ -728,7 +728,7 @@ copyFileToHandle :: OsPath              -- ^ Source file
                  -> IO ()
 copyFileToHandle fromFPath hTo =
   (`ioeAddLocation` "copyFileToHandle") `modifyIOError` do
-    withBinaryHandle (openFileForRead fromFPath) $ \ hFrom ->
+    withBinaryFile fromFPath ReadMode $ \ hFrom ->
       copyHandleData hFrom hTo
 
 -- | Copy the contents of a source file to a destination file, replacing the

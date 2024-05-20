@@ -105,28 +105,6 @@ maxShareMode =
   Win32.fILE_SHARE_READ   .|.
   Win32.fILE_SHARE_WRITE
 
-openFileForRead :: OsPath -> IO Handle
-openFileForRead (OsString path) =
-  bracketOnError
-    (Win32.createFile
-      path
-      Win32.gENERIC_READ
-      maxShareMode
-      Nothing
-      Win32.oPEN_EXISTING
-      (Win32.fILE_ATTRIBUTE_NORMAL .|. possiblyOverlapped)
-      Nothing)
-    Win32.closeHandle
-    Win32.hANDLEToHandle
-
-possiblyOverlapped :: Win32.FileAttributeOrFlag
-#ifdef __IO_MANAGER_WINIO__
-possiblyOverlapped | ioSubSystem == IoNative = Win32.fILE_FLAG_OVERLAPPED
-                   | otherwise               = 0
-#else
-possiblyOverlapped = 0
-#endif
-
 win32_getFinalPathNameByHandle :: Win32.HANDLE -> Win32.DWORD -> IO WindowsPath
 #ifdef HAVE_GETFINALPATHNAMEBYHANDLEW
 win32_getFinalPathNameByHandle h flags = do

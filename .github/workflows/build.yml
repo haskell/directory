@@ -14,18 +14,17 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: macOS-13, stack: lts-12.26, stack-extra-deps: "bytestring-0.11.3.0, filepath-1.4.100.0, unix-2.8.0.0" }
-          - { os: macos-latest, stack: lts-22.7, stack-extra-deps: "bytestring-0.11.5.3, filepath-1.5.2.0, os-string-2.0.2, unix-2.8.5.1", stack-package-flags: "{directory: {os-string: true}, unix: {os-string: true}}", ghc-flags: -Werror=deprecations }
-          - { os: ubuntu-latest, ghc: 8.4.4, cabal: 3.0.0.0, overrides: "before_prepare() { sed -i.bak /utimensat/d configure.ac; }" }
+          - { os: macOS-13, stack: lts-13.30, stack-extra-deps: "bytestring-0.11.3.0, file-io-0.1.2, filepath-1.4.100.0, unix-2.8.0.0" }
+          - { os: macos-latest, stack: lts-22.7, stack-extra-deps: "bytestring-0.11.5.3, file-io-0.1.2, filepath-1.5.2.0, os-string-2.0.2, unix-2.8.5.1", stack-package-flags: "{directory: {os-string: true}, file-io: {os-string: true}, unix: {os-string: true}}", ghc-flags: -Werror=deprecations }
           - { os: ubuntu-latest, ghc: 8.6.5, cabal: 3.0.0.0, overrides: "before_prepare() { sed -i.bak /utimensat/d configure.ac; }" }
           - { os: ubuntu-latest, ghc: 8.10.7, cabal: 3.8.1.0 }
           - { os: ubuntu-latest, ghc: 9.0.2, cabal: 3.8.1.0 }
           - { os: ubuntu-latest, ghc: 9.2.4, cabal: 3.8.1.0 }
           - { os: ubuntu-latest, ghc: 9.4.3, cabal: 3.8.1.0 }
           - { os: ubuntu-latest, ghc: latest, cabal: latest, cabal-package-flags: +os-string, ghc-flags: -Werror=deprecations }
-          - { os: windows-latest, stack: lts-12.26, stack-extra-deps: "bytestring-0.11.3.0, filepath-1.4.100.0, time-1.8.0.2, Win32-2.13.3.0", overrides: "before_prepare() { sed -i.bak -e /CreateSymbolicLinkW/d -e /GetFinalPathNameByHandleW/d configure.ac; }" }
-          - { os: windows-latest, stack: lts-17.5, stack-extra-deps: "bytestring-0.11.3.0, filepath-1.4.100.0, time-1.9.3, Win32-2.13.3.0" }
-          - { os: windows-latest, stack: lts-22.7, stack-extra-deps: "bytestring-0.11.5.3, filepath-1.5.2.0, os-string-2.0.2, time-1.14, Win32-2.14.0.0", stack-package-flags: "{directory: {os-string: true}, Win32: {os-string: true}}", ghc-flags: -Werror=deprecations }
+          - { os: windows-latest, stack: lts-13.30, stack-extra-deps: "bytestring-0.11.3.0, file-io-0.1.2, filepath-1.4.100.0, time-1.8.0.2, Win32-2.13.3.0", overrides: "before_prepare() { sed -i.bak -e /CreateSymbolicLinkW/d -e /GetFinalPathNameByHandleW/d configure.ac; }" }
+          - { os: windows-latest, stack: lts-17.5, stack-extra-deps: "bytestring-0.11.3.0, file-io-0.1.2, filepath-1.4.100.0, time-1.9.3, Win32-2.13.3.0" }
+          - { os: windows-latest, stack: lts-22.7, stack-extra-deps: "bytestring-0.11.5.3, file-io-0.1.2, filepath-1.5.2.0, os-string-2.0.2, time-1.14, Win32-2.14.0.0", stack-package-flags: "{directory: {os-string: true}, file-io: {os-string: true}, Win32: {os-string: true}}", ghc-flags: -Werror=deprecations }
     runs-on: ${{ matrix.os }}
     env:
       CABAL_PACKAGE_FLAGS: ${{ matrix.cabal-package-flags }}

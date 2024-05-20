@@ -1,6 +1,11 @@
 Changelog for the [`directory`][1] package
 ==========================================
 
+## 1.3.9.0 (unreleased)
+
+  * Rely on `file-io` for file I/O.
+  * Drop support for `base` older than 4.12.0.
+
 ## 1.3.8.5 (May 2024)
 
   * Fix regression that causes copying of nonexistent files to create empty

@@ -20,7 +20,6 @@ import qualified System.OsPath.Internal as OsPath
 import qualified System.Posix.Directory.PosixPath as Posix
 import qualified System.Posix.Env.PosixString as Posix
 import qualified System.Posix.Files.PosixString as Posix
-import qualified System.Posix.IO.PosixString as Posix
 import qualified System.Posix.PosixPath.FilePath as Posix
 import qualified System.Posix.Types as Posix
 import qualified System.Posix.User.ByteString as Posix
@@ -244,24 +243,6 @@ tryCopyOwnerAndGroupFromStatus st dst = do
   ignoreIOExceptions (copyOwnerFromStatus st dst)
   ignoreIOExceptions (copyGroupFromStatus st dst)
 
-defaultFlags :: Posix.OpenFileFlags
-defaultFlags =
-  Posix.defaultFileFlags
-  { Posix.noctty = True
-  , Posix.nonBlock = True
-  , Posix.cloexec = True
-  }
-
-openFileForRead :: OsPath -> IO Handle
-openFileForRead (OsString p) =
-  Posix.fdToHandle =<< Posix.openFd p Posix.ReadOnly defaultFlags
-
-openFileForWrite :: OsPath -> IO Handle
-openFileForWrite (OsString p) =
-  Posix.fdToHandle =<<
-    Posix.openFd p Posix.WriteOnly
-      defaultFlags { Posix.creat = Just 0o666, Posix.trunc = True }
-
 -- | Truncate the destination file and then copy the contents of the source
 -- file to the destination file.  If the destination file already exists, its
 -- attributes shall remain unchanged.  Otherwise, its attributes are reset to
@@ -271,8 +252,8 @@ copyFileContents :: OsPath              -- ^ Source filename
                  -> IO ()
 copyFileContents fromFPath toFPath =
   (`ioeAddLocation` "copyFileContents") `modifyIOError` do
-    withBinaryHandle (openFileForWrite toFPath) $ \ hTo -> do
-      withBinaryHandle (openFileForRead fromFPath) $ \ hFrom -> do
+    withBinaryFile toFPath WriteMode $ \ hTo -> do
+      withBinaryFile fromFPath ReadMode $ \ hFrom -> do
         copyHandleData hFrom hTo
 
 copyFileWithMetadataInternal :: (Metadata -> OsPath -> IO ())

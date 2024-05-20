@@ -8,7 +8,7 @@ import System.Directory.Internal.Prelude
 import GHC.IO.Encoding.Failure (CodingFailureMode(TransliterateCodingFailure))
 import GHC.IO.Encoding.UTF16 (mkUTF16le)
 import GHC.IO.Encoding.UTF8 (mkUTF8)
-import System.IO (hSetBinaryMode)
+import System.File.OsPath.Internal (openFileWithCloseOnExec)
 import System.OsPath
   ( OsPath
   , OsString
@@ -243,13 +243,8 @@ data Permissions
   , searchable :: Bool
   } deriving (Eq, Ord, Read, Show)
 
-withBinaryHandle :: IO Handle -> (Handle -> IO r) -> IO r
-withBinaryHandle open = bracket openBinary hClose
-  where
-    openBinary = do
-      h <- open
-      hSetBinaryMode h True
-      pure h
+withBinaryFile :: OsPath -> IOMode -> (Handle -> IO r) -> IO r
+withBinaryFile path mode = bracket (openFileWithCloseOnExec path mode) hClose
 
 -- | Copy data from one handle to another until end of file.
 copyHandleData :: Handle                -- ^ Source handle
