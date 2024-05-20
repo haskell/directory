@@ -14,7 +14,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: macos-latest, stack: lts-12.26, stack-extra-deps: "bytestring-0.11.3.0, filepath-1.4.100.0, unix-2.8.0.0" }
+          - { os: macOS-13, stack: lts-12.26, stack-extra-deps: "bytestring-0.11.3.0, filepath-1.4.100.0, unix-2.8.0.0" }
           - { os: macos-latest, stack: lts-22.7, stack-extra-deps: "bytestring-0.11.5.3, filepath-1.5.2.0, os-string-2.0.2, unix-2.8.5.1", stack-package-flags: "{directory: {os-string: true}, unix: {os-string: true}}", ghc-flags: -Werror=deprecations }
           - { os: ubuntu-latest, ghc: 8.4.4, cabal: 3.0.0.0, overrides: "before_prepare() { sed -i.bak /utimensat/d configure.ac; }" }
           - { os: ubuntu-latest, ghc: 8.6.5, cabal: 3.0.0.0, overrides: "before_prepare() { sed -i.bak /utimensat/d configure.ac; }" }
