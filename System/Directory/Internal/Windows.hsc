@@ -113,7 +113,7 @@ openFileForRead (OsString path) =
       Win32.gENERIC_READ
       maxShareMode
       Nothing
-      Win32.oPEN_ALWAYS
+      Win32.oPEN_EXISTING
       (Win32.fILE_ATTRIBUTE_NORMAL .|. possiblyOverlapped)
       Nothing)
     Win32.closeHandle
