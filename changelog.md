@@ -1,6 +1,12 @@
 Changelog for the [`directory`][1] package
 ==========================================
 
+## 1.3.8.5 (May 2024)
+
+  * Fix regression that causes copying of nonexistent files to create empty
+    files.
+    ([#177](https://github.com/haskell/directory/issues/177))
+
 ## 1.3.8.4 (Apr 2024)
 
   * Relax `time` version bounds to support 1.14.
