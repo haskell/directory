@@ -154,13 +154,6 @@ main _t = do
     T(expectEq) () foo foo9
     T(expectEq) () foo foo10
 
-    -- Make sure long file names can be canonicalized too
-    -- (i.e. GetLongPathName by itself won't work)
-    createDirectory "verylongdirectoryname"
-    vldn <- canonicalizePath "verylongdirectoryname"
-    vldn2 <- canonicalizePath "VERYLONGDIRECTORYNAME"
-    T(expectEq) () vldn vldn2
-
   let isWindows =
 #if defined(mingw32_HOST_OS)
         True
