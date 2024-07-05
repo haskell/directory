@@ -12,7 +12,6 @@ module System.Directory.Internal.Windows where
 #include <shlobj.h>
 #include <windows.h>
 #include <HsBaseConfig.h>
-#include <System/Directory/Internal/utility.h>
 #include <System/Directory/Internal/windows_ext.h>
 import Prelude ()
 import System.Directory.Internal.Prelude
@@ -177,8 +176,7 @@ win32_alloca_REPARSE_DATA_BUFFER action =
   allocaBytesAligned size align $ \ ptr ->
     action (ptr, size)
   where size = fromIntegral win32_mAXIMUM_REPARSE_DATA_BUFFER_SIZE
-        -- workaround (hsc2hs for GHC < 8.0 don't support #{alignment ...})
-        align = #{size char[alignof(HsDirectory_REPARSE_DATA_BUFFER)]}
+        align = #{alignment HsDirectory_REPARSE_DATA_BUFFER}
 
 win32_peek_REPARSE_DATA_BUFFER
   :: Ptr Win32_REPARSE_DATA_BUFFER -> IO Win32_REPARSE_DATA_BUFFER
