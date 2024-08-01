@@ -28,7 +28,6 @@ extra-source-files:
     System/Directory/Internal/*.h
     configure
     configure.ac
-    directory.buildinfo
     tests/*.hs
     tests/util.inl
 
