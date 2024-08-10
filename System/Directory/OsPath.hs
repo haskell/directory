@@ -1,3 +1,5 @@
+{-# LANGUAGE QuasiQuotes #-}
+
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  System.Directory.OsPath
@@ -105,13 +107,13 @@ module System.Directory.OsPath
 import Prelude ()
 import System.Directory.Internal
 import System.Directory.Internal.Prelude
+import System.OsString (osstr)
+import qualified System.File.OsPath as OS
 import System.OsPath
   ( (<.>)
   , (</>)
   , addTrailingPathSeparator
-  , decodeFS
   , dropTrailingPathSeparator
-  , encodeFS
   , hasTrailingPathSeparator
   , isAbsolute
   , joinPath
@@ -749,13 +751,7 @@ withReplacementFile :: OsPath            -- ^ Destination file
 withReplacementFile path postAction action =
   (`ioeAddLocation` "withReplacementFile") `modifyIOError` do
     mask $ \ restore -> do
-      -- TODO: AFPP doesn't support openBinaryTempFile yet,
-      --       so we have to use this (sad) workaround
-      --       (on unix, converts using filesystem encoding, on windows
-      --       converts with UTF-16LE)
-      d <- decodeFS (takeDirectory path)
-      (tmpFPath', hTmp) <- openBinaryTempFile d ".copyFile.tmp"
-      tmpFPath <- encodeFS tmpFPath'
+      (tmpFPath, hTmp) <- OS.openBinaryTempFile (takeDirectory path) [osstr|.copyFile.tmp|]
       (`onException` ignoreIOExceptions (removeFile tmpFPath)) $ do
         r <- (`onException` ignoreIOExceptions (hClose hTmp)) $ do
           restore (action hTmp)

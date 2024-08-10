@@ -11,7 +11,7 @@ description:
   directories in a portable way.
 category:       System
 build-type:     Configure
-tested-with:    GHC == 8.6.5 || == 8.10.7 || == 9.0.2 || == 9.2.4 || == 9.4.3
+tested-with:    GHC == 8.10.7 || == 9.0.2 || == 9.2.4 || == 9.4.3
 
 extra-tmp-files:
     autom4te.cache
@@ -59,8 +59,8 @@ Library
     include-dirs: .
 
     build-depends:
-        base     >= 4.12.0 && < 4.21,
-        file-io  >= 0.1.2 && < 0.2,
+        base     >= 4.13.0 && < 4.21,
+        file-io  >= 0.1.4 && < 0.2,
         time     >= 1.8.0 && < 1.15,
     if os(windows)
         build-depends: Win32 >= 2.13.3 && < 2.15
