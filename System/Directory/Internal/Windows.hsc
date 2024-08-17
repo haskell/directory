@@ -409,9 +409,12 @@ canonicalizePathSimplify path =
       pure path
 
 searchPathEnvForExes :: OsString -> IO (Maybe OsPath)
-searchPathEnvForExes (OsString binary) =
-  (OsString <$>) <$>
-    Win32.searchPath Nothing binary (Just (getOsString exeExtension))
+searchPathEnvForExes (OsString binary) = search `catch` \e ->
+  if ioeGetErrorType e == InvalidArgument
+  then pure Nothing
+  else throwIO e
+ where
+  search = (OsString <$>) <$> Win32.searchPath Nothing binary (Just (getOsString exeExtension))
 
 findExecutablesLazyInternal :: ([OsPath] -> OsString -> ListT IO OsPath)
                             -> OsString
