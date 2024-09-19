@@ -74,7 +74,7 @@ renamePathInternal opath npath =
   (`ioeSetOsPath` opath) `modifyIOError` do
     opath' <- furnishPath opath
     npath' <- furnishPath npath
-    Win32.moveFileEx opath' (Just npath') Win32.mOVEFILE_REPLACE_EXISTING
+    Win32.moveFileEx opath' (Just npath') (Win32.mOVEFILE_REPLACE_EXISTING .|. Win32.mOVEFILE_COPY_ALLOWED)
 
 -- On Windows, the removability of a file may be affected by the attributes of
 -- the file itself.
