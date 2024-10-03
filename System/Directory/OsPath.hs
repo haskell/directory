@@ -1,5 +1,3 @@
-{-# LANGUAGE QuasiQuotes #-}
-
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  System.Directory.OsPath
@@ -107,7 +105,6 @@ module System.Directory.OsPath
 import Prelude ()
 import System.Directory.Internal
 import System.Directory.Internal.Prelude
-import System.OsString (osstr)
 import qualified System.File.OsPath as OS
 import System.OsPath
   ( (<.>)
@@ -121,10 +118,14 @@ import System.OsPath
   , splitDirectories
   , splitSearchPath
   , takeDirectory
+  , encodeWith
   )
 import qualified Data.List.NonEmpty as NE
 import Data.Time (UTCTime)
 import Data.Time.Clock.POSIX (utcTimeToPOSIXSeconds)
+import GHC.IO.Encoding.UTF8 ( mkUTF8 )
+import GHC.IO.Encoding.UTF16 ( mkUTF16le )
+import GHC.IO.Encoding.Failure ( CodingFailureMode(..) )
 
 {- $intro
 A directory contains a series of entries, each of which is a named
@@ -751,7 +752,13 @@ withReplacementFile :: OsPath            -- ^ Destination file
 withReplacementFile path postAction action =
   (`ioeAddLocation` "withReplacementFile") `modifyIOError` do
     mask $ \ restore -> do
-      (tmpFPath, hTmp) <- OS.openBinaryTempFile (takeDirectory path) [osstr|.copyFile.tmp|]
+      let tmpPath = case encodeWith (mkUTF8 ErrorOnCodingFailure)
+                                    (mkUTF16le ErrorOnCodingFailure)
+                                    ".copyFile.tmp"
+                         of
+            Left err -> error ("withReplacementFile: invalid encoding: " ++ show err)
+            Right p -> p
+      (tmpFPath, hTmp) <- OS.openBinaryTempFile (takeDirectory path) tmpPath
       (`onException` ignoreIOExceptions (removeFile tmpFPath)) $ do
         r <- (`onException` ignoreIOExceptions (hClose hTmp)) $ do
           restore (action hTmp)
