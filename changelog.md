@@ -1,13 +1,15 @@
 Changelog for the [`directory`][1] package
 ==========================================
 
-## 1.3.9.0 (unreleased)
+## 1.3.9.0 (Oct 2024)
 
   * Rely on `file-io` for file I/O.
   * Drop support for `base` older than 4.12.0.
   * Resolve TOCTOU issue with `removeDirectoryRecursive` and
     `removePathForcibly` on POSIX systems.
     (part of [#97](https://github.com/haskell/directory/issues/97))
+  * `findExecutable ""` now returns `Nothing`, matching non-Windows systems
+    ([#180](https://github.com/haskell/directory/issues/180))
 
 ## 1.3.8.5 (May 2024)
 
