@@ -4,7 +4,7 @@ module System.Directory.Internal.Windows where
 #if defined(mingw32_HOST_OS)
 ##if defined(i386_HOST_ARCH)
 ## define WINAPI stdcall
-##elif defined(x86_64_HOST_ARCH)
+##elif defined(x86_64_HOST_ARCH) || defined(aarch64_HOST_ARCH)
 ## define WINAPI ccall
 ##else
 ## error unknown architecture

@@ -15,3 +15,6 @@ HsDirectoryConfig.h.in
 GNUmakefile
 dist-install
 ghc.mk
+
+# IDEs
+.vscode
