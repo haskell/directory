@@ -144,26 +144,54 @@ withNewDirectory keep dir action = do
   where cleanup dir' | keep      = return ()
                      | otherwise = removePathForcibly dir'
 
+diffAsc' :: (j -> k -> Ordering)
+         -> (u -> v -> Bool)
+         -> [(j, u)]
+         -> [(k, v)]
+         -> ([(j, u)], [(k, v)])
+diffAsc' cmp eq = go id id
+  where
+    go a b [] [] = (a [], b [])
+    go a b jus [] = go (a . (jus <>)) b [] []
+    go a b [] kvs = go a (b . (kvs <>)) [] []
+    go a b jus@((j, u) : jus') kvs@((k, v) : kvs') =
+      case cmp j k of
+        LT -> go (a . ((j, u) :)) b jus' kvs
+        GT -> go a (b . ((k, v) :)) jus kvs'
+        EQ | eq u v -> go a b jus' kvs'
+           | otherwise -> go (a . ((j, u) :)) (b . ((k, v) :)) jus' kvs'
+
+diffAsc :: (Ord k, Eq v) => [(k, v)] -> [(k, v)] -> ([(k, v)], [(k, v)])
+diffAsc = diffAsc' compare (==)
+
+-- Environment variables may be sensitive, so don't log their values.
+scrubEnv :: (String, String) -> (String, String)
+scrubEnv (k, v)
+  -- Allowlist for nonsensitive variables.
+  | k `elem` ["XDG_CONFIG_HOME"] = (k, v)
+  | otherwise = (k, "<" <> show (length v) <> " chars>")
+
 isolateEnvironment :: IO a -> IO a
 isolateEnvironment = bracket getEnvs setEnvs . const
   where
+    -- Duplicate environment variables will cause problems for this code.
+    -- https://github.com/haskell/cabal/issues/10718
     getEnvs = List.sort . filter (\(k, _) -> k /= "") <$> getEnvironment
     setEnvs target = do
       current <- getEnvs
-      updateEnvs current target
+      let (deletions, insertions) = diffAsc current target
+      updateEnvs deletions insertions
       new <- getEnvs
       when (target /= new) $ do
-        -- Environment variables may be sensitive, so don't log them.
-        throwIO (userError "isolateEnvironment.setEnvs failed")
-    updateEnvs kvs1@((k1, v1) : kvs1') kvs2@((k2, v2) : kvs2') =
-      case compare k1 k2 of
-        LT -> unsetEnv k1 *> updateEnvs kvs1' kvs2
-        EQ | v1 == v2 -> updateEnvs kvs1' kvs2'
-           | otherwise -> setEnv k1 v2 *> updateEnvs kvs1' kvs2'
-        GT -> setEnv k2 v2 *> updateEnvs kvs1 kvs2'
-    updateEnvs [] [] = pure ()
-    updateEnvs kvs1 [] = for_ kvs1 (unsetEnv . fst)
-    updateEnvs [] kvs2 = for_ kvs2 (uncurry setEnv)
+        let (missing, extraneous) = diffAsc target new
+        throwIO (userError ("isolateEnvironment.setEnvs failed:" <>
+                            " deletions=" <> show (scrubEnv <$> deletions) <>
+                            " insertions=" <> show (scrubEnv <$> insertions) <>
+                            " missing=" <> show (scrubEnv <$> missing) <>
+                            " extraneous=" <> show (scrubEnv <$> extraneous)))
+    updateEnvs deletions insertions = do
+      for_ deletions (unsetEnv . fst)
+      for_ insertions (uncurry setEnv)
 
 isolateWorkingDirectory :: Bool -> OsPath -> IO a -> IO a
 isolateWorkingDirectory keep dir action = do
