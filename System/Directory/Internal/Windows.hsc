@@ -29,6 +29,7 @@ import System.OsPath
   , pack
   , pathSeparator
   , splitDirectories
+  , splitSearchPath
   , takeExtension
   , toChar
   , unpack
@@ -41,6 +42,7 @@ import qualified System.Win32.WindowsString.Info as Win32
 import qualified System.Win32.WindowsString.Shell as Win32
 import qualified System.Win32.WindowsString.Time as Win32
 import qualified System.Win32.WindowsString.Types as Win32
+import qualified System.Win32.WindowsString.Console as Win32
 
 type RawHandle = OsPath
 
@@ -52,6 +54,26 @@ openRaw _ dir path = pure (pathAt dir path)
 
 closeRaw :: RawHandle -> IO ()
 closeRaw _ = pure ()
+
+lookupEnvOs :: OsString -> IO (Maybe OsString)
+lookupEnvOs (OsString name) = (OsString <$>) <$> Win32.getEnv name
+
+getEnvOs :: OsString -> IO OsString
+getEnvOs name = do
+  env <- lookupEnvOs name
+  case env of
+    Nothing ->
+      throwIO $
+        mkIOError
+          doesNotExistErrorType
+          ("env var " <> show name <> " not found")
+          Nothing
+          Nothing
+    Just value -> pure value
+
+-- | Get the contents of the @PATH@ environment variable.
+getPath :: IO [OsPath]
+getPath = splitSearchPath <$> getEnvOs (os "PATH")
 
 createDirectoryInternal :: OsPath -> IO ()
 createDirectoryInternal path =
@@ -665,24 +687,6 @@ getAccessPermissions path = do
 setAccessPermissions :: OsPath -> Permissions -> IO ()
 setAccessPermissions path Permissions{writable = w} = do
   setFilePermissions path (setWriteMode w 0)
-
-lookupEnvOs :: OsString -> IO (Maybe OsString)
-lookupEnvOs (OsString name) = do
-  result <-
-    Win32.withTString name $ \ pName ->
-    peekTStringWith 256 $ \ pBuffer size ->
-    c_GetEnvironmentVariable pName pBuffer size
-  case result of
-    Left errCode | errCode == win32_eRROR_ENVVAR_NOT_FOUND -> pure Nothing
-                 | otherwise -> Win32.failWith "GetEnvironmentVariable" errCode
-    Right value -> pure (Just (OsString value))
-
-foreign import WINAPI unsafe "windows.h GetEnvironmentVariableW"
-  c_GetEnvironmentVariable
-    :: Win32.LPWSTR
-    -> Win32.LPWSTR
-    -> Win32.DWORD
-    -> IO Win32.DWORD
 
 getFolderPath :: Win32.CSIDL -> IO OsPath
 getFolderPath what = OsString <$> Win32.sHGetFolderPath nullPtr what nullPtr 0

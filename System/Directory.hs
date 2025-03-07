@@ -40,6 +40,9 @@ module System.Directory
     , getUserDocumentsDirectory
     , getTemporaryDirectory
 
+    -- * PATH
+    , System.Directory.getPath
+
     -- * Actions on files
     , removeFile
     , renameFile
@@ -1337,3 +1340,7 @@ The function doesn\'t verify whether the path exists.
 -}
 getTemporaryDirectory :: IO FilePath
 getTemporaryDirectory = D.getTemporaryDirectory >>= decodeFS
+
+-- | Get the contents of the @PATH@ environment variable.
+getPath :: IO [FilePath]
+getPath = D.getPath >>= (`for` decodeFS)

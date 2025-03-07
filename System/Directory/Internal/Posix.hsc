@@ -148,6 +148,10 @@ findExecutablesLazyInternal findExecutablesInDirectoriesLazy binary =
     path <- getPath
     pure (findExecutablesInDirectoriesLazy path binary)
 
+-- | Get the contents of the @PATH@ environment variable.
+getPath :: IO [OsPath]
+getPath = splitSearchPath <$> getEnvOs (os "PATH")
+
 exeExtensionInternal :: OsString
 exeExtensionInternal = exeExtension
 
@@ -390,10 +394,6 @@ getEnvOs name = do
           Nothing
           Nothing
     Just value -> pure value
-
--- | Get the contents of the @PATH@ environment variable.
-getPath :: IO [OsPath]
-getPath = splitSearchPath <$> getEnvOs (os "PATH")
 
 -- | $HOME is preferred, because the user has control over it. However, POSIX
 -- doesn't define it as a mandatory variable, so fall back to `getpwuid_r`.

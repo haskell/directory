@@ -42,6 +42,9 @@ module System.Directory.OsPath
     , getUserDocumentsDirectory
     , getTemporaryDirectory
 
+    -- * PATH
+    , getPath
+
     -- * Actions on files
     , removeFile
     , renameFile
@@ -1653,3 +1656,4 @@ The function doesn\'t verify whether the path exists.
 -}
 getTemporaryDirectory :: IO OsPath
 getTemporaryDirectory = getTemporaryDirectoryInternal
+
