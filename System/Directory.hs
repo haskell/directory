@@ -41,7 +41,7 @@ module System.Directory
     , getTemporaryDirectory
 
     -- * PATH
-    , System.Directory.getPath
+    , getExecSearchPath
 
     -- * Actions on files
     , removeFile
@@ -1342,5 +1342,5 @@ getTemporaryDirectory :: IO FilePath
 getTemporaryDirectory = D.getTemporaryDirectory >>= decodeFS
 
 -- | Get the contents of the @PATH@ environment variable.
-getPath :: IO [FilePath]
-getPath = D.getPath >>= (`for` decodeFS)
+getExecSearchPath :: IO [FilePath]
+getExecSearchPath = D.getExecSearchPath >>= (`for` decodeFS)

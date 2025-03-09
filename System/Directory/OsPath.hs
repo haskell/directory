@@ -43,7 +43,7 @@ module System.Directory.OsPath
     , getTemporaryDirectory
 
     -- * PATH
-    , getPath
+    , getExecSearchPath
 
     -- * Actions on files
     , removeFile
@@ -1657,3 +1657,6 @@ The function doesn\'t verify whether the path exists.
 getTemporaryDirectory :: IO OsPath
 getTemporaryDirectory = getTemporaryDirectoryInternal
 
+-- | Get the contents of the @PATH@ environment variable.
+getExecSearchPath :: IO [OsPath]
+getExecSearchPath = getPath

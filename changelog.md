@@ -3,7 +3,9 @@ Changelog for the [`directory`][1] package
 
 ## 1.3.10.0 (XXX 2025)
 
-  * Add `getPath` wrt [#198](https://github.com/haskell/directory/pull/198)
+  * Add `getExecSearchPath` as replacement for
+    `System.FilePath.getSearchPath`.
+    ([#198](https://github.com/haskell/directory/pull/198))
 
 ## 1.3.9.0 (Oct 2024)
 

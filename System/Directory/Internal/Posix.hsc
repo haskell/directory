@@ -148,7 +148,6 @@ findExecutablesLazyInternal findExecutablesInDirectoriesLazy binary =
     path <- getPath
     pure (findExecutablesInDirectoriesLazy path binary)
 
--- | Get the contents of the @PATH@ environment variable.
 getPath :: IO [OsPath]
 getPath = splitSearchPath <$> getEnvOs (os "PATH")
 
