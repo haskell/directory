@@ -63,7 +63,7 @@ Library
         file-io  >= 0.1.4 && < 0.2,
         time     >= 1.8.0 && < 1.15,
     if os(windows)
-        build-depends: Win32 >= 2.14.1.0 && < 2.15
+        build-depends: Win32 >= 2.14.2.0 && < 2.15
     else
         build-depends: unix >= 2.8.0 && < 2.9
 

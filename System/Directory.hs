@@ -50,6 +50,7 @@ module System.Directory
     , copyFile
     , copyFileWithMetadata
     , getFileSize
+    , replaceFile
 
     , canonicalizePath
     , makeAbsolute

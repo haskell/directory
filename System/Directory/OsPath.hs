@@ -52,6 +52,7 @@ module System.Directory.OsPath
     , copyFile
     , copyFileWithMetadata
     , getFileSize
+    , replaceFile
 
     , canonicalizePath
     , makeAbsolute
@@ -708,6 +709,69 @@ renamePath :: OsPath                  -- ^ Old path
 renamePath opath npath =
   (`ioeAddLocation` "renamePath") `modifyIOError` do
     renamePathInternal opath npath
+
+-- | 'replaceFile' replaces one file with another file. The replacement file
+-- assumes the name of the replaced file and its identity.
+--
+-- This operation is atomic.
+--
+-- On the unix same as renamePath, on the Windows platform this is ReplaceFileW.
+--
+-- The operation on unix may fail with:
+--
+-- * @HardwareFault@
+-- A physical I\/O error has occurred.
+-- @[EIO]@
+--
+-- * @InvalidArgument@
+-- Either operand is not a valid file name.
+-- @[ENAMETOOLONG, ELOOP]@
+--
+-- * 'isDoesNotExistError'
+-- The original file does not exist, or there is no path to the target.
+-- @[ENOENT, ENOTDIR]@
+--
+-- * 'isPermissionError'
+-- The process has insufficient privileges to perform the operation.
+-- @[EROFS, EACCES, EPERM]@
+--
+-- * 'System.IO.isFullError'
+-- Insufficient resources are available to perform the operation.
+-- @[EDQUOT, ENOSPC, ENOMEM, EMLINK]@
+--
+-- * @UnsatisfiedConstraints@
+-- Implementation-dependent constraints are not satisfied.
+-- @[EBUSY]@
+--
+-- * @UnsupportedOperation@
+-- The implementation does not support renaming in this situation.
+-- @[EXDEV]@
+--
+-- * @InappropriateType@
+-- Either the destination path refers to an existing directory, or one of the
+-- parent segments in the destination path is not a directory.
+-- @[ENOTDIR, EISDIR, EINVAL, EEXIST, ENOTEMPTY]@
+--
+-- The operation on Windows may fail with:
+--
+-- ERROR_UNABLE_TO_MOVE_REPLACEMENT 1176 (0x498)
+-- The replacement file could not be renamed. The replaced file no longer exists
+-- and the replacement file exists under its original name.
+-- 
+-- ERROR_UNABLE_TO_MOVE_REPLACEMENT_2 1177 (0x499)
+-- 
+-- The replacement file could not be moved. The replacement file still exists
+-- under its original name; however, it has inherited the file streams and
+-- attributes from the file it is replacing. The file to be replaced still
+-- exists with a different name.
+--
+-- ERROR_UNABLE_TO_REMOVE_REPLACED 1175 (0x497)
+-- The replaced file could not be deleted. The replaced and replacement files
+-- retain their original file names.
+replaceFile :: OsPath -> OsPath -> IO ()
+replaceFile opath npath =
+  (`ioeAddLocation` "replaceFile") `modifyIOError` do
+    replaceFileInternal opath npath Nothing
 
 -- | Copy a file with its permissions.  If the destination file already exists,
 -- it is replaced atomically.  Neither path may refer to an existing
