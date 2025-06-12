@@ -59,7 +59,7 @@ Library
     include-dirs: .
 
     build-depends:
-        base     >= 4.13.0 && < 4.22,
+        base     >= 4.13.0 && < 4.23,
         file-io  >= 0.1.4 && < 0.2,
         time     >= 1.8.0 && < 1.15,
     if os(windows)
