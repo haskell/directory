@@ -98,6 +98,14 @@ renamePathInternal opath npath =
     npath' <- furnishPath npath
     Win32.moveFileEx opath' (Just npath') Win32.mOVEFILE_REPLACE_EXISTING
 
+replaceFileInternal :: OsPath -> OsPath -> Maybe OsPath -> IO ()
+replaceFileInternal replacedFile replacementFile mBackupFile =
+  (`ioeSetOsPath` replacedFile) `modifyIOError` do
+    replacedFile'    <- furnishPath replacedFile
+    replacementFile' <- furnishPath replacementFile
+    mBackupFile'     <- fmap furnishPath mBackupFile
+    Win32.replaceFile replacedFile' replacementFile' mBackupFile' Win32.rEPLACEFILE_IGNORE_MERGE_ERRORS
+
 -- On Windows, the removability of a file may be affected by the attributes of
 -- the file itself.
 filesAlwaysRemovable :: Bool
