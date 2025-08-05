@@ -19,7 +19,7 @@ jobs:
           - { os: ubuntu-latest, ghc: 8.10.7, cabal: 3.8.1.0 }
           - { os: ubuntu-latest, ghc: 9.0.2, cabal: 3.8.1.0 }
           - { os: ubuntu-latest, ghc: 9.2.4, cabal: 3.8.1.0 }
-          - { os: ubuntu-latest, ghc: 9.4.3, cabal: 3.8.1.0 }
+          - { os: ubuntu-latest, ghc: 9.4.3, cabal: 3.8.1.0, upload-sdist: true }
           # TODO: Unpin cabal from 3.12.10 after https://github.com/haskell/cabal/issues/10718 is fixed.
           - { os: ubuntu-latest, ghc: latest, cabal: 3.12.1.0, cabal-package-flags: +os-string, ghc-flags: -Werror=deprecations }
           - { os: windows-latest, stack: lts-15.3, stack-extra-deps: "bytestring-0.11.3.0, file-io-0.1.4, filepath-1.4.100.0, time-1.9.3, Win32-2.14.1.0", overrides: "before_prepare() { sed -i.bak -e /CreateSymbolicLinkW/d -e /GetFinalPathNameByHandleW/d configure.ac; }" }
@@ -55,9 +55,8 @@ jobs:
       - uses: actions/checkout@v3
       - run: tools/testscript prepare
       - run: tools/testscript build
-      - if: matrix.cabal
+      - if: matrix.upload-sdist
         uses: actions/upload-artifact@v4
         with:
           name: sdist
           path: dist-newstyle/sdist/*-*.tar.gz
-          overwrite: true
