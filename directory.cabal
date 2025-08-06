@@ -117,6 +117,7 @@ test-suite test
         RemovePathForcibly
         RenameDirectory
         RenameFile001
+        ReplaceFile001
         RenamePath
         Simplify
         T8482
