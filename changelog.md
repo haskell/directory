@@ -6,6 +6,14 @@ Changelog for the [`directory`][1] package
   * Add `getExecSearchPath` as replacement for
     `System.FilePath.getSearchPath`.
     ([#198](https://github.com/haskell/directory/pull/198))
+  * The [extended-length prefix][extended-length prefix] (`\\?\`) is no longer
+    implicitly prepended to Windows UNC paths to avoid triggering a Win32
+    implementation bug. Clients using long UNC paths should find alternatives
+    to [enable long paths][enable long paths].
+    ([#206](https://github.com/haskell/directory/issues/206))
+
+[extended-length prefix]: https://learn.microsoft.com/en-us/windows/win32/fileio/maximum-file-path-limitation#:~:text=%5C%5C%3F%5C
+[enable long paths]: https://learn.microsoft.com/en-us/windows/win32/fileio/maximum-file-path-limitation#enable-long-paths-in-windows-10-version-1607-and-later
 
 ## 1.3.9.0 (Oct 2024)
 

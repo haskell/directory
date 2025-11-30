@@ -28,7 +28,7 @@ main _t = do
   T(expectEq) () (simplifyWindows "C:\\a") "C:\\a"
   T(expectEq) () (simplifyWindows "C:\\a\\\\b\\") "C:\\a\\b\\"
   T(expectEq) () (simplifyWindows "\\\\a\\b") "\\\\a\\b"
-  T(expectEq) () (simplifyWindows "//a\\b/c/./d") "\\\\a\\b\\c\\d"
+  T(expectEq) () (simplifyWindows "//a\\b/c/./d") "\\\\a\\b/c/./d"
   T(expectEq) () (simplifyWindows "/.") "\\"
   T(expectEq) () (simplifyWindows "/./") "\\"
   T(expectEq) () (simplifyWindows "/../") "\\"

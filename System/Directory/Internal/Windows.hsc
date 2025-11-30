@@ -340,10 +340,7 @@ toExtendedLengthPath path =
   else
     case toChar <$> simplifiedPath' of
       '\\' : '?'  : '?' : '\\' : _ -> simplifiedPath
-      '\\' : '\\' : '?' : '\\' : _ -> simplifiedPath
-      '\\' : '\\' : '.' : '\\' : _ -> simplifiedPath
-      '\\' : '\\' : _ ->
-        os "\\\\?\\UNC" <> pack (drop 1 simplifiedPath')
+      '\\' : '\\' : _ -> simplifiedPath
       _ -> os "\\\\?\\" <> simplifiedPath
   where simplifiedPath = simplify path
         simplifiedPath' = unpack simplifiedPath

@@ -164,3 +164,6 @@ main _t = do
   when isWindows $ do
     -- https://github.com/haskell/directory/issues/170
     T(expectEq) () "\\\\localhost" =<< canonicalizePath "\\\\localhost"
+    -- https://github.com/haskell/directory/issues/206
+    T(expectEq) () "\\\\localhost\\C$" =<<
+      canonicalizePath "\\\\localhost\\C$\\.."

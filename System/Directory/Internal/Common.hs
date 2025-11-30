@@ -178,14 +178,15 @@ simplifyPosix path
 --
 -- * empty paths stay empty,
 -- * parent dirs (@..@) are expanded, and
--- * paths starting with @\\\\?\\@ are preserved.
+-- * paths starting with @\\\\@ are preserved.
 --
 -- The goal is to preserve the meaning of paths better than 'normalise'.
 simplifyWindows :: OsPath -> OsPath
 simplifyWindows path
-  | path == mempty         = mempty
-  | drive' == os "\\\\?\\" = drive' <> subpath
-  | otherwise              = simplifiedPath
+  | path == mempty = mempty
+  | otherwise = case toChar <$> unpack drive' of
+      '\\' : '\\' : _ -> drive' <> subpath
+      _ -> simplifiedPath
   where
     simplifiedPath = joinDrive drive' subpath'
     (drive, subpath) = splitDrive path
