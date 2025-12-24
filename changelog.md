@@ -1,7 +1,7 @@
 Changelog for the [`directory`][1] package
 ==========================================
 
-## 1.3.10.0 (XXX 2025)
+## 1.3.10.0 (Dec 2025)
 
   * Add `getExecSearchPath` as replacement for
     `System.FilePath.getSearchPath`.

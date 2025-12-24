@@ -14,7 +14,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: macOS-13, stack: lts-15.3, stack-extra-deps: "bytestring-0.11.3.0, file-io-0.1.4, filepath-1.4.100.0, unix-2.8.0.0" }
+          - { os: macOS-14, stack: lts-20.26, stack-extra-deps: "bytestring-0.11.3.0, file-io-0.1.4, filepath-1.4.100.0, unix-2.8.0.0" }
           - { os: macos-latest, stack: lts-22.7, stack-extra-deps: "bytestring-0.11.5.3, file-io-0.1.4, filepath-1.5.2.0, os-string-2.0.2, unix-2.8.5.1", stack-package-flags: "{directory: {os-string: true}, file-io: {os-string: true}, unix: {os-string: true}}", ghc-flags: -Werror=deprecations }
           - { os: ubuntu-latest, ghc: 8.10.7, cabal: 3.8.1.0 }
           - { os: ubuntu-latest, ghc: 9.0.2, cabal: 3.8.1.0 }
