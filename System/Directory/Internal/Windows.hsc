@@ -24,6 +24,8 @@ import GHC.IO.SubSystem (IoSubSystem(IoPOSIX, IoNative), ioSubSystem)
 #endif
 import System.OsPath
   ( (</>)
+  , hasExtension
+  , isExtensionOf
   , isPathSeparator
   , isRelative
   , pack
@@ -428,12 +430,18 @@ canonicalizePathSimplify path =
       pure path
 
 searchPathEnvForExes :: OsString -> IO (Maybe OsPath)
-searchPathEnvForExes (OsString binary) = search `catch` \e ->
-  if ioeGetErrorType e == InvalidArgument
-  then pure Nothing
-  else throwIO e
+searchPathEnvForExes binaryPath@(OsString binary) = do
+  maybePath <- search
+    `catch` \e ->
+      if ioeGetErrorType e == InvalidArgument
+      then pure Nothing
+      else throwIO e
+  pure (OsString <$> maybePath >>= verify)
  where
-  search = (OsString <$>) <$> Win32.searchPath Nothing binary (Just (getOsString exeExtension))
+  search = Win32.searchPath Nothing binary (Just (getOsString exeExtension))
+  verify p
+    | hasExtension binaryPath || exeExtension `isExtensionOf` p = Just p
+    | otherwise = Nothing
 
 findExecutablesLazyInternal :: ([OsPath] -> OsString -> ListT IO OsPath)
                             -> OsString

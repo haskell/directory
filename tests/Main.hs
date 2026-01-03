@@ -11,6 +11,7 @@ import qualified Directory001
 import qualified DoesDirectoryExist001
 import qualified DoesPathExist
 import qualified FileTime
+import qualified FindExecutable
 import qualified FindFile001
 import qualified GetDirContents001
 import qualified GetDirContents002
@@ -45,6 +46,7 @@ main = T.testMain $ \ _t -> do
   T.isolatedRun _t "DoesDirectoryExist001" DoesDirectoryExist001.main
   T.isolatedRun _t "DoesPathExist" DoesPathExist.main
   T.isolatedRun _t "FileTime" FileTime.main
+  T.isolatedRun _t "FindExecutable" FindExecutable.main
   T.isolatedRun _t "FindFile001" FindFile001.main
   T.isolatedRun _t "GetDirContents001" GetDirContents001.main
   T.isolatedRun _t "GetDirContents002" GetDirContents002.main

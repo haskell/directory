@@ -102,6 +102,7 @@ test-suite test
         DoesDirectoryExist001
         DoesPathExist
         FileTime
+        FindExecutable
         FindFile001
         GetDirContents001
         GetDirContents002
