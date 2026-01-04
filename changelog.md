@@ -1,6 +1,12 @@
 Changelog for the [`directory`][1] package
 ==========================================
 
+## 1.3.10.1 (unreleased)
+
+  * Make findExecutable return Nothing on absolute paths that aren't
+    executable.
+    ([#187](https://github.com/haskell/directory/issues/187))
+
 ## 1.3.10.0 (Dec 2025)
 
   * Add `getExecSearchPath` as replacement for
