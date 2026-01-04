@@ -1,9 +1,13 @@
-{-# LANGUAGE CPP #-}
 module CreateDirectory001 where
-#include "util.inl"
+import Prelude ()
+import System.Directory.Internal.Prelude
+import System.Directory.OsPath
+import TestUtils ()
+import Util (TestEnv)
+import qualified Util as T
 
 main :: TestEnv -> IO ()
 main _t = do
   createDirectory testdir
-  T(expectIOErrorType) () isAlreadyExistsError (createDirectory testdir)
+  T.expectIOErrorType _t () isAlreadyExistsError (createDirectory testdir)
   where testdir = "dir"

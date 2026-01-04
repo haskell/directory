@@ -1,8 +1,13 @@
 {-# LANGUAGE CPP #-}
 module CreateDirectoryIfMissing001 where
-#include "util.inl"
-import Data.Either (lefts)
+import Prelude ()
+import System.Directory.Internal.Prelude
 import System.Directory.Internal
+import System.Directory.OsPath
+import TestUtils ()
+import Util (TestEnv)
+import qualified Util as T
+import Data.Either (lefts)
 import System.OsPath ((</>), addTrailingPathSeparator)
 
 main :: TestEnv -> IO ()
@@ -11,7 +16,7 @@ main _t = do
   createDirectoryIfMissing False testdir
   cleanup
 
-  T(expectIOErrorType) () isDoesNotExistError $
+  T.expectIOErrorType _t () isDoesNotExistError $
     createDirectoryIfMissing False testdir_a
 
   createDirectoryIfMissing True  testdir_a
@@ -21,21 +26,21 @@ main _t = do
 
   createDirectoryIfMissing True  (addTrailingPathSeparator testdir_a)
 
-  T(inform) "testing for race conditions ..."
+  T.inform _t "testing for race conditions ..."
   raceCheck1
-  T(inform) "testing for race conditions ..."
+  T.inform _t "testing for race conditions ..."
   raceCheck2
-  T(inform) "done."
+  T.inform _t "done."
   cleanup
 
   writeFile (so testdir) (so testdir)
-  T(expectIOErrorType) () isAlreadyExistsError $
+  T.expectIOErrorType _t () isAlreadyExistsError $
     createDirectoryIfMissing False testdir
   removeFile testdir
   cleanup
 
   writeFile (so testdir) (so testdir)
-  T(expectIOErrorType) () isNotADirectoryError $
+  T.expectIOErrorType _t () isNotADirectoryError $
     createDirectoryIfMissing True testdir_a
   removeFile testdir
   cleanup
@@ -61,7 +66,7 @@ main _t = do
       forkPut m $ do
         replicateM_ numRepeats cleanup
       results <- replicateM 2 (takeMVar m)
-      T(expectEq) () [] (show <$> lefts results)
+      T.expectEq _t () [] (show <$> lefts results)
 
     -- This test fails on Windows (see bug #2924 on GHC Trac):
     raceCheck2 = do
@@ -72,7 +77,7 @@ main _t = do
             create
             cleanup
       results <- replicateM numThreads (takeMVar m)
-      T(expectEq) () [] (show <$> lefts results)
+      T.expectEq _t () [] (show <$> lefts results)
 
     -- createDirectoryIfMissing is allowed to fail with isDoesNotExistError if
     -- another process/thread removes one of the directories during the process

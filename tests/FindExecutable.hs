@@ -1,6 +1,11 @@
 {-# LANGUAGE CPP #-}
 module FindExecutable where
-#include "util.inl"
+import Prelude ()
+import System.Directory.Internal.Prelude
+import System.Directory.OsPath
+import TestUtils ()
+import Util (TestEnv)
+import qualified Util as T
 
 main :: TestEnv -> IO ()
 main _t = do
@@ -9,13 +14,13 @@ main _t = do
   -- though we have no idea if it's writable
   Just _ <- findExecutable "find"
 
-  T(expectEq) () Nothing =<< findExecutable "__nonexistent_binary_gbowyxcejjawf7r6__"
+  T.expectEq _t () Nothing =<< findExecutable "__nonexistent_binary_gbowyxcejjawf7r6__"
 
   -- https://github.com/haskell/directory/issues/187
-  T(expectEq) () Nothing =<< findExecutable "/"
-  T(expectEq) () Nothing =<< findExecutable "//"
+  T.expectEq _t () Nothing =<< findExecutable "/"
+  T.expectEq _t () Nothing =<< findExecutable "//"
 #if !defined(mingw32_HOST_OS)
-  T(expectEq) () Nothing =<< findExecutable "\\"
-  T(expectEq) () Nothing =<< findExecutable "\\\\"
-  T(expectEq) () Nothing =<< findExecutable "\\\\localhost\\c$"
+  T.expectEq _t () Nothing =<< findExecutable "\\"
+  T.expectEq _t () Nothing =<< findExecutable "\\\\"
+  T.expectEq _t () Nothing =<< findExecutable "\\\\localhost\\c$"
 #endif

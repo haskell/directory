@@ -29,7 +29,6 @@ extra-source-files:
     configure
     configure.ac
     tests/*.hs
-    tests/util.inl
 
 source-repository head
     type:     git

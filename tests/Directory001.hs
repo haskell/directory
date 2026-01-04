@@ -1,6 +1,10 @@
-{-# LANGUAGE CPP #-}
 module Directory001 where
-#include "util.inl"
+import Prelude ()
+import System.Directory.Internal.Prelude
+import System.Directory.OsPath
+import TestUtils ()
+import Util (TestEnv)
+import qualified Util as T
 
 main :: TestEnv -> IO ()
 main _t = do
@@ -10,7 +14,7 @@ main _t = do
   renameFile "foo/bar" "foo/baz"
   renameDirectory "foo" "bar"
   str' <- readFile "bar/baz"
-  T(expectEq) () str' str
+  T.expectEq _t () str' str
   removeFile "bar/baz"
   removeDirectory "bar"
 

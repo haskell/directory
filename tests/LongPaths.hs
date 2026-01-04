@@ -1,7 +1,10 @@
-{-# LANGUAGE CPP #-}
 module LongPaths where
-#include "util.inl"
+import Prelude ()
+import System.Directory.Internal.Prelude
+import System.Directory.OsPath
 import TestUtils
+import Util (TestEnv)
+import qualified Util as T
 import System.OsPath ((</>))
 
 main :: TestEnv -> IO ()
@@ -24,10 +27,10 @@ main _t = do
     -- test relative paths
     let relDir = longName </> mconcat (replicate 8 "yeah_its_long")
     createDirectory relDir
-    T(expect) () =<< doesDirectoryExist relDir
-    T(expectEq) () [] =<< listDirectory relDir
+    T.expect _t () =<< doesDirectoryExist relDir
+    T.expectEq _t () [] =<< listDirectory relDir
     setPermissions relDir emptyPermissions
-    T(expectEq) () False =<< writable <$> getPermissions relDir
+    T.expectEq _t () False =<< writable <$> getPermissions relDir
 
     writeFile "foobar.txt" "^.^" -- writeFile does not support long paths yet
 
@@ -38,13 +41,13 @@ main _t = do
                          (longDir </> "foobar_copy.txt")
 
     -- tests: [doesDirectoryExist], [doesFileExist], [doesPathExist]
-    T(expect) () =<< doesDirectoryExist longDir
-    T(expect) () =<< doesFileExist (longDir </> "foobar.txt")
-    T(expect) () =<< doesPathExist longDir
-    T(expect) () =<< doesPathExist (longDir </> "foobar.txt")
+    T.expect _t () =<< doesDirectoryExist longDir
+    T.expect _t () =<< doesFileExist (longDir </> "foobar.txt")
+    T.expect _t () =<< doesPathExist longDir
+    T.expect _t () =<< doesPathExist (longDir </> "foobar.txt")
 
     -- tests: [getFileSize], [getModificationTime]
-    T(expectEq) () 3 =<< getFileSize (longDir </> "foobar.txt")
+    T.expectEq _t () 3 =<< getFileSize (longDir </> "foobar.txt")
     _ <- getModificationTime (longDir </> "foobar.txt")
 
     supportsSymbolicLinks <- supportsSymlinks
@@ -54,7 +57,7 @@ main _t = do
       -- also tests expansion of "." and ".."
       createDirectoryLink "." (longDir </> "link")
       _ <- listDirectory (longDir </> ".." </> longName </> "link")
-      T(expectEq) () "." =<< getSymbolicLinkTarget (longDir </> "." </> "link")
+      T.expectEq _t () "." =<< getSymbolicLinkTarget (longDir </> "." </> "link")
 
       return ()
 

@@ -1,12 +1,17 @@
 {-# LANGUAGE CPP #-}
 module Xdg where
+import Prelude ()
+import System.Directory.Internal.Prelude
+import System.Directory.OsPath
+import TestUtils ()
+import Util (TestEnv)
+import qualified Util as T
 import qualified Data.List as List
 import System.Environment (setEnv, unsetEnv)
 import System.FilePath (searchPathSeparator)
 #if !defined(mingw32_HOST_OS)
 import System.OsPath ((</>))
 #endif
-#include "util.inl"
 
 main :: TestEnv -> IO ()
 main _t = do
@@ -15,13 +20,13 @@ main _t = do
   _ <- getXdgDirectoryList XdgDataDirs
   _ <- getXdgDirectoryList XdgConfigDirs
 
-  T(expect) () True -- avoid warnings about redundant imports
+  T.expect _t () True -- avoid warnings about redundant imports
 
   -- setEnv, unsetEnv require base 4.7.0.0+
 #if !defined(mingw32_HOST_OS)
   unsetEnv "XDG_CONFIG_HOME"
   home <- getHomeDirectory
-  T(expectEq) () (home </> ".config/mow") =<< getXdgDirectory XdgConfig "mow"
+  T.expectEq _t () (home </> ".config/mow") =<< getXdgDirectory XdgConfig "mow"
 #endif
 
   -- unset variables, so env doesn't affect test running
@@ -39,10 +44,10 @@ main _t = do
   setEnv "XDG_CONFIG_HOME" "aw"
   setEnv "XDG_CACHE_HOME"  "ba"
   setEnv "XDG_STATE_HOME"  "uw"
-  T(expectEq) () xdgData   =<< getXdgDirectory XdgData   "ff"
-  T(expectEq) () xdgConfig =<< getXdgDirectory XdgConfig "oo"
-  T(expectEq) () xdgCache  =<< getXdgDirectory XdgCache  "rk"
-  T(expectEq) () xdgState  =<< getXdgDirectory XdgState  "aa"
+  T.expectEq _t () xdgData   =<< getXdgDirectory XdgData   "ff"
+  T.expectEq _t () xdgConfig =<< getXdgDirectory XdgConfig "oo"
+  T.expectEq _t () xdgCache  =<< getXdgDirectory XdgCache  "rk"
+  T.expectEq _t () xdgState  =<< getXdgDirectory XdgState  "aa"
 
   unsetEnv "XDG_CONFIG_DIRS"
   unsetEnv "XDG_DATA_DIRS"
@@ -50,13 +55,13 @@ main _t = do
   _xdgDataDirs <- getXdgDirectoryList XdgDataDirs
 
 #if !defined(mingw32_HOST_OS)
-  T(expectEq) () ["/etc/xdg"] _xdgConfigDirs
-  T(expectEq) () ["/usr/local/share/", "/usr/share/"] _xdgDataDirs
+  T.expectEq _t () ["/etc/xdg"] _xdgConfigDirs
+  T.expectEq _t () ["/usr/local/share/", "/usr/share/"] _xdgDataDirs
 #endif
 
   setEnv "XDG_DATA_DIRS" (List.intercalate [searchPathSeparator] ["/a", "/b"])
   setEnv "XDG_CONFIG_DIRS" (List.intercalate [searchPathSeparator] ["/c", "/d"])
-  T(expectEq) () ["/a", "/b"] =<< getXdgDirectoryList XdgDataDirs
-  T(expectEq) () ["/c", "/d"] =<< getXdgDirectoryList XdgConfigDirs
+  T.expectEq _t () ["/a", "/b"] =<< getXdgDirectoryList XdgDataDirs
+  T.expectEq _t () ["/c", "/d"] =<< getXdgDirectoryList XdgConfigDirs
 
   return ()

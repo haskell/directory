@@ -1,7 +1,10 @@
-{-# LANGUAGE CPP #-}
 module PathIsSymbolicLink where
-#include "util.inl"
+import Prelude ()
+import System.Directory.Internal.Prelude
+import System.Directory.OsPath
 import TestUtils
+import Util (TestEnv)
+import qualified Util as T
 
 main :: TestEnv -> IO ()
 main _t = do
@@ -11,23 +14,23 @@ main _t = do
     createFileLink "x" "y"
     createDirectoryLink "a" "b"
 
-    T(expect) () =<< pathIsSymbolicLink "y"
-    T(expect) () =<< pathIsSymbolicLink "b"
-    T(expectEq) () "x" =<< getSymbolicLinkTarget "y"
-    T(expectEq) () "a" =<< getSymbolicLinkTarget "b"
-    T(expectEq) () False =<< doesFileExist "y"
-    T(expectEq) () False =<< doesDirectoryExist "b"
+    T.expect _t () =<< pathIsSymbolicLink "y"
+    T.expect _t () =<< pathIsSymbolicLink "b"
+    T.expectEq _t () "x" =<< getSymbolicLinkTarget "y"
+    T.expectEq _t () "a" =<< getSymbolicLinkTarget "b"
+    T.expectEq _t () False =<< doesFileExist "y"
+    T.expectEq _t () False =<< doesDirectoryExist "b"
 
     writeFile "x" ""
     createDirectory "a"
 
-    T(expect) () =<< doesFileExist "y"
-    T(expect) () =<< doesDirectoryExist "b"
+    T.expect _t () =<< doesFileExist "y"
+    T.expect _t () =<< doesDirectoryExist "b"
 
     removeFile "y"
     removeDirectoryLink "b"
 
-    T(expectIOErrorType) () isDoesNotExistError (pathIsSymbolicLink "y")
-    T(expectIOErrorType) () isDoesNotExistError (pathIsSymbolicLink "b")
-    T(expectEq) () False =<< doesFileExist "y"
-    T(expectEq) () False =<< doesDirectoryExist "b"
+    T.expectIOErrorType _t () isDoesNotExistError (pathIsSymbolicLink "y")
+    T.expectIOErrorType _t () isDoesNotExistError (pathIsSymbolicLink "b")
+    T.expectEq _t () False =<< doesFileExist "y"
+    T.expectEq _t () False =<< doesDirectoryExist "b"

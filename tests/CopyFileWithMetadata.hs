@@ -1,7 +1,11 @@
-{-# LANGUAGE CPP #-}
 module CopyFileWithMetadata where
-#include "util.inl"
+import Prelude ()
+import System.Directory.Internal.Prelude
 import System.Directory.Internal
+import System.Directory.OsPath
+import TestUtils ()
+import Util (TestEnv)
+import qualified Util as T
 import qualified Data.List as List
 
 main :: TestEnv -> IO ()
@@ -15,18 +19,18 @@ main _t = (`finally` cleanup) $ do
   perm <- getPermissions "a"
 
   -- sanity check
-  T(expectEq) () ["a", "b"] . List.sort =<< listDirectory "."
+  T.expectEq _t () ["a", "b"] . List.sort =<< listDirectory "."
 
   -- copy file
   copyFileWithMetadata "a" "b"
   copyFileWithMetadata "a" "c"
 
   -- make sure we got the right results
-  T(expectEq) () ["a", "b", "c"] . List.sort =<< listDirectory "."
+  T.expectEq _t () ["a", "b", "c"] . List.sort =<< listDirectory "."
   for_ ["b", "c"] $ \ f -> do
-    T(expectEq) f perm =<< getPermissions f
-    T(expectEq) f mtime =<< getModificationTime f
-    T(expectEq) f contents =<< readFile (so f)
+    T.expectEq _t f perm =<< getPermissions f
+    T.expectEq _t f mtime =<< getModificationTime f
+    T.expectEq _t f contents =<< readFile (so f)
 
   where
     contents = "This is the data\n"

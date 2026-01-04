@@ -1,5 +1,4 @@
 {-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE CPP #-}
 -- | A rudimentary testing framework
 module Util where
 import Prelude ()
@@ -7,6 +6,8 @@ import System.Directory.Internal.Prelude
 import System.Directory.Internal
 import System.Directory.OsPath
 import Data.Time.Clock (NominalDiffTime, UTCTime, diffUTCTime)
+import GHC.Stack (CallStack, HasCallStack, callStack, getCallStack, srcLocFile,
+                  srcLocStartLine)
 import System.Environment (getEnvironment, setEnv, unsetEnv)
 import System.OsPath ((</>), decodeFS, encodeFS, normalise)
 import qualified Data.List as List
@@ -62,63 +63,66 @@ checkEither :: TestEnv -> [String] -> Either [String] [String] -> IO ()
 checkEither t prefix (Right msg) = printInfo t (prefix <> msg)
 checkEither t prefix (Left  msg) = printFailure t (prefix <> msg)
 
-showContext :: Show a => String -> Integer -> a -> String
-showContext file line context =
-  file <> ":" <> show line <>
+showContext :: Show a => CallStack -> a -> String
+showContext stack context =
+  case getCallStack stack of
+    (_, l) : _ -> srcLocFile l <> ":" <> show (srcLocStartLine l)
+    [] -> "<unknown caller>"
+  <>
   case show context of
     "()" -> ""
     s    -> ":" <> s
 
-inform :: TestEnv -> String -> Integer -> String -> IO ()
-inform t file line msg =
-  printInfo t [showContext file line (), msg]
+inform :: HasCallStack => TestEnv -> String -> IO ()
+inform t msg =
+  printInfo t [showContext callStack (), msg]
 
-expect :: Show a => TestEnv -> String -> Integer -> a -> Bool -> IO ()
-expect t file line context x =
+
+expect :: (HasCallStack, Show a) => TestEnv -> a -> Bool -> IO ()
+expect t context x =
   check t x
-  [showContext file line context]
+  [showContext callStack context]
   ["True"]
   ["False, but True was expected"]
 
-expectEq :: (Eq a, Show a, Show b) =>
-            TestEnv -> String -> Integer -> b -> a -> a -> IO ()
-expectEq t file line context x y =
+expectEq :: (HasCallStack, Eq a, Show a, Show b) =>
+            TestEnv -> b -> a -> a -> IO ()
+expectEq t context x y =
   check t (x == y)
-  [showContext file line context]
+  [showContext callStack context]
   [show x <> " equals "     <> show y]
   [show x <> " is not equal to " <> show y]
 
-expectNe :: (Eq a, Show a, Show b) =>
-            TestEnv -> String -> Integer -> b -> a -> a -> IO ()
-expectNe t file line context x y =
+expectNe :: (HasCallStack, Eq a, Show a, Show b) =>
+            TestEnv -> b -> a -> a -> IO ()
+expectNe t context x y =
   check t (x /= y)
-  [showContext file line context]
+  [showContext callStack context]
   [show x <> " is not equal to " <> show y]
   [show x <> " equals "     <> show y]
 
-expectNear :: (Num a, Ord a, Show a, Show b) =>
-              TestEnv -> String -> Integer -> b -> a -> a -> a -> IO ()
-expectNear t file line context x y diff =
+expectNear :: (HasCallStack, Num a, Ord a, Show a, Show b) =>
+              TestEnv -> b -> a -> a -> a -> IO ()
+expectNear t context x y diff =
   check t (abs (x - y) <= diff)
-  [showContext file line context]
+  [showContext callStack context]
   [show x <> " is near "     <> show y]
   [show x <> " is not near " <> show y]
 
-expectNearTime :: Show a =>
-                  TestEnv -> String -> Integer -> a ->
+expectNearTime :: (HasCallStack, Show a) =>
+                  TestEnv -> a ->
                   UTCTime -> UTCTime -> NominalDiffTime -> IO ()
-expectNearTime t file line context x y diff =
+expectNearTime t context x y diff =
   check t (abs (diffUTCTime x y) <= diff)
-  [showContext file line context]
+  [showContext callStack context]
   [show x <> " is near "     <> show y]
   [show x <> " is not near " <> show y]
 
-expectIOErrorType :: Show a =>
-                     TestEnv -> String -> Integer -> a
-                  -> (IOError -> Bool) -> IO b -> IO ()
-expectIOErrorType t file line context which action = do
+expectIOErrorType :: (HasCallStack, Show a) =>
+                     TestEnv -> a -> (IOError -> Bool) -> IO b -> IO ()
+expectIOErrorType t context which action = do
   result <- try action
-  checkEither t [showContext file line context] $ case result of
+  checkEither t [showContext callStack context] $ case result of
     Left  e | which e   -> Right ["got expected exception (" <> show e <> ")"]
             | otherwise -> Left  ["got wrong exception: ", show e]
     Right _             -> Left  ["did not throw an exception"]

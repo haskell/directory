@@ -8,7 +8,12 @@ module MinimizeNameConflicts
   , module System.Posix
 #endif
   ) where
-#include "util.inl"
+import Prelude ()
+import System.Directory.Internal.Prelude
+import System.Directory.OsPath
+import TestUtils ()
+import Util (TestEnv)
+import qualified Util as T
 #if defined(mingw32_HOST_OS)
 import System.Win32 hiding
   ( copyFile
@@ -31,4 +36,4 @@ import System.Posix hiding
 -- https://github.com/haskell/directory/issues/52
 main :: TestEnv -> IO ()
 main _t = do
-  T(expect) ("no-op" :: String) True
+  T.expect _t ("no-op" :: String) True

@@ -1,6 +1,10 @@
-{-# LANGUAGE CPP #-}
 module FileTime where
-#include "util.inl"
+import Prelude ()
+import System.Directory.Internal.Prelude
+import System.Directory.OsPath
+import TestUtils ()
+import Util (TestEnv)
+import qualified Util as T
 import Data.Time.Clock (addUTCTime, getCurrentTime)
 
 main :: TestEnv -> IO ()
@@ -9,13 +13,13 @@ main _t = do
   let someTimeAgo  = addUTCTime (-3600) now
       someTimeAgo' = addUTCTime (-7200) now
 
-  T(expectIOErrorType) () isDoesNotExistError $
+  T.expectIOErrorType _t () isDoesNotExistError $
     getAccessTime "nonexistent-file"
-  T(expectIOErrorType) () isDoesNotExistError $
+  T.expectIOErrorType _t () isDoesNotExistError $
     setAccessTime "nonexistent-file" someTimeAgo
-  T(expectIOErrorType) () isDoesNotExistError $
+  T.expectIOErrorType _t () isDoesNotExistError $
     getModificationTime "nonexistent-file"
-  T(expectIOErrorType) () isDoesNotExistError $
+  T.expectIOErrorType _t () isDoesNotExistError $
     setModificationTime "nonexistent-file" someTimeAgo
 
   writeFile  "foo" ""
@@ -31,11 +35,11 @@ main _t = do
     mtime2 <- getModificationTime file
 
     -- modification time should be set with at worst 1 sec resolution
-    T(expectNearTime) file mtime  mtime2 1
+    T.expectNearTime _t file mtime  mtime2 1
 
     -- access time should not change, although it may lose some precision
     -- on POSIX systems without 'utimensat'
-    T(expectNearTime) file atime1 atime2 1
+    T.expectNearTime _t file atime1 atime2 1
 
     setAccessTime file atime
 
@@ -44,11 +48,11 @@ main _t = do
 
     when setAtime $ do
       -- access time should be set with at worst 1 sec resolution
-      T(expectNearTime) file atime atime3 1
+      T.expectNearTime _t file atime atime3 1
 
     -- modification time should not change, although it may lose some precision
     -- on POSIX systems without 'utimensat'
-    T(expectNearTime) file mtime2 mtime3 1
+    T.expectNearTime _t file mtime2 mtime3 1
 
   where
 
