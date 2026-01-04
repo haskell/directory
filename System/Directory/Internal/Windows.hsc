@@ -658,8 +658,8 @@ setWriteMode True  m = m .&. complement Win32.fILE_ATTRIBUTE_READONLY
 setForceRemoveMode :: Mode -> Mode
 setForceRemoveMode m = m .&. complement Win32.fILE_ATTRIBUTE_READONLY
 
-setModeAt :: WhetherFollow -> Maybe RawHandle -> OsPath -> Mode -> IO ()
-setModeAt _ dir path = setFileMode (pathAt dir path)
+setModeAt :: Maybe RawHandle -> OsPath -> Mode -> IO ()
+setModeAt dir path = setFileMode (pathAt dir path)
 
 setFileMode :: OsPath -> Mode -> IO ()
 setFileMode path mode =

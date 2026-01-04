@@ -276,13 +276,11 @@ setForceRemoveMode m = m .|. Posix.ownerModes
 foreign import capi "sys/stat.h fchmodat" c_fchmodat
   :: Posix.Fd -> CString -> Posix.FileMode -> CInt -> IO CInt
 
-setModeAt :: WhetherFollow -> Maybe RawHandle -> OsPath -> Mode -> IO ()
-setModeAt whetherFollow dir (OsString path) mode = do
+setModeAt :: Maybe RawHandle -> OsPath -> Mode -> IO ()
+setModeAt dir (OsString path) mode = do
   Posix.withFilePath path $ \ pPath ->
     Posix.throwErrnoPathIfMinus1_ "fchmodat" path $ do
-      c_fchmodat (fromMaybe c_AT_FDCWD dir) pPath mode flags
-  where
-    flags = atWhetherFollow whetherFollow
+      c_fchmodat (fromMaybe c_AT_FDCWD dir) pPath mode 0
 
 setFileMode :: OsPath -> Mode -> IO ()
 setFileMode = Posix.setFileMode . getOsString

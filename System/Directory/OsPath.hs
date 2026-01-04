@@ -407,7 +407,7 @@ forcePreremover :: Preremover
 forcePreremover dir path metadata = do
   when (fileTypeIsDirectory (fileTypeFromMetadata metadata)
         || not filesAlwaysRemovable) $ do
-    setModeAt NoFollow dir path mode
+    setModeAt dir path mode
       `catchIOError` \ _ -> pure ()
   where
     mode = setForceRemoveMode (modeFromMetadata metadata)
