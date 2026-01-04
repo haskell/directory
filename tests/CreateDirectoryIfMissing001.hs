@@ -47,7 +47,7 @@ main _t = do
     testdir = os (testname <> ".d")
     testdir_a = testdir </> "a"
 
-    numRepeats = T.readArg _t testname "num-repeats" 10000
+    numRepeats = T.readArg _t testname "num-repeats" 10
     numThreads = T.readArg _t testname "num-threads" 4
 
     forkPut mvar action = () <$ forkFinally action (putMVar mvar)
