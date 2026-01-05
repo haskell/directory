@@ -1,0 +1,11 @@
+# HLint configuration file. Example config:
+# https://github.com/ndmitchell/hlint/blob/master/data/default.yaml
+- group: {name: dollar, enabled: true}
+- group: {name: future, enabled: true}
+- group: {name: generalise, enabled: true}
+- ignore: {name: 'Eta reduce'}
+- ignore: {name: 'Redundant <$>' }
+- ignore: {name: 'Use ==' }
+- ignore: {name: 'Use tuple-section' }
+- ignore: {name: 'Use unless'}
+- ignore: {name: 'Use void'}

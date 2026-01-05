@@ -63,3 +63,25 @@ jobs:
         with:
           name: sdist
           path: dist-newstyle/sdist/*-*.tar.gz
+  hlint:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.event.pull_request.base.repo.full_name
+    runs-on: ubuntu-latest
+    steps:
+      - uses: haskell-actions/hlint-setup@v2
+        with:
+          version: "3.10"
+      - uses: actions/checkout@v3
+      - run: |
+          autoreconf -i
+          echo ::add-matcher::.github/problem_matcher.json
+          trap 'echo ::remove-matcher owner=directory::' 0 1 2 15
+          hlint .
+  lint:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.event.pull_request.base.repo.full_name
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - run: |
+          echo ::add-matcher::.github/problem_matcher.json
+          trap 'echo ::remove-matcher owner=directory::' 0 1 2 15
+          tools/lint

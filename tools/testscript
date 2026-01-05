@@ -13,8 +13,6 @@ before_prepare() {
 prepare() {
     before_prepare
 
-    tools/lints.sh
-
     if [ -f configure.ac ]; then
         autoreconf -i
     fi
