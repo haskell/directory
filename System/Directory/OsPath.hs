@@ -179,7 +179,8 @@ offers much more flexibility.
  been given to use them as part of a path, but not to examine the
  directory contents.
 
-Note that to change some, but not all permissions, a construct on the following lines must be used.
+Note that to change some, but not all permissions, a construct on the
+following lines must be used.
 
 >  makeReadable f = do
 >     p <- getPermissions f
@@ -310,9 +311,10 @@ createDirectory = createDirectoryInternal
 -- | @'createDirectoryIfMissing' parents dir@ creates a new directory
 -- @dir@ if it doesn\'t exist. If the first argument is 'True'
 -- the function will also create all parent directories if they are missing.
-createDirectoryIfMissing :: Bool     -- ^ Create its parents too?
-                         -> OsPath -- ^ The path to the directory you want to make
-                         -> IO ()
+createDirectoryIfMissing
+  :: Bool   -- ^ Create its parents too?
+  -> OsPath -- ^ The path to the directory you want to make
+  -> IO ()
 createDirectoryIfMissing create_parents path0
   | create_parents = createDirs (parents path0)
   | otherwise      = createDirs (take 1 (parents path0))
@@ -320,7 +322,7 @@ createDirectoryIfMissing create_parents path0
     parents = reverse . scanl1 (</>) . splitDirectories . simplify
 
     createDirs []         = pure ()
-    createDirs (dir:[])   = createDir dir ioError
+    createDirs [dir]      = createDir dir ioError
     createDirs (dir:dirs) =
       createDir dir $ \_ -> do
         createDirs dirs
@@ -750,7 +752,7 @@ atomicCopyFileContents fromFPath toFPath postAction =
 -- the temporary file is removed and the destination file remains untouched.
 withReplacementFile :: OsPath            -- ^ Destination file
                     -> (OsPath -> IO ()) -- ^ Post-action
-                    -> (Handle -> IO a)    -- ^ Main action
+                    -> (Handle -> IO a)  -- ^ Main action
                     -> IO a
 withReplacementFile path postAction action =
   (`ioeAddLocation` "withReplacementFile") `modifyIOError` do
@@ -759,7 +761,8 @@ withReplacementFile path postAction action =
                                     (mkUTF16le ErrorOnCodingFailure)
                                     ".copyFile.tmp"
                          of
-            Left err -> error ("withReplacementFile: invalid encoding: " ++ show err)
+            Left err ->
+              error ("withReplacementFile: invalid encoding: " <> show err)
             Right p -> p
       (tmpFPath, hTmp) <- OS.openBinaryTempFile (takeDirectory path) tmpPath
       (`onException` ignoreIOExceptions (removeFile tmpFPath)) $ do
@@ -1478,7 +1481,7 @@ setModificationTime path mtime =
     setFileTimes path (Nothing, Just mtime)
 
 setFileTimes :: OsPath -> (Maybe UTCTime, Maybe UTCTime) -> IO ()
-setFileTimes _ (Nothing, Nothing) = return ()
+setFileTimes _ (Nothing, Nothing) = pure ()
 setFileTimes path (atime, mtime) =
   ((`ioeAddLocation` "setFileTimes") .
    (`ioeSetOsPath` path)) `modifyIOError` do
@@ -1495,9 +1498,12 @@ application-specific data here; use 'getXdgDirectory' or
 On Unix, 'getHomeDirectory' behaves as follows:
 
 * Returns $HOME env variable if set (including to an empty string).
-* Otherwise uses home directory returned by `getpwuid_r` using the UID of the current proccesses user. This basically reads the /etc/passwd file. An empty home directory field is considered valid.
+* Otherwise uses home directory returned by @getpwuid_r@ using the UID of the
+  current process' user. This basically reads the @\/etc\/passwd@ file. An
+  empty home directory field is considered valid.
 
-On Windows, the system is queried for a suitable path; a typical path might be @C:\/Users\//\<user\>/@.
+On Windows, the system is queried for a suitable path; a typical path might be
+@C:\/Users\//\<user\>/@.
 
 The operation may fail with:
 
@@ -1536,21 +1542,21 @@ getHomeDirectory =
 --   path, per revised XDG Base Directory Specification.  See
 --   <https://github.com/haskell/directory/issues/100 #100>.
 getXdgDirectory :: XdgDirectory         -- ^ which special directory
-                -> OsPath             -- ^ a relative path that is appended
+                -> OsPath               -- ^ a relative path that is appended
                                         --   to the path; if empty, the base
                                         --   path is returned
                 -> IO OsPath
 getXdgDirectory xdgDir suffix =
   (`ioeAddLocation` "getXdgDirectory") `modifyIOError` do
     simplify . (</> suffix) <$> do
-      env <- lookupEnvOs . os $ case xdgDir of
-        XdgData   -> "XDG_DATA_HOME"
-        XdgConfig -> "XDG_CONFIG_HOME"
-        XdgCache  -> "XDG_CACHE_HOME"
-        XdgState  -> "XDG_STATE_HOME"
+      env <- lookupEnvOs $ case xdgDir of
+        XdgData   -> os "XDG_DATA_HOME"
+        XdgConfig -> os "XDG_CONFIG_HOME"
+        XdgCache  -> os "XDG_CACHE_HOME"
+        XdgState  -> os "XDG_STATE_HOME"
       case env of
         Just path | isAbsolute path -> pure path
-        _                           -> getXdgDirectoryFallback getHomeDirectory xdgDir
+        _ -> getXdgDirectoryFallback getHomeDirectory xdgDir
 
 -- | Similar to 'getXdgDirectory' but retrieves the entire list of XDG
 -- directories.
@@ -1563,9 +1569,9 @@ getXdgDirectoryList :: XdgDirectoryList -- ^ which special directory list
                     -> IO [OsPath]
 getXdgDirectoryList xdgDirs =
   (`ioeAddLocation` "getXdgDirectoryList") `modifyIOError` do
-    env <- lookupEnvOs . os $ case xdgDirs of
-      XdgDataDirs   -> "XDG_DATA_DIRS"
-      XdgConfigDirs -> "XDG_CONFIG_DIRS"
+    env <- lookupEnvOs $ case xdgDirs of
+      XdgDataDirs   -> os "XDG_DATA_DIRS"
+      XdgConfigDirs -> os "XDG_CONFIG_DIRS"
     case env of
       Nothing    -> getXdgDirectoryListFallback xdgDirs
       Just paths -> pure (splitSearchPath paths)

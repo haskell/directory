@@ -14,7 +14,8 @@ main _t = do
   -- though we have no idea if it's writable
   Just _ <- findExecutable "find"
 
-  T.expectEq _t () Nothing =<< findExecutable "__nonexistent_binary_gbowyxcejjawf7r6__"
+  T.expectEq _t () Nothing =<<
+    findExecutable "__nonexistent_binary_gbowyxcejjawf7r6__"
 
   -- https://github.com/haskell/directory/issues/187
   T.expectEq _t () Nothing =<< findExecutable "/"

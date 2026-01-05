@@ -80,7 +80,7 @@ supportsSymlinks :: IO Bool
 supportsSymlinks = do
   canCreate <- supportsLinkCreation
   canDeref <- supportsLinkDeref
-  return (canCreate && canDeref)
+  pure (canCreate && canDeref)
 
 -- | On Windows, test if symbolic link creation is supported and the user has
 -- the necessary privileges to create them.  On other platforms, this always
@@ -88,11 +88,11 @@ supportsSymlinks = do
 supportsLinkCreation :: IO Bool
 supportsLinkCreation = do
   let path = os "_symlink_test.tmp"
-  isSupported <- handleSymlinkUnavail (return False) $ do
+  isSupported <- handleSymlinkUnavail (pure False) $ do
     True <$ createFileLink path path
   when isSupported $ do
     removeFile path
-  return isSupported
+  pure isSupported
 
 supportsLinkDeref :: IO Bool
 supportsLinkDeref = do
@@ -100,10 +100,10 @@ supportsLinkDeref = do
     True <$ win32_getFinalPathNameByHandle Win32.nullHANDLE 0
   `catchIOError` \ e ->
     case ioeGetErrorType e of
-      UnsupportedOperation -> return False
-      _ -> return True
+      UnsupportedOperation -> pure False
+      _ -> pure True
 #else
-    return True
+    pure True
 #endif
 
 instance IsString OsString where

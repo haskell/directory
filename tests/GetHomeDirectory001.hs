@@ -9,7 +9,7 @@ import qualified Util as T
 main :: TestEnv -> IO ()
 main _t = do
   homeDir <- getHomeDirectory
-  T.expect _t () (homeDir /= "") -- sanity check
+  T.expect _t () (homeDir /= mempty) -- sanity check
   _ <- getAppUserDataDirectory   "test"
   _ <- getXdgDirectory XdgCache  "test"
   _ <- getXdgDirectory XdgConfig "test"
@@ -17,4 +17,4 @@ main _t = do
   _ <- getXdgDirectory XdgState  "test"
   _ <- getUserDocumentsDirectory
   _ <- getTemporaryDirectory
-  return ()
+  pure ()

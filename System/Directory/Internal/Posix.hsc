@@ -113,7 +113,13 @@ c_PATH_MAX = Nothing
 #if !defined(HAVE_REALPATH)
 
 c_realpath :: CString -> CString -> IO CString
-c_realpath _ _ = throwIO (mkIOError UnsupportedOperation "platform does not support realpath" Nothing Nothing)
+c_realpath _ _ =
+  throwIO
+    (mkIOError
+      UnsupportedOperation
+      "platform does not support realpath"
+      Nothing
+      Nothing)
 
 #else
 
@@ -426,6 +432,7 @@ getUserDocumentsDirectoryInternal :: IO OsPath
 getUserDocumentsDirectoryInternal = getHomeDirectoryInternal
 
 getTemporaryDirectoryInternal :: IO OsPath
-getTemporaryDirectoryInternal = fromMaybe (os "/tmp") <$> lookupEnvOs (os "TMPDIR")
+getTemporaryDirectoryInternal =
+  fromMaybe (os "/tmp") <$> lookupEnvOs (os "TMPDIR")
 
 #endif

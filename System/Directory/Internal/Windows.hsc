@@ -631,7 +631,11 @@ setTimes :: OsPath -> (Maybe POSIXTime, Maybe POSIXTime) -> IO ()
 setTimes path' (atime', mtime') =
   bracket (openFileHandle path' Win32.gENERIC_WRITE)
           Win32.closeHandle $ \ handle ->
-  Win32.setFileTime handle Nothing (posixToWindowsTime <$> atime') (posixToWindowsTime <$> mtime')
+  Win32.setFileTime
+    handle
+    Nothing
+    (posixToWindowsTime <$> atime')
+    (posixToWindowsTime <$> mtime')
 
 -- | Open the handle of an existing file or directory.
 openFileHandle :: OsString -> Win32.AccessMode -> IO Win32.HANDLE

@@ -19,7 +19,7 @@ main _t = do
   names <- for [1 .. 100 :: Int] $ \ i -> do
     let name = "f" <> os (show i)
     writeFile (so (dir </> name)) ""
-    return name
+    pure name
   T.expectEq _t () (List.sort (specials <> names)) . List.sort =<<
     getDirectoryContents dir
   T.expectEq _t () (List.sort names) . List.sort =<<

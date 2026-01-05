@@ -55,17 +55,17 @@ listTToList :: Monad m => ListT m a -> m [a]
 listTToList (ListT m) = do
   mx <- m
   case mx of
-    Nothing -> return []
+    Nothing -> pure []
     Just (x, m') -> do
       xs <- listTToList m'
-      return (x : xs)
+      pure (x : xs)
 
 andM :: Monad m => m Bool -> m Bool -> m Bool
 andM mx my = do
   x <- mx
   if x
     then my
-    else return x
+    else pure x
 
 sequenceWithIOErrors_ :: [IO ()] -> IO ()
 sequenceWithIOErrors_ actions = go (Right ()) actions
@@ -226,11 +226,12 @@ isNoFollow :: WhetherFollow -> Bool
 isNoFollow NoFollow    = True
 isNoFollow FollowLinks = False
 
-data FileType = File
-              | SymbolicLink -- ^ POSIX: either file or directory link; Windows: file link
-              | Directory
-              | DirectoryLink -- ^ Windows only: directory link
-              deriving (Bounded, Enum, Eq, Ord, Read, Show)
+data FileType
+  = File
+  | SymbolicLink -- ^ POSIX: either file or directory link; Windows: file link
+  | Directory
+  | DirectoryLink -- ^ Windows only: directory link
+  deriving (Bounded, Enum, Eq, Ord, Read, Show)
 
 -- | Check whether the given 'FileType' is considered a directory by the
 -- operating system.  This affects the choice of certain functions
@@ -265,7 +266,8 @@ copyHandleData hFrom hTo =
   (`ioeAddLocation` "copyData") `modifyIOError` do
     allocaBytes bufferSize go
   where
-    bufferSize = 131072 -- 128 KiB, as coreutils `cp` uses as of May 2014 (see ioblksize.h)
+    -- 128 KiB, as coreutils `cp` uses as of May 2014 (see ioblksize.h)
+    bufferSize = 131072
     go buffer = do
       count <- hGetBuf hFrom buffer bufferSize
       when (count > 0) $ do

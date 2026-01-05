@@ -16,9 +16,9 @@ main _t = do
   -- clean up junk from previous invocations
 
   modifyPermissions (tmp "c") (\ p -> p { writable = True })
-    `catchIOError` \ _ -> return ()
+    `catchIOError` \ _ -> pure ()
   removePathForcibly tmpD
-    `catchIOError` \ _ -> return ()
+    `catchIOError` \ _ -> pure ()
 
   ------------------------------------------------------------
   -- set up

@@ -145,10 +145,10 @@ main _t = do
     T.expectEq _t () fooNon fooNon12
     T.expectEq _t () fooNon fooNon13
     T.expectEq _t () fooNon fooNon14
-    T.expectEq _t () fooNon (dropFileName cfooNon15 <>
-                           (os (toLower <$> so (takeFileName cfooNon15))))
-    T.expectEq _t () fooNon (dropFileName cfooNon16 <>
-                           (os (toLower <$> so (takeFileName cfooNon16))))
+    T.expectEq _t () fooNon
+      (dropFileName cfooNon15 <> os (toLower <$> so (takeFileName cfooNon15)))
+    T.expectEq _t () fooNon
+      (dropFileName cfooNon16 <> os (toLower <$> so (takeFileName cfooNon16)))
     T.expectNe _t () fooNon cfooNon15
     T.expectNe _t () fooNon cfooNon16
 

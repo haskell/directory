@@ -63,5 +63,3 @@ main _t = do
   setEnv "XDG_CONFIG_DIRS" (List.intercalate [searchPathSeparator] ["/c", "/d"])
   T.expectEq _t () ["/a", "/b"] =<< getXdgDirectoryList XdgDataDirs
   T.expectEq _t () ["/c", "/d"] =<< getXdgDirectoryList XdgConfigDirs
-
-  return ()

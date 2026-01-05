@@ -25,8 +25,8 @@ main _t = do
   T.expectEq _t () (Just ("." </> "bar" </> "foo")) =<<
     findFile ["."] ("bar" </> "foo")
 
-  T.expectEq _t () (Just ("." </> "foo")) =<< findFile [".", "bar"] ("foo")
-  T.expectEq _t () (Just ("bar" </> "foo")) =<< findFile ["bar", "."] ("foo")
+  T.expectEq _t () (Just ("." </> "foo")) =<< findFile [".", "bar"] "foo"
+  T.expectEq _t () (Just ("bar" </> "foo")) =<< findFile ["bar", "."] "foo"
 
   let f fn = (== ":3") <$> readFile (so fn)
   for_ (List.permutations ["qux", "bar", "."]) $ \ ds -> do
@@ -46,9 +46,9 @@ main _t = do
     T.expectEq _t ds ((</> "foo") <$> noMatch) =<<
       findFilesWith ((not <$>) . f) ds "foo"
 
-    T.expectEq _t ds Nothing =<< findFileWith (\ _ -> return False) ds "foo"
+    T.expectEq _t ds Nothing =<< findFileWith (\ _ -> pure False) ds "foo"
 
-    T.expectEq _t ds [] =<< findFilesWith (\ _ -> return False) ds "foo"
+    T.expectEq _t ds [] =<< findFilesWith (\ _ -> pure False) ds "foo"
 
   -- make sure absolute paths are handled properly irrespective of 'dirs'
   -- https://github.com/haskell/directory/issues/72

@@ -38,9 +38,9 @@ main _t = (`finally` cleanup) $ do
 
     cleanup = do
       -- needed to ensure the test runner can clean up our mess
-      modifyWritable True "a" `catchIOError` \ _ -> return ()
-      modifyWritable True "b" `catchIOError` \ _ -> return ()
-      modifyWritable True "c" `catchIOError` \ _ -> return ()
+      modifyWritable True "a" `catchIOError` \ _ -> pure ()
+      modifyWritable True "b" `catchIOError` \ _ -> pure ()
+      modifyWritable True "c" `catchIOError` \ _ -> pure ()
 
     modifyWritable b f = do
       perm <- getPermissions f

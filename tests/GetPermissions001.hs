@@ -64,4 +64,4 @@ main _t = do
     checkTrailingSlash = do
       createDirectory "bar"
       _ <- getPermissions "bar/"
-      return ()
+      pure ()

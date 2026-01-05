@@ -29,7 +29,7 @@ timeLimit time action = do
   result <- timeout (round (1000000 * time)) action
   case result of
     Nothing -> throwIO (userError "timed out")
-    Just x  -> return x
+    Just x  -> pure x
 
 data TestEnv =
   TestEnv
@@ -40,7 +40,7 @@ data TestEnv =
   }
 
 printInfo :: TestEnv -> [String] -> IO ()
-printInfo TestEnv{testSilent = True}  _   = return ()
+printInfo TestEnv{testSilent = True}  _   = pure ()
 printInfo TestEnv{testSilent = False} msg = do
   putStrLn (List.intercalate ": " msg)
   hFlush stdout
@@ -145,7 +145,7 @@ withNewDirectory :: Bool -> OsPath -> IO a -> IO a
 withNewDirectory keep dir action = do
   dir' <- makeAbsolute dir
   bracket_ (createDirectoryIfMissing True dir') (cleanup dir') action
-  where cleanup dir' | keep      = return ()
+  where cleanup dir' | keep      = pure ()
                      | otherwise = removePathForcibly dir'
 
 diffAsc' :: (j -> k -> Ordering)
@@ -180,7 +180,7 @@ isolateEnvironment = bracket getEnvs setEnvs . const
   where
     -- Duplicate environment variables will cause problems for this code.
     -- https://github.com/haskell/cabal/issues/10718
-    getEnvs = List.sort . filter (\(k, _) -> k /= "") <$> getEnvironment
+    getEnvs = List.sort . filter (\(k, _) -> not (null k)) <$> getEnvironment
     setEnvs target = do
       current <- getEnvs
       let (deletions, insertions) = diffAsc current target
@@ -205,8 +205,8 @@ isolateWorkingDirectory keep dir action = do
                         "with current directory"))
   dir' <- makeAbsolute dir
   removePathForcibly dir'
-  withNewDirectory keep dir' $
-    withCurrentDirectory dir' $
+  withNewDirectory keep dir' $ do
+    withCurrentDirectory dir' $ do
       action
 
 run :: TestEnv -> String -> (TestEnv -> IO ()) -> IO ()
@@ -214,7 +214,7 @@ run t name action = do
   result <- tryAny (action t)
   case result of
     Left  e  -> check t False [name] [] ["exception", show e]
-    Right () -> return ()
+    Right () -> pure ()
 
 isolatedRun :: TestEnv -> String -> (TestEnv -> IO ()) -> IO ()
 isolatedRun t@TestEnv{testKeepDirs = keep} name action = do
@@ -259,7 +259,7 @@ testMain action = do
           , testArgs     = args
           }
   action t
-  n <- readIORef (counter)
+  n <- readIORef counter
   unless (n == 0) $ do
     putStrLn ("[" <> show n <> " failures]")
     hFlush stdout

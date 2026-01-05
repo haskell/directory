@@ -17,9 +17,9 @@ main _t = do
       -- tests: [createDirectory]
       createDirectory =<< makeAbsolute longName
       createDirectory longDir
-      return True
+      pure True
     `catchIOError` \ _ ->
-      return False
+      pure False
 
   -- skip tests on file systems that do not support long paths
   when supportsLongPaths $ do
@@ -57,8 +57,9 @@ main _t = do
       -- also tests expansion of "." and ".."
       createDirectoryLink "." (longDir </> "link")
       _ <- listDirectory (longDir </> ".." </> longName </> "link")
-      T.expectEq _t () "." =<< getSymbolicLinkTarget (longDir </> "." </> "link")
+      T.expectEq _t () "." =<<
+        getSymbolicLinkTarget (longDir </> "." </> "link")
 
-      return ()
+      pure ()
 
   -- [removeFile], [removeDirectory] are automatically tested by the cleanup

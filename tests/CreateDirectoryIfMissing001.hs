@@ -71,7 +71,7 @@ main _t = do
     -- This test fails on Windows (see bug #2924 on GHC Trac):
     raceCheck2 = do
       m <- newEmptyMVar
-      replicateM_ numThreads $
+      replicateM_ numThreads $ do
         forkPut m $ do
           replicateM_ numRepeats $ do
             create
@@ -91,10 +91,10 @@ main _t = do
          || isPermissionError e
          || isInappropriateTypeError e
          || ioeGetErrorType e == InvalidArgument
-      then return ()
+      then pure ()
       else ioError e
 
-    cleanup = removeDirectoryRecursive testdir `catchAny` \ _ -> return ()
+    cleanup = removeDirectoryRecursive testdir `catchAny` \ _ -> pure ()
 
     catchAny :: IO a -> (SomeException -> IO a) -> IO a
     catchAny = catch

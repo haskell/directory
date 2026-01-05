@@ -162,7 +162,8 @@ offers much more flexibility.
  been given to use them as part of a path, but not to examine the
  directory contents.
 
-Note that to change some, but not all permissions, a construct on the following lines must be used.
+Note that to change some, but not all permissions, a construct on the
+following lines must be used.
 
 >  makeReadable f = do
 >     p <- getPermissions f
@@ -284,9 +285,10 @@ createDirectory = encodeFS >=> D.createDirectory
 -- | @'createDirectoryIfMissing' parents dir@ creates a new directory
 -- @dir@ if it doesn\'t exist. If the first argument is 'True'
 -- the function will also create all parent directories if they are missing.
-createDirectoryIfMissing :: Bool     -- ^ Create its parents too?
-                         -> FilePath -- ^ The path to the directory you want to make
-                         -> IO ()
+createDirectoryIfMissing
+  :: Bool     -- ^ Create its parents too?
+  -> FilePath -- ^ The path to the directory you want to make
+  -> IO ()
 createDirectoryIfMissing cp = encodeFS >=> D.createDirectoryIfMissing cp
 
 
@@ -781,7 +783,8 @@ findFiles = findFilesWith (\ _ -> pure True)
 -- documentation of 'findFilesWith'.
 --
 -- @since 1.2.6.0
-findFileWith :: (FilePath -> IO Bool) -> [FilePath] -> String -> IO (Maybe FilePath)
+findFileWith
+  :: (FilePath -> IO Bool) -> [FilePath] -> String -> IO (Maybe FilePath)
 findFileWith f ds name = do
   ds' <- for ds encodeFS
   name' <- encodeFS name
@@ -1200,9 +1203,12 @@ application-specific data here; use 'getXdgDirectory' or
 On Unix, 'getHomeDirectory' behaves as follows:
 
 * Returns $HOME env variable if set (including to an empty string).
-* Otherwise uses home directory returned by `getpwuid_r` using the UID of the current proccesses user. This basically reads the /etc/passwd file. An empty home directory field is considered valid.
+* Otherwise uses home directory returned by @getpwuid_r@ using the UID of the
+  current process' user. This basically reads the @\/etc\/passwd@ file. An
+  empty home directory field is considered valid.
 
-On Windows, the system is queried for a suitable path; a typical path might be @C:\/Users\//\<user\>/@.
+On Windows, the system is queried for a suitable path; a typical path might be
+@C:\/Users\//\<user\>/@.
 
 The operation may fail with:
 
