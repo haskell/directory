@@ -218,7 +218,7 @@ run t name action = do
 
 isolatedRun :: TestEnv -> String -> (TestEnv -> IO ()) -> IO ()
 isolatedRun t@TestEnv{testKeepDirs = keep} name action = do
-  workDir <- encodeFS ("dist/test-" <> name <> ".tmp")
+  workDir <- encodeFS ("dist-newstyle/tmp/test-" <> name <> ".tmp")
   run t name (isolate workDir . action)
   where
     isolate workDir = isolateEnvironment . isolateWorkingDirectory keep workDir
