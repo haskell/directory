@@ -1,12 +1,12 @@
 Changelog for the [`directory`][1] package
 ==========================================
 
-## 1.3.10.1 (unreleased)
+## 1.3.10.1 (Jan 2026)
 
-  * Make findExecutable return Nothing on absolute paths that aren't
+  * Make `findExecutable` return `Nothing` on absolute paths that aren't
     executable.
     ([#187](https://github.com/haskell/directory/issues/187))
-  * Ensure removePathForcibly removes write-protected files on all
+  * Ensure `removePathForcibly` removes write-protected files on all
     platforms.
     ([#194](https://github.com/haskell/directory/issues/194))
 
