@@ -309,7 +309,7 @@ data XdgDirectory
    -- but that is not important or portable enough to the user that it
    -- should be stored in 'XdgData'.
    -- It uses the @XDG_STATE_HOME@ environment variable.
-   -- On non-Windows sytems, the default is @~\/.local\/state@.  On
+   -- On non-Windows systems, the default is @~\/.local\/state@.  On
    -- Windows, the default is @%LOCALAPPDATA%@
    -- (e.g. @C:\/Users\//\<user\>/\/AppData\/Local@).
    --
