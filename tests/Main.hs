@@ -27,6 +27,7 @@ import qualified RemoveDirectoryRecursive001
 import qualified RemovePathForcibly
 import qualified RenameDirectory
 import qualified RenameFile001
+import qualified ReplaceFile001
 import qualified RenamePath
 import qualified Simplify
 import qualified T8482
@@ -62,6 +63,7 @@ main = T.testMain $ \ _t -> do
   T.isolatedRun _t "RemovePathForcibly" RemovePathForcibly.main
   T.isolatedRun _t "RenameDirectory" RenameDirectory.main
   T.isolatedRun _t "RenameFile001" RenameFile001.main
+  T.isolatedRun _t "ReplaceFile001" ReplaceFile001.main
   T.isolatedRun _t "RenamePath" RenamePath.main
   T.isolatedRun _t "Simplify" Simplify.main
   T.isolatedRun _t "T8482" T8482.main
