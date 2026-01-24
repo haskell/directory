@@ -17,8 +17,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: macOS-14, stack: lts-20.26, stack-extra-deps: "bytestring-0.11.3.0, file-io-0.1.4, filepath-1.4.100.0, unix-2.8.0.0" }
-          - { os: macos-latest, stack: lts-22.7, stack-extra-deps: "bytestring-0.11.5.3, file-io-0.1.4, filepath-1.5.2.0, os-string-2.0.2, unix-2.8.5.1", stack-package-flags: "{directory: {os-string: true}, file-io: {os-string: true}, unix: {os-string: true}}", ghc-flags: -Werror=deprecations }
+          - { os: macOS-14, stack: lts-20.26, stack-extra-deps: "bytestring-0.11.3.0, file-io-0.1.4, filepath-1.5.2.0, os-string-2.0.2, unix-2.8.5.1", stack-package-flags: "{file-io: {os-string: true}, unix: {os-string: true}}" }
+          - { os: macos-latest, stack: lts-24.29, ghc-flags: -Werror=deprecations }
           - { os: ubuntu-latest, ghc: 8.10.7, cabal: 3.8.1.0 }
           - { os: ubuntu-latest, ghc: 9.0.2, cabal: 3.8.1.0 }
           - { os: ubuntu-latest, ghc: 9.2.4, cabal: 3.8.1.0 }
@@ -27,7 +27,7 @@ jobs:
           - { os: ubuntu-latest, ghc: latest, cabal: 3.12.1.0, cabal-package-flags: +os-string, ghc-flags: -Werror=deprecations }
           - { os: windows-latest, stack: lts-15.3, stack-extra-deps: "bytestring-0.11.3.0, file-io-0.1.4, filepath-1.4.100.0, time-1.9.3, Win32-2.14.1.0", overrides: "before_prepare() { sed -i.bak -e /CreateSymbolicLinkW/d -e /GetFinalPathNameByHandleW/d configure.ac; }" }
           - { os: windows-latest, stack: lts-17.5, stack-extra-deps: "bytestring-0.11.3.0, file-io-0.1.4, filepath-1.4.100.0, time-1.9.3, Win32-2.14.1.0" }
-          - { os: windows-latest, stack: lts-22.7, stack-extra-deps: "bytestring-0.11.5.3, file-io-0.1.4, filepath-1.5.2.0, os-string-2.0.2, time-1.14, Win32-2.14.1.0", stack-package-flags: "{directory: {os-string: true}, file-io: {os-string: true}, Win32: {os-string: true}}", ghc-flags: -Werror=deprecations }
+          - { os: windows-latest, stack: lts-22.7, stack-extra-deps: "bytestring-0.11.5.3, file-io-0.1.4, filepath-1.5.2.0, os-string-2.0.2, time-1.14, Win32-2.14.1.0", stack-package-flags: "{file-io: {os-string: true}, Win32: {os-string: true}}", ghc-flags: -Werror=deprecations }
     runs-on: ${{ matrix.os }}
     env:
       CABAL_PACKAGE_FLAGS: ${{ matrix.cabal-package-flags }}
