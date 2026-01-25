@@ -43,7 +43,8 @@ main _t = do
 
 #if defined(mingw32_HOST_OS)
   cwd <- getCurrentDirectory
-  let driveLetter = toUpper (toChar (head (unpack (takeDrive cwd))))
+  cwdDriveLetter : _ <- pure (unpack (takeDrive cwd))
+  let driveLetter = toUpper (toChar cwdDriveLetter)
   let driveLetter' = if driveLetter == 'Z' then 'A' else succ driveLetter
   drp1 <- makeAbsolute (os (driveLetter : ":foobar"))
   drp2 <- makeAbsolute (os (driveLetter' : ":foobar"))
