@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 module System.Directory.Internal.Common
   ( module System.Directory.Internal.Common
   , OsPath
@@ -8,7 +9,7 @@ import System.Directory.Internal.Prelude
 import GHC.IO.Encoding.Failure (CodingFailureMode(TransliterateCodingFailure))
 import GHC.IO.Encoding.UTF16 (mkUTF16le)
 import GHC.IO.Encoding.UTF8 (mkUTF8)
-import System.File.OsPath.Internal (openFileWithCloseOnExec)
+import qualified System.File.OsPath.Internal as File
 import System.OsPath
   ( OsPath
   , OsString
@@ -256,7 +257,16 @@ data Permissions
   } deriving (Eq, Ord, Read, Show)
 
 withBinaryFile :: OsPath -> IOMode -> (Handle -> IO r) -> IO r
-withBinaryFile path mode = bracket (openFileWithCloseOnExec path mode) hClose
+withBinaryFile path mode =
+  bracket (File.openFileWithCloseOnExec path mode) hClose
+
+openTempFile' :: String -> OsPath -> OsString -> Bool -> CMode -> Bool
+              -> IO (OsPath, Handle)
+openTempFile' loc tmpDir template binary mode _cloExec =
+  File.openTempFile' loc tmpDir template binary mode
+#if MIN_VERSION_file_io(0, 2, 0)
+    _cloExec
+#endif
 
 -- | Copy data from one handle to another until end of file.
 copyHandleData :: Handle                -- ^ Source handle

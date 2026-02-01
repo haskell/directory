@@ -108,7 +108,6 @@ module System.Directory.OsPath
 import Prelude ()
 import System.Directory.Internal
 import System.Directory.Internal.Prelude
-import qualified System.File.OsPath as OS
 import System.OsPath
   ( (<.>)
   , (</>)
@@ -764,7 +763,9 @@ withReplacementFile path postAction action =
             Left err ->
               error ("withReplacementFile: invalid encoding: " <> show err)
             Right p -> p
-      (tmpFPath, hTmp) <- OS.openBinaryTempFile (takeDirectory path) tmpPath
+      let dir = takeDirectory path
+      (tmpFPath, hTmp) <-
+        openTempFile' "openTempFile'" dir tmpPath True 0o600 True
       (`onException` ignoreIOExceptions (removeFile tmpFPath)) $ do
         r <- (`onException` ignoreIOExceptions (hClose hTmp)) $ do
           restore (action hTmp)

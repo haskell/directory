@@ -5,6 +5,10 @@ Changelog for the [`directory`][1] package
 
   * Cabal flag `os-string` was removed in favor of `impl(ghc >= 9.2)`.
     ([#176](https://github.com/haskell/directory/issues/176))
+  * Enable close-on-exec flag when copying files and relax `file-io` version
+    bounds to support 0.2.0. Note that close-on-exec when copying is only
+    enabled on `file-io` 0.2.0 or later.
+    ([#203](https://github.com/haskell/directory/issues/203))
 
 ## 1.3.10.1 (Jan 2026)
 
