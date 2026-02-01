@@ -26,6 +26,7 @@ jobs:
           - { os: windows-latest, stack: lts-24.29, ghc-flags: -Werror=deprecations }
     runs-on: ${{ matrix.os }}
     env:
+      CABAL_CONSTRAINTS: ${{ matrix.cabal-constraints }}
       CABAL_PACKAGE_FLAGS: ${{ matrix.cabal-package-flags }}
       GHC_FLAGS: ${{ matrix.ghc-flags }}
       TESTSCRIPT_OVERRIDES: ${{ matrix.overrides }}
