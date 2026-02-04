@@ -52,6 +52,7 @@ module System.Directory.OsPath
     , copyFile
     , copyFileWithMetadata
     , getFileSize
+    , replaceFile
 
     , canonicalizePath
     , makeAbsolute
@@ -664,12 +665,14 @@ renameFile opath npath =
             _          -> pure ()
 
 -- | Rename a file or directory.  If the destination path already exists, it
--- is replaced atomically.  The destination path must not point to an existing
--- directory.  A conformant implementation need not support renaming files in
--- all situations (e.g. renaming across different physical devices), but the
--- constraints must be documented.
+-- is replaced atomically on unix.  If the destination path already exists and
+-- destination on the same volume, it is replaced atomically on Windows.
+-- The destination path must not point to an existing directory.  A conformant
+-- implementation need not support renaming files in all situations
+-- (e.g. renaming across different physical devices), but the constraints must
+-- be documented.
 --
--- The operation may fail with:
+-- The operation on unix may fail with:
 --
 -- * @HardwareFault@
 -- A physical I\/O error has occurred.
@@ -703,12 +706,123 @@ renameFile opath npath =
 -- Either the destination path refers to an existing directory, or one of the
 -- parent segments in the destination path is not a directory.
 -- @[ENOTDIR, EISDIR, EINVAL, EEXIST, ENOTEMPTY]@
+--
+-- The operation on Windows may fail with:
+--
+-- ERROR_FILE_NOT_FOUND 2 (0x2)
+-- The system cannot find the specified file.
+--
+-- ERROR_PATH_NOT_FOUND 3 (0x3)
+-- The system cannot find the specified path.
+--
+-- ERROR_ACCESS_DENIED 5 (0x5)
+-- Access to the file or resource is denied.
+--
+-- ERROR_ALREADY_EXISTS 183 (0xB7)
+-- The file already exists and cannot be overwritten or recreated.
+--
+-- ERROR_SHARING_VIOLATION 32 (0x20)
+-- The file is in use by another process and cannot be accessed.
+--
+-- ERROR_NOT_SAME_DEVICE 17 (0x11)
+-- The operation cannot be performed across different storage devices.
+--
+-- ERROR_INVALID_PARAMETER 87 (0x57)
+-- An invalid parameter was passed to the function.
+--
+-- ERROR_WRITE_PROTECT 19 (0x13)
+-- The storage media is write-protected and cannot be modified.
+--
+-- ERROR_LOCK_VIOLATION 33 (0x21)
+-- The file is locked by another process and cannot be accessed.
 renamePath :: OsPath                  -- ^ Old path
            -> OsPath                  -- ^ New path
            -> IO ()
 renamePath opath npath =
   (`ioeAddLocation` "renamePath") `modifyIOError` do
     renamePathInternal opath npath
+
+-- | Replaces one file with another file. The replacement file assumes the name
+-- of the replaced file and its identity.
+-- 
+-- Note on Windows atomicity:
+-- File replacement is typically atomic when both files are on the same volume and
+-- no special file system features interfere. If the files are on different volumes,
+-- or if a system crash or power failure occurs during the operation, atomicity is
+-- not guaranteed and the destination file may be left in an inconsistent state.
+--
+-- On the unix same as renamePath, on the Windows platform this is ReplaceFileW.
+--
+-- The operation on unix may fail with:
+--
+-- * @HardwareFault@
+-- A physical I\/O error has occurred.
+-- @[EIO]@
+--
+-- * @InvalidArgument@
+-- Either operand is not a valid file name.
+-- @[ENAMETOOLONG, ELOOP]@
+--
+-- * 'isDoesNotExistError'
+-- The original file does not exist, or there is no path to the target.
+-- @[ENOENT, ENOTDIR]@
+--
+-- * 'isPermissionError'
+-- The process has insufficient privileges to perform the operation.
+-- @[EROFS, EACCES, EPERM]@
+--
+-- * 'System.IO.isFullError'
+-- Insufficient resources are available to perform the operation.
+-- @[EDQUOT, ENOSPC, ENOMEM, EMLINK]@
+--
+-- * @UnsatisfiedConstraints@
+-- Implementation-dependent constraints are not satisfied.
+-- @[EBUSY]@
+--
+-- * @UnsupportedOperation@
+-- The implementation does not support renaming in this situation.
+-- @[EXDEV]@
+--
+-- * @InappropriateType@
+-- Either the destination path refers to an existing directory, or one of the
+-- parent segments in the destination path is not a directory.
+-- @[ENOTDIR, EISDIR, EINVAL, EEXIST, ENOTEMPTY]@
+--
+-- The operation on Windows may fail with:
+--
+-- ERROR_FILE_NOT_FOUND 2 (0x2)
+-- The system cannot find the specified file.
+--
+-- ERROR_PATH_NOT_FOUND 3 (0x3)
+-- The system cannot find the specified path.
+--
+-- ERROR_ACCESS_DENIED 5 (0x5)
+-- Access to the file or resource is denied.
+--
+-- ERROR_SHARING_VIOLATION 32 (0x20)
+-- The file is in use by another process and cannot be accessed.
+--
+-- ERROR_INVALID_PARAMETER 87 (0x57)
+-- An invalid parameter was passed to the function.
+--
+-- ERROR_UNABLE_TO_REMOVE_REPLACED 1175 (0x497)
+-- The replaced file could not be deleted. The replaced and replacement files
+-- retain their original file names.
+--
+-- ERROR_UNABLE_TO_MOVE_REPLACEMENT 1176 (0x498)
+-- The replacement file could not be renamed. The replaced file no longer exists
+-- and the replacement file remains under its original name.
+--
+-- ERROR_UNABLE_TO_MOVE_REPLACEMENT_2 1177 (0x499)
+-- The replacement file could not be moved. It still exists under its original name
+-- but has inherited attributes from the target file. The original target file
+-- persists under a different name.
+replaceFile :: OsPath                 -- ^ File to be replaced
+            -> OsPath                 -- ^ Replacement file
+            -> IO ()
+replaceFile opath npath =
+  (`ioeAddLocation` "replaceFile") `modifyIOError` do
+    replaceFileInternal opath npath Nothing
 
 -- | Copy a file with its permissions.  If the destination file already exists,
 -- it is replaced atomically.  Neither path may refer to an existing

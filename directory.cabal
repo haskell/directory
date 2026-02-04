@@ -57,7 +57,7 @@ Library
         file-io  >= 0.1.4 && < 0.3,
         time     >= 1.8.0 && < 1.16,
     if os(windows)
-        build-depends: Win32 >= 2.14.1.0 && < 2.15
+        build-depends: Win32 >= 2.14.2.1 && < 2.15
     else
         build-depends: unix >= 2.8.0 && < 2.9
 
@@ -113,6 +113,7 @@ test-suite test
         RemovePathForcibly
         RenameDirectory
         RenameFile001
+        ReplaceFile001
         RenamePath
         Simplify
         T8482
